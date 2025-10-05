@@ -1,0 +1,14 @@
+# Global Skilloper Project Ignores
+
+# Editor/IDE (global)
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+
+# Logs
+*.log
+
+# Database files
+*.db
