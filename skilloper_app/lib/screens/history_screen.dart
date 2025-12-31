@@ -4,6 +4,7 @@ import '../services/api_service.dart';
 import '../services/device_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
+import '../widgets/search_filter_bar.dart';
 import 'history_detail_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
@@ -20,10 +21,31 @@ class _HistoryScreenState extends State<HistoryScreen> {
   bool _isLoading = false;
   String? _error;
 
+  // Search and filter
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  String _typeFilter = '';
+
   @override
   void initState() {
     super.initState();
     _loadHistory();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<AttemptSummary> get _filteredAttempts {
+    final normalizedQuery = _searchQuery.toLowerCase();
+    return _attempts.where((a) => matchesFilter(
+      title: a.questionnaireTitle,
+      type: a.questionnaireType,
+      searchQuery: normalizedQuery,
+      typeFilter: _typeFilter,
+    )).toList();
   }
 
   Future<void> _loadHistory() async {
@@ -104,7 +126,27 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   fontWeight: FontWeight.w400,
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
+
+              // Search and filter bar
+              SearchFilterBar(
+                searchHint: 'Search history...',
+                searchController: _searchController,
+                onSearchChanged: (query) {
+                  setState(() {
+                    _searchQuery = query;
+                  });
+                },
+                filterOptions: kQuizTypeFilterOptions,
+                selectedFilter: _typeFilter,
+                onFilterChanged: (filter) {
+                  setState(() {
+                    _typeFilter = filter;
+                  });
+                },
+              ),
+
+              const SizedBox(height: 16),
 
               if (_isLoading)
                 const Expanded(
@@ -189,13 +231,54 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     ),
                   ),
                 )
+              else if (_filteredAttempts.isEmpty)
+                Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.search_off,
+                          size: 64,
+                          color: AppColors.textDisabled,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'No matches found',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Try a different search or filter',
+                          style: TextStyle(
+                            color: AppColors.textTertiary,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _searchController.clear();
+                              _searchQuery = '';
+                              _typeFilter = '';
+                            });
+                          },
+                          child: const Text('Clear filters'),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
               else
                 Expanded(
                   child: ListView.separated(
-                    itemCount: _attempts.length,
+                    itemCount: _filteredAttempts.length,
                     separatorBuilder: (context, index) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
-                      final attempt = _attempts[index];
+                      final attempt = _filteredAttempts[index];
                       return _AttemptListItem(
                         attempt: attempt,
                         formattedDate: _formatDate(attempt.createdAt),

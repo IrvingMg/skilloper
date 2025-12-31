@@ -3,6 +3,7 @@ import '../models/questionnaire.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
+import '../widgets/search_filter_bar.dart';
 import 'quiz_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -18,10 +19,31 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = false;
   String? _error;
 
+  // Search and filter
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  String _typeFilter = '';
+
   @override
   void initState() {
     super.initState();
     _loadQuestionnaires();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<QuestionnaireSummary> get _filteredQuestionnaires {
+    final normalizedQuery = _searchQuery.toLowerCase();
+    return _questionnaires.where((q) => matchesFilter(
+      title: q.title,
+      type: q.type,
+      searchQuery: normalizedQuery,
+      typeFilter: _typeFilter,
+    )).toList();
   }
 
   Future<void> _loadQuestionnaires() async {
@@ -105,8 +127,28 @@ class _HomeScreenState extends State<HomeScreen> {
                   fontWeight: FontWeight.w400,
                 ),
               ),
-              const SizedBox(height: 24),
-              
+              const SizedBox(height: 16),
+
+              // Search and filter bar
+              SearchFilterBar(
+                searchHint: 'Search quizzes...',
+                searchController: _searchController,
+                onSearchChanged: (query) {
+                  setState(() {
+                    _searchQuery = query;
+                  });
+                },
+                filterOptions: kQuizTypeFilterOptions,
+                selectedFilter: _typeFilter,
+                onFilterChanged: (filter) {
+                  setState(() {
+                    _typeFilter = filter;
+                  });
+                },
+              ),
+
+              const SizedBox(height: 16),
+
               if (_isLoading)
                 const Expanded(
                   child: Center(
@@ -190,13 +232,54 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 )
+              else if (_filteredQuestionnaires.isEmpty)
+                Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.search_off,
+                          size: 64,
+                          color: AppColors.textDisabled,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'No matches found',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Try a different search or filter',
+                          style: TextStyle(
+                            color: AppColors.textTertiary,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _searchController.clear();
+                              _searchQuery = '';
+                              _typeFilter = '';
+                            });
+                          },
+                          child: const Text('Clear filters'),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
               else
                 Expanded(
                   child: ListView.separated(
-                    itemCount: _questionnaires.length,
+                    itemCount: _filteredQuestionnaires.length,
                     separatorBuilder: (context, index) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
-                      final questionnaire = _questionnaires[index];
+                      final questionnaire = _filteredQuestionnaires[index];
                       return _QuestionnaireListItem(
                         questionnaire: questionnaire,
                         onTap: () => _startQuiz(questionnaire),
