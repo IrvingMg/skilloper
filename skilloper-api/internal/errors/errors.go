@@ -222,6 +222,31 @@ var (
 		Code:    "INVALID_PAGINATION_PARAMS",
 		Message: "invalid pagination parameters",
 	}
+
+	// Question errors
+	ErrQuestionNotFound = &AppError{
+		Type:    ErrTypeNotFound,
+		Code:    "QUESTION_NOT_FOUND",
+		Message: "question not found",
+	}
+
+	ErrInvalidQuestionID = &AppError{
+		Type:    ErrTypeValidation,
+		Code:    "INVALID_QUESTION_ID",
+		Message: "invalid question ID",
+	}
+
+	ErrFetchQuestionFailed = &AppError{
+		Type:    ErrTypeDatabase,
+		Code:    "FETCH_QUESTION_FAILED",
+		Message: "failed to fetch question",
+	}
+
+	ErrInvalidAnswerData = &AppError{
+		Type:    ErrTypeValidation,
+		Code:    "INVALID_ANSWER_DATA",
+		Message: "invalid answer data",
+	}
 )
 
 // NewValidationError creates a new validation error

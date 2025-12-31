@@ -321,4 +321,28 @@ class ApiService {
       throw ApiException('Failed to load attempt details: $e');
     }
   }
+
+  /// Validate answer for practice mode (immediate feedback)
+  Future<ValidateAnswerResponse> validateAnswer(int questionId, ValidateAnswerRequest request) async {
+    if (questionId <= 0) {
+      throw ApiException('Invalid question ID: $questionId');
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/questions/$questionId/validate'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(request.toJson()),
+      ).timeout(timeout);
+
+      _handleHttpResponse(response, 'validate answer');
+
+      final Map<String, dynamic> data = json.decode(response.body);
+      return ValidateAnswerResponse.fromJson(data);
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('Failed to validate answer: $e');
+    }
+  }
 }

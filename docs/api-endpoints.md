@@ -20,9 +20,15 @@ Base URL: `http://localhost:8080/api/v1`
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `POST` | `/attempts/start` | Start a quiz attempt (creates in_progress record) |
-| `POST` | `/attempts/{id}/complete` | Complete a quiz attempt with results |
+| `POST` | `/attempts/{id}/complete` | Complete a quiz attempt (server validates answers) |
 | `GET` | `/attempts` | Get paginated attempt history for a device |
 | `GET` | `/attempts/{id}` | Get specific attempt with answers |
+
+### Questions (Practice Mode)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/questions/{id}/validate` | Validate answer for immediate feedback |
 
 ### Pagination Parameters
 
@@ -147,26 +153,34 @@ Response:
 ```
 
 ### Complete Quiz Attempt
+
+The client sends only user answers. The server validates answers and calculates the score.
+
 ```bash
 curl -X POST http://localhost:8080/api/v1/attempts/1/complete \
   -H "Content-Type: application/json" \
   -d '{
-    "score": 80,
-    "correct_count": 8,
-    "total_count": 10,
     "answers": [
       {
         "question_id": 1,
-        "question_text": "What is typeof null?",
-        "question_type": "single_choice",
-        "user_answer": 2,
-        "correct_answer": 2,
-        "options": ["null", "undefined", "object", "boolean"],
-        "is_correct": true
+        "user_answer": 2
+      },
+      {
+        "question_id": 2,
+        "user_answers": [0, 2]
       }
     ]
   }'
 ```
+
+**Request Fields:**
+- `answers[].question_id` - Question ID
+- `answers[].user_answer` - Selected option index (single choice)
+- `answers[].user_answers` - Selected option indices (multiple choice)
+
+**Note:** Duplicate `question_id` entries are ignored (only the first submission per question is counted).
+
+**Response:** Server returns the attempt with validated results including correct answers, score, and per-question feedback.
 
 ### Get Attempt History
 ```bash
@@ -210,6 +224,49 @@ Response:
 curl http://localhost:8080/api/v1/attempts/1
 ```
 
+### Validate Answer (Practice Mode)
+
+Used in practice mode for immediate feedback after answering a question.
+
+```bash
+# Single choice
+curl -X POST http://localhost:8080/api/v1/questions/1/validate \
+  -H "Content-Type: application/json" \
+  -d '{"user_answer": 2}'
+
+# Multiple choice
+curl -X POST http://localhost:8080/api/v1/questions/1/validate \
+  -H "Content-Type: application/json" \
+  -d '{"user_answers": [0, 2]}'
+```
+
+Response:
+```json
+{
+  "is_correct": false,
+  "correct_answer": 1
+}
+```
+
+Or for multiple choice:
+```json
+{
+  "is_correct": false,
+  "correct_answers": [0, 2, 3]
+}
+```
+
+## Security: Server-Side Answer Validation
+
+**Important:** Correct answers are never sent to the client during quizzes.
+
+- `GET /questionnaires/{id}` returns questions **without** `correct_answer` or `correct_answers` fields
+- The client collects user answers only
+- `POST /attempts/{id}/complete` receives user answers, the **server** validates and calculates the score
+- `POST /questions/{id}/validate` is only used in practice mode for immediate feedback
+
+This prevents submitting fake scores.
+
 ## Error Responses
 
 The API returns structured error responses:
@@ -235,6 +292,9 @@ The API returns structured error responses:
 | `ATTEMPT_ALREADY_COMPLETED` | Cannot complete an already completed attempt |
 | `INVALID_ATTEMPT_DATA` | Invalid data in attempt request |
 | `INVALID_PAGINATION_PARAMS` | Invalid pagination parameters (e.g., invalid type filter) |
+| `QUESTION_NOT_FOUND` | Question with given ID doesn't exist |
+| `INVALID_QUESTION_ID` | Invalid question ID format |
+| `INVALID_ANSWER_DATA` | Missing user_answer or user_answers in request |
 
 ### HTTP Status Codes
 

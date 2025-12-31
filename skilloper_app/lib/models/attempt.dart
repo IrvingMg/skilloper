@@ -218,65 +218,79 @@ class StartAttemptRequest {
   }
 }
 
-/// Request to complete an attempt
+/// Request to complete an attempt - server validates answers and calculates score
 class CompleteAttemptRequest {
-  final int score;
-  final int correctCount;
-  final int totalCount;
-  final List<CreateAttemptAnswerRequest> answers;
+  final List<UserAnswerRequest> answers;
 
   const CompleteAttemptRequest({
-    required this.score,
-    required this.correctCount,
-    required this.totalCount,
     required this.answers,
   });
 
   Map<String, dynamic> toJson() {
     return {
-      'score': score,
-      'correct_count': correctCount,
-      'total_count': totalCount,
       'answers': answers.map((a) => a.toJson()).toList(),
     };
   }
 }
 
-/// Request for a single answer in an attempt
-class CreateAttemptAnswerRequest {
+/// User's answer to a single question - server will validate
+class UserAnswerRequest {
   final int questionId;
-  final String questionText;
-  final String questionType;
-  final int? userAnswer;
-  final List<int>? userAnswers;
-  final int? correctAnswer;
-  final List<int>? correctAnswers;
-  final List<String> options;
-  final bool isCorrect;
+  final int? userAnswer;      // For single_choice
+  final List<int>? userAnswers; // For multiple_choice
 
-  const CreateAttemptAnswerRequest({
+  const UserAnswerRequest({
     required this.questionId,
-    required this.questionText,
-    required this.questionType,
     this.userAnswer,
     this.userAnswers,
-    this.correctAnswer,
-    this.correctAnswers,
-    required this.options,
-    required this.isCorrect,
   });
 
   Map<String, dynamic> toJson() {
     return {
       'question_id': questionId,
-      'question_text': questionText,
-      'question_type': questionType,
       if (userAnswer != null) 'user_answer': userAnswer,
       if (userAnswers != null) 'user_answers': userAnswers,
-      if (correctAnswer != null) 'correct_answer': correctAnswer,
-      if (correctAnswers != null) 'correct_answers': correctAnswers,
-      'options': options,
-      'is_correct': isCorrect,
     };
+  }
+}
+
+/// Request to validate a single answer (practice mode)
+class ValidateAnswerRequest {
+  final int? userAnswer;      // For single_choice
+  final List<int>? userAnswers; // For multiple_choice
+
+  const ValidateAnswerRequest({
+    this.userAnswer,
+    this.userAnswers,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (userAnswer != null) 'user_answer': userAnswer,
+      if (userAnswers != null) 'user_answers': userAnswers,
+    };
+  }
+}
+
+/// Response from validating a single answer (practice mode)
+class ValidateAnswerResponse {
+  final bool isCorrect;
+  final int? correctAnswer;       // For single_choice
+  final List<int>? correctAnswers; // For multiple_choice
+
+  const ValidateAnswerResponse({
+    required this.isCorrect,
+    this.correctAnswer,
+    this.correctAnswers,
+  });
+
+  factory ValidateAnswerResponse.fromJson(Map<String, dynamic> json) {
+    return ValidateAnswerResponse(
+      isCorrect: json['is_correct'] as bool,
+      correctAnswer: json['correct_answer'] as int?,
+      correctAnswers: json['correct_answers'] != null
+          ? List<int>.from(json['correct_answers'] as List)
+          : null,
+    );
   }
 }

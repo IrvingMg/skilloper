@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import '../models/questionnaire.dart';
 import '../models/attempt.dart';
@@ -9,13 +10,13 @@ import '../widgets/summary_card.dart';
 
 class ResultsScreen extends StatefulWidget {
   final Questionnaire questionnaire;
-  final QuizResult results;
+  final List<UserAnswerRequest> userAnswers;
   final int? attemptId;
 
   const ResultsScreen({
     super.key,
     required this.questionnaire,
-    required this.results,
+    required this.userAnswers,
     this.attemptId,
   });
 
@@ -26,20 +27,21 @@ class ResultsScreen extends StatefulWidget {
 class _ResultsScreenState extends State<ResultsScreen> {
   final ApiService _apiService = ApiService();
   final DeviceService _deviceService = DeviceService();
-  bool _isSaving = false;
-  bool _saveCompleted = false;
-  String? _saveError;
+
+  bool _isLoading = true;
+  QuizAttempt? _completedAttempt;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    _saveAttempt();
+    _completeAttempt();
   }
 
-  Future<void> _saveAttempt() async {
+  Future<void> _completeAttempt() async {
     setState(() {
-      _isSaving = true;
-      _saveError = null;
+      _isLoading = true;
+      _error = null;
     });
 
     try {
@@ -59,52 +61,35 @@ class _ResultsScreenState extends State<ResultsScreen> {
         attemptId = attempt.id;
       }
 
-      // If still no attemptId, skip saving (shouldn't happen normally)
+      // If still no attemptId, show error
       if (attemptId == null) {
         if (mounted) {
           setState(() {
-            _isSaving = false;
-            _saveCompleted = true;
+            _isLoading = false;
+            _error = 'Failed to create attempt';
           });
         }
         return;
       }
 
-      // Build the completion request from quiz results
-      final answers = widget.results.questionResults.map((qr) {
-        return CreateAttemptAnswerRequest(
-          questionId: qr.question.id,
-          questionText: qr.question.question,
-          questionType: qr.question.questionType,
-          userAnswer: qr.userAnswer,
-          userAnswers: qr.userAnswers,
-          correctAnswer: qr.question.correctAnswer,
-          correctAnswers: qr.question.correctAnswers,
-          options: qr.question.options,
-          isCorrect: qr.isCorrect,
-        );
-      }).toList();
-
+      // Complete the attempt - server validates answers and calculates score
       final completeRequest = CompleteAttemptRequest(
-        score: widget.results.score,
-        correctCount: widget.results.correct,
-        totalCount: widget.results.total,
-        answers: answers,
+        answers: widget.userAnswers,
       );
 
-      await _apiService.completeAttempt(attemptId, completeRequest);
+      final completedAttempt = await _apiService.completeAttempt(attemptId, completeRequest);
 
       if (mounted) {
         setState(() {
-          _isSaving = false;
-          _saveCompleted = true;
+          _completedAttempt = completedAttempt;
+          _isLoading = false;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _isSaving = false;
-          _saveError = e.toString();
+          _isLoading = false;
+          _error = e.toString();
         });
       }
     }
@@ -123,144 +108,228 @@ class _ResultsScreenState extends State<ResultsScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: _buildBody(context),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
+    if (_isLoading) {
+      return const Center(
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Score header
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Theme.of(context).primaryColor,
-                    Theme.of(context).primaryColor.withValues(alpha: 0.8),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    '${widget.results.score}%',
-                    style: const TextStyle(
-                      fontSize: 48,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${widget.results.correct} out of ${widget.results.total} questions correct',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildSaveStatus(),
-                ],
-              ),
-            ),
-
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  // Summary cards
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SummaryCard(
-                          title: 'Score',
-                          value: '${widget.results.score}%',
-                          color: _getScoreColor(widget.results.score),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: SummaryCard(
-                          title: 'Correct',
-                          value: '${widget.results.correct}',
-                          color: AppColors.success,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: SummaryCard(
-                          title: 'Incorrect',
-                          value: '${widget.results.total - widget.results.correct}',
-                          color: AppColors.error,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: SummaryCard(
-                          title: 'Total',
-                          value: '${widget.results.total}',
-                          color: AppColors.textTertiary,
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Section title
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Question Review',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Question review
-                  ...List.generate(
-                    widget.results.questionResults.length,
-                    (index) => Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: _QuestionReviewCard(
-                        questionNumber: index + 1,
-                        result: widget.results.questionResults[index],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // Action buttons
-                  Row(
-                    children: [
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () => Navigator.popUntil(
-                            context, 
-                            (route) => route.isFirst,
-                          ),
-                          icon: const Icon(Icons.home),
-                          label: const Text('Back to Home'),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-                ],
-              ),
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text(
+              'Calculating results...',
+              style: TextStyle(color: Color(0xFF6B7280)),
             ),
           ],
         ),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error_outline,
+              size: 64,
+              color: AppColors.textDisabled,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Failed to calculate results',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _error!,
+              style: const TextStyle(
+                color: AppColors.textTertiary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _completeAttempt,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final attempt = _completedAttempt!;
+
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Score header
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Theme.of(context).primaryColor,
+                  Theme.of(context).primaryColor.withValues(alpha: 0.8),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  '${attempt.score}%',
+                  style: const TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '${attempt.correctCount} out of ${attempt.totalCount} questions correct',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.cloud_done,
+                      size: 14,
+                      color: Colors.white.withValues(alpha: 0.8),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Result saved',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white.withValues(alpha: 0.8),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                // Summary cards
+                Row(
+                  children: [
+                    Expanded(
+                      child: SummaryCard(
+                        title: 'Score',
+                        value: '${attempt.score}%',
+                        color: _getScoreColor(attempt.score),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: SummaryCard(
+                        title: 'Correct',
+                        value: '${attempt.correctCount}',
+                        color: AppColors.success,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: SummaryCard(
+                        title: 'Incorrect',
+                        value: '${attempt.totalCount - attempt.correctCount}',
+                        color: AppColors.error,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: SummaryCard(
+                        title: 'Total',
+                        value: '${attempt.totalCount}',
+                        color: AppColors.textTertiary,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+
+                // Section title
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Question Review',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Question review from server-validated answers
+                ...List.generate(
+                  attempt.answers.length,
+                  (index) {
+                    final answer = attempt.answers[index];
+                    // Find matching question by ID, or null if not found
+                    final question = widget.questionnaire.questions
+                        .where((q) => q.id == answer.questionId)
+                        .firstOrNull;
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: _AnswerReviewCard(
+                        questionNumber: index + 1,
+                        answer: answer,
+                        question: question,
+                      ),
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 32),
+
+                // Action buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () => Navigator.popUntil(
+                          context,
+                          (route) => route.isFirst,
+                        ),
+                        icon: const Icon(Icons.home),
+                        label: const Text('Back to Home'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -270,90 +339,18 @@ class _ResultsScreenState extends State<ResultsScreen> {
     if (score >= 60) return AppColors.achievement;
     return AppColors.error;
   }
-
-  Widget _buildSaveStatus() {
-    if (_isSaving) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 14,
-            height: 14,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                Colors.white.withValues(alpha: 0.8),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            'Saving result...',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.white.withValues(alpha: 0.8),
-            ),
-          ),
-        ],
-      );
-    }
-
-    if (_saveError != null) {
-      return GestureDetector(
-        onTap: _saveAttempt,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 14,
-              color: Colors.white.withValues(alpha: 0.8),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'Save failed - tap to retry',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.white.withValues(alpha: 0.8),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (_saveCompleted) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.cloud_done,
-            size: 14,
-            color: Colors.white.withValues(alpha: 0.8),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            'Result saved',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.white.withValues(alpha: 0.8),
-            ),
-          ),
-        ],
-      );
-    }
-
-    return const SizedBox.shrink();
-  }
 }
 
-class _QuestionReviewCard extends StatelessWidget {
+/// Review card for server-validated answers
+class _AnswerReviewCard extends StatelessWidget {
   final int questionNumber;
-  final QuestionResult result;
+  final AttemptAnswer answer;
+  final Question? question; // Nullable - may not find matching question
 
-  const _QuestionReviewCard({
+  const _AnswerReviewCard({
     required this.questionNumber,
-    required this.result,
+    required this.answer,
+    this.question,
   });
 
   @override
@@ -367,7 +364,7 @@ class _QuestionReviewCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: AppColors.surfaceVariant,
-              borderRadius: BorderRadius.only(
+              borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),
               ),
@@ -387,17 +384,17 @@ class _QuestionReviewCard extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: result.isCorrect
+                    color: answer.isCorrect
                         ? AppColors.successContainer
                         : AppColors.errorContainer,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    result.isCorrect ? 'Correct' : 'Incorrect',
+                    answer.isCorrect ? 'Correct' : 'Incorrect',
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
-                      color: result.isCorrect
+                      color: answer.isCorrect
                           ? AppColors.onSuccessContainer
                           : AppColors.onErrorContainer,
                     ),
@@ -415,7 +412,7 @@ class _QuestionReviewCard extends StatelessWidget {
               children: [
                 // Question text
                 Text(
-                  result.question.question,
+                  answer.questionText,
                   style: const TextStyle(
                     fontWeight: FontWeight.w500,
                     fontSize: 16,
@@ -424,64 +421,64 @@ class _QuestionReviewCard extends StatelessWidget {
 
                 const SizedBox(height: 12),
 
-                // Code block (if present)
-                if (result.question.code != null) ...[
+                // Code block (if present and question found)
+                if (question?.code != null) ...[
                   CodeBlock(
-                    code: result.question.code!,
-                    language: result.question.language,
+                    code: question!.code!,
+                    language: question!.language,
                   ),
                   const SizedBox(height: 16),
                 ],
 
                 // Answers - Compact layout
-                if (result.question.isMultipleChoice) ...[
+                if (answer.isMultipleChoice) ...[
                   // Multiple choice answers
-                  if (!result.isCorrect &&
-                      result.userAnswers != null &&
-                      result.userAnswers!.isNotEmpty &&
-                      result.question.correctAnswers != null) ...[
+                  if (!answer.isCorrect &&
+                      answer.userAnswers != null &&
+                      answer.userAnswers!.isNotEmpty &&
+                      answer.correctAnswers != null) ...[
                     // Show both user and correct answers side by side when incorrect
                     _CompactMultipleAnswerComparison(
-                      userAnswers: result.userAnswers!,
-                      correctAnswers: result.question.correctAnswers!,
-                      options: result.question.options,
+                      userAnswers: answer.userAnswers!,
+                      correctAnswers: answer.correctAnswers!,
+                      options: answer.options,
                     ),
-                  ] else if (result.userAnswers != null && result.userAnswers!.isNotEmpty) ...[
-                    // Show only user answer when correct or no correct answer available
+                  ] else if (answer.userAnswers != null && answer.userAnswers!.isNotEmpty) ...[
+                    // Show only user answer when correct
                     _MultipleAnswerDisplay(
-                      label: result.isCorrect ? 'Your answers (Correct)' : 'Your answers',
-                      userAnswers: result.userAnswers!,
-                      options: result.question.options,
-                      isCorrect: result.isCorrect,
+                      label: answer.isCorrect ? 'Your answers (Correct)' : 'Your answers',
+                      userAnswers: answer.userAnswers!,
+                      options: answer.options,
+                      isCorrect: answer.isCorrect,
                       isUserAnswer: true,
                     ),
                   ],
                 ] else ...[
                   // Single choice answers
-                  if (!result.isCorrect &&
-                      result.userAnswer != null &&
-                      result.question.correctAnswer != null) ...[
+                  if (!answer.isCorrect &&
+                      answer.userAnswer != null &&
+                      answer.correctAnswer != null) ...[
                     // Show both user and correct answers side by side when incorrect
                     _CompactAnswerComparison(
-                      userAnswer: result.userAnswer!,
-                      correctAnswer: result.question.correctAnswer!,
-                      options: result.question.options,
+                      userAnswer: answer.userAnswer!,
+                      correctAnswer: answer.correctAnswer!,
+                      options: answer.options,
                     ),
-                  ] else if (result.userAnswer != null) ...[
-                    // Show only user answer when correct or no correct answer available
+                  ] else if (answer.userAnswer != null) ...[
+                    // Show only user answer when correct
                     _AnswerDisplay(
-                      label: result.isCorrect ? 'Your answer (Correct)' : 'Your answer',
-                      option: String.fromCharCode(65 + result.userAnswer!),
-                      text: result.question.options[result.userAnswer!],
-                      isCorrect: result.isCorrect,
+                      label: answer.isCorrect ? 'Your answer (Correct)' : 'Your answer',
+                      option: String.fromCharCode(65 + answer.userAnswer!),
+                      text: answer.options[answer.userAnswer!],
+                      isCorrect: answer.isCorrect,
                       isUserAnswer: true,
                     ),
                   ],
                 ],
                 const SizedBox(height: 8),
 
-                // Explanation
-                if (result.question.explanation != null) ...[
+                // Explanation (if question found and has explanation)
+                if (question?.explanation != null) ...[
                   const SizedBox(height: 8),
                   Container(
                     width: double.infinity,
@@ -517,7 +514,7 @@ class _QuestionReviewCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          result.question.explanation!,
+                          question!.explanation!,
                           style: TextStyle(
                             color: AppColors.onInfoContainer,
                             height: 1.5,

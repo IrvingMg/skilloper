@@ -5,26 +5,25 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"mime/multipart"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 
 	apperrors "github.com/irvingmg/skilloper/skilloper-api/internal/errors"
 	"github.com/irvingmg/skilloper/skilloper-api/internal/jsonutil"
 	"github.com/irvingmg/skilloper/skilloper-api/internal/models"
-	"github.com/irvingmg/skilloper/skilloper-api/internal/shuffle"
 )
 
 type QuestionnaireService struct {
-	db       *gorm.DB
-	shuffler *shuffle.QuestionShuffler
+	db *gorm.DB
 }
 
 func NewQuestionnaireService(db *gorm.DB) *QuestionnaireService {
 	return &QuestionnaireService{
-		db:       db,
-		shuffler: shuffle.New(),
+		db: db,
 	}
 }
 
@@ -529,31 +528,58 @@ func (s *QuestionnaireService) ImportFromFile(file *multipart.FileHeader) (*mode
 	return summary, nil
 }
 
-// Helper method to convert database model to response with shuffling
+// Helper method to convert database model to response
+// Applies alternative text selection for variety, but keeps options in original order
+// (frontend handles display shuffling to maintain server-side validation compatibility)
 func (s *QuestionnaireService) convertToResponse(q models.Questionnaire) models.QuestionnaireResponse {
 	var questions []models.QuestionResponse
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-	// Use shuffling for questions (shuffles options within each question, not question order)
-	shuffledQuestions, err := s.shuffler.ShuffleQuestions(q.Questions)
-	if err != nil {
-		// If shuffling fails, fall back to regular conversion
-		for _, question := range q.Questions {
-			var options []string
-			json.Unmarshal([]byte(question.Options), &options)
-
-			questions = append(questions, models.QuestionResponse{
-				ID:            question.ID,
-				Question:      question.QuestionText,
-				Code:          question.Code,
-				Language:      question.Language,
-				Options:       options,
-				CorrectAnswer: question.CorrectAnswer,
-				Explanation:   question.Explanation,
-			})
+	for _, question := range q.Questions {
+		var options []string
+		if err := json.Unmarshal([]byte(question.Options), &options); err != nil {
+			options = []string{} // Use empty slice on parse error
 		}
-	} else {
-		// Use shuffled questions directly
-		questions = shuffledQuestions
+
+		// Pick alternative question text if available
+		questionText := question.QuestionText
+		if question.AlternativeQuestions != "" {
+			var alternatives []string
+			if err := json.Unmarshal([]byte(question.AlternativeQuestions), &alternatives); err == nil && len(alternatives) > 0 {
+				allTexts := append([]string{questionText}, alternatives...)
+				questionText = allTexts[rng.Intn(len(allTexts))]
+			}
+		}
+
+		// Pick alternative answer text if available (for single choice)
+		if question.AlternativeAnswers != "" && question.CorrectAnswer >= 0 && question.CorrectAnswer < len(options) {
+			var alternatives []string
+			if err := json.Unmarshal([]byte(question.AlternativeAnswers), &alternatives); err == nil && len(alternatives) > 0 {
+				allTexts := append([]string{options[question.CorrectAnswer]}, alternatives...)
+				options[question.CorrectAnswer] = allTexts[rng.Intn(len(allTexts))]
+			}
+		}
+
+		// Parse correct answers for multiple choice
+		var correctAnswers []int
+		if question.QuestionType == models.QuestionTypeMultipleChoice && question.CorrectAnswers != "" {
+			if err := json.Unmarshal([]byte(question.CorrectAnswers), &correctAnswers); err != nil {
+				correctAnswers = []int{} // Use empty slice on parse error
+			}
+		}
+
+		// Options stay in ORIGINAL order (frontend will shuffle for display)
+		questions = append(questions, models.QuestionResponse{
+			ID:             question.ID,
+			QuestionType:   question.QuestionType,
+			Question:       questionText,
+			Code:           question.Code,
+			Language:       question.Language,
+			Options:        options,
+			CorrectAnswer:  question.CorrectAnswer,
+			CorrectAnswers: correctAnswers,
+			Explanation:    question.Explanation,
+		})
 	}
 
 	return models.QuestionnaireResponse{

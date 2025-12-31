@@ -60,10 +60,22 @@ This document defines the complete JSON schema for creating questionnaires in th
 ## Key Behaviors
 
 - **0-based Indexing**: All answer indices use 0-based counting (0, 1, 2...) following programming conventions
-- **Option Shuffling**: Answer options are randomized on each API request for the same question
-- **Alternative Content**: Random selection from alternative questions/options/answers provides variety
-- **Question Order**: Questions maintain their original order; only answer options within each question are shuffled
+- **Hybrid Shuffling for Variety**:
+  - **Backend**: Randomly selects from `alternative_questions` and `alternative_answers` for text variety
+  - **Frontend**: Shuffles option display order while mapping selections back to original indices
+  - **Result**: Each quiz attempt feels different while maintaining correct server-side validation
+- **Question Order**: Questions maintain their original order
 - **Validation**: API returns detailed errors if limits are exceeded or required fields are missing
+- **Duplicate Protection**: Server ignores duplicate question submissions in attempt completion
+
+## Security Note
+
+**Import vs API Response:**
+- When **importing** a questionnaire, `correctAnswer`/`correct_answers` are **required** and stored securely
+- When **fetching** a questionnaire via `GET /questionnaires/{id}`, these fields are **hidden** from the response
+- Answer validation happens **server-side** to prevent submitting fake scores
+
+See [api-endpoints.md](api-endpoints.md) for details on the secure answer validation flow.
 
 ## Examples
 

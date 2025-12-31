@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
-import 'package:collection/collection.dart';
 import '../models/questionnaire.dart';
 import '../models/attempt.dart';
 import '../services/api_service.dart';
@@ -27,15 +26,92 @@ class _QuizScreenState extends State<QuizScreen> {
   final DeviceService _deviceService = DeviceService();
 
   int _currentQuestionIndex = 0;
-  final Map<int, int> _userAnswers = {}; // For single choice
-  final Map<int, Set<int>> _userMultipleAnswers = {}; // For multiple choice
+  final Map<int, int> _userAnswers = {}; // For single choice (stores ORIGINAL indices)
+  final Map<int, Set<int>> _userMultipleAnswers = {}; // For multiple choice (stores ORIGINAL indices)
 
   int? _attemptId; // Track the attempt ID for completion
+
+  // Practice mode: server-validated answers for immediate feedback
+  final Map<int, ValidateAnswerResponse> _validatedAnswers = {};
+  bool _isValidating = false;
+
+  // Shuffle mappings: questionId -> list of original indices in display order
+  // e.g., [2, 0, 3, 1] means display position 0 shows original option 2
+  final Map<int, List<int>> _shuffleMappings = {};
 
   @override
   void initState() {
     super.initState();
+    _initializeShuffleMappings();
     _startAttempt();
+  }
+
+  /// Initialize shuffle mappings for all questions
+  void _initializeShuffleMappings() {
+    for (final question in widget.questionnaire.questions) {
+      final indices = List.generate(question.options.length, (i) => i);
+      indices.shuffle();
+      _shuffleMappings[question.id] = indices;
+    }
+  }
+
+  /// Get shuffled options for display
+  List<String> _getShuffledOptions(Question question) {
+    final mapping = _shuffleMappings[question.id]!;
+    return mapping.map((i) => question.options[i]).toList();
+  }
+
+  /// Convert display index to original index
+  int _toOriginalIndex(int questionId, int displayIndex) {
+    return _shuffleMappings[questionId]![displayIndex];
+  }
+
+  /// Build answer option widgets with shuffled display order
+  List<Widget> _buildShuffledAnswerOptions({
+    required int? userAnswer,
+    required Set<int> userMultipleAnswers,
+  }) {
+    final shuffledOptions = _getShuffledOptions(_currentQuestion);
+    final validated = _validatedAnswers[_currentQuestion.id];
+    final serverCorrectAnswer = validated?.correctAnswer;
+    final serverCorrectAnswers = validated?.correctAnswers;
+
+    return List.generate(
+      shuffledOptions.length,
+      (displayIndex) {
+        // Convert display position to original index for all state checks
+        final originalIndex = _toOriginalIndex(_currentQuestion.id, displayIndex);
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: AnswerButton(
+            index: displayIndex,
+            text: shuffledOptions[displayIndex],
+            isSelected: _currentQuestion.isMultipleChoice
+                ? userMultipleAnswers.contains(originalIndex)
+                : userAnswer == originalIndex,
+            isCorrect: _showFeedback &&
+                (_currentQuestion.isMultipleChoice
+                    ? serverCorrectAnswers?.contains(originalIndex) == true &&
+                      userMultipleAnswers.contains(originalIndex)
+                    : originalIndex == serverCorrectAnswer && userAnswer == originalIndex),
+            isCorrectButNotSelected: _showFeedback &&
+                (_currentQuestion.isMultipleChoice
+                    ? serverCorrectAnswers?.contains(originalIndex) == true &&
+                      !userMultipleAnswers.contains(originalIndex)
+                    : originalIndex == serverCorrectAnswer && userAnswer != originalIndex),
+            isIncorrect: _showFeedback &&
+                (_currentQuestion.isMultipleChoice
+                    ? userMultipleAnswers.contains(originalIndex) &&
+                      serverCorrectAnswers?.contains(originalIndex) != true
+                    : userAnswer == originalIndex && originalIndex != serverCorrectAnswer),
+            isDisabled: _showFeedback || _isValidating,
+            isMultipleChoice: _currentQuestion.isMultipleChoice,
+            onTap: () => _selectAnswer(originalIndex),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _startAttempt() async {
@@ -120,12 +196,9 @@ class _QuizScreenState extends State<QuizScreen> {
     return _userAnswers.containsKey(_currentQuestion.id);
   }
 
-  bool _hasCheckedAnswers = false;
-
   bool get _showFeedback =>
       widget.questionnaire.isPracticeMode &&
-      _hasAnsweredCurrent &&
-      (!_currentQuestion.isMultipleChoice || _hasCheckedAnswers);
+      _validatedAnswers.containsKey(_currentQuestion.id);
 
   void _selectAnswer(int answerIndex) {
     setState(() {
@@ -139,14 +212,58 @@ class _QuizScreenState extends State<QuizScreen> {
         }
       } else {
         _userAnswers[_currentQuestion.id] = answerIndex;
+        // For practice mode single choice, validate immediately
+        if (widget.questionnaire.isPracticeMode) {
+          _validateCurrentAnswer();
+        }
       }
     });
   }
 
   void _checkAnswers() {
+    // For practice mode multiple choice, validate when user clicks "Check"
+    if (widget.questionnaire.isPracticeMode) {
+      _validateCurrentAnswer();
+    }
+  }
+
+  Future<void> _validateCurrentAnswer() async {
+    if (_isValidating || _validatedAnswers.containsKey(_currentQuestion.id)) {
+      return;
+    }
+
     setState(() {
-      _hasCheckedAnswers = true;
+      _isValidating = true;
     });
+
+    try {
+      final request = _currentQuestion.isMultipleChoice
+          ? ValidateAnswerRequest(
+              userAnswers: _userMultipleAnswers[_currentQuestion.id]?.toList(),
+            )
+          : ValidateAnswerRequest(
+              userAnswer: _userAnswers[_currentQuestion.id],
+            );
+
+      final response = await _apiService.validateAnswer(
+        _currentQuestion.id,
+        request,
+      );
+
+      if (mounted) {
+        setState(() {
+          _validatedAnswers[_currentQuestion.id] = response;
+          _isValidating = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isValidating = false;
+        });
+        debugPrint('Failed to validate answer: $e');
+      }
+    }
   }
 
   void _nextQuestion() {
@@ -155,7 +272,6 @@ class _QuizScreenState extends State<QuizScreen> {
     } else {
       setState(() {
         _currentQuestionIndex++;
-        _hasCheckedAnswers = false; // Reset for next question
       });
     }
   }
@@ -164,67 +280,44 @@ class _QuizScreenState extends State<QuizScreen> {
     if (_currentQuestionIndex > 0) {
       setState(() {
         _currentQuestionIndex--;
-        _hasCheckedAnswers = false; // Reset for previous question
       });
     }
   }
 
   void _finishQuiz() {
-    final results = _calculateResults();
+    // Build user answers to send to results screen
+    final userAnswers = _buildUserAnswers();
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (context) => ResultsScreen(
           questionnaire: widget.questionnaire,
-          results: results,
+          userAnswers: userAnswers,
           attemptId: _attemptId,
         ),
       ),
     );
   }
 
-  QuizResult _calculateResults() {
-    int correct = 0;
-    List<QuestionResult> questionResults = [];
+  /// Build list of user answers to send to server for validation
+  List<UserAnswerRequest> _buildUserAnswers() {
+    final answers = <UserAnswerRequest>[];
 
     for (final question in widget.questionnaire.questions) {
-      bool isCorrect = false;
-      int? userAnswer;
-      List<int>? userAnswers;
-
       if (question.isMultipleChoice) {
-        userAnswers = _userMultipleAnswers[question.id]?.toList();
-        if (userAnswers != null && question.correctAnswers != null) {
-          userAnswers.sort();
-          final correctAnswers = List<int>.from(question.correctAnswers!);
-          correctAnswers.sort();
-          isCorrect = const ListEquality().equals(userAnswers, correctAnswers);
-        }
+        answers.add(UserAnswerRequest(
+          questionId: question.id,
+          userAnswers: _userMultipleAnswers[question.id]?.toList(),
+        ));
       } else {
-        userAnswer = _userAnswers[question.id];
-        isCorrect = userAnswer == question.correctAnswer;
+        answers.add(UserAnswerRequest(
+          questionId: question.id,
+          userAnswer: _userAnswers[question.id],
+        ));
       }
-
-      if (isCorrect) correct++;
-
-      questionResults.add(
-        QuestionResult(
-          question: question,
-          userAnswer: userAnswer,
-          userAnswers: userAnswers,
-          isCorrect: isCorrect,
-        ),
-      );
     }
 
-    final score = ((correct / widget.questionnaire.questions.length) * 100).round();
-
-    return QuizResult(
-      score: score,
-      correct: correct,
-      total: widget.questionnaire.questions.length,
-      questionResults: questionResults,
-    );
+    return answers;
   }
 
   @override
@@ -356,37 +449,10 @@ class _QuizScreenState extends State<QuizScreen> {
                     const SizedBox(height: 24),
                   ],
 
-                  // Answer options
-                  ...List.generate(
-                    _currentQuestion.options.length,
-                    (index) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: AnswerButton(
-                        index: index,
-                        text: _currentQuestion.options[index],
-                        isSelected: _currentQuestion.isMultipleChoice
-                            ? userMultipleAnswers.contains(index)
-                            : userAnswer == index,
-                        isCorrect: _showFeedback &&
-                            (_currentQuestion.isMultipleChoice
-                                ? _currentQuestion.correctAnswers?.contains(index) == true &&
-                                  userMultipleAnswers.contains(index)
-                                : index == _currentQuestion.correctAnswer && userAnswer == index),
-                        isCorrectButNotSelected: _showFeedback &&
-                            (_currentQuestion.isMultipleChoice
-                                ? _currentQuestion.correctAnswers?.contains(index) == true &&
-                                  !userMultipleAnswers.contains(index)
-                                : index == _currentQuestion.correctAnswer && userAnswer != index),
-                        isIncorrect: _showFeedback &&
-                            (_currentQuestion.isMultipleChoice
-                                ? userMultipleAnswers.contains(index) &&
-                                  _currentQuestion.correctAnswers?.contains(index) != true
-                                : userAnswer == index && index != _currentQuestion.correctAnswer),
-                        isDisabled: _showFeedback,
-                        isMultipleChoice: _currentQuestion.isMultipleChoice,
-                        onTap: () => _selectAnswer(index),
-                      ),
-                    ),
+                  // Answer options (displayed in shuffled order)
+                  ..._buildShuffledAnswerOptions(
+                    userAnswer: userAnswer,
+                    userMultipleAnswers: userMultipleAnswers,
                   ),
 
                   // Explanation (Practice mode only)
@@ -457,13 +523,22 @@ class _QuizScreenState extends State<QuizScreen> {
                 if (_currentQuestion.isMultipleChoice &&
                     widget.questionnaire.isPracticeMode &&
                     _hasAnsweredCurrent &&
-                    !_hasCheckedAnswers) ...[
+                    !_validatedAnswers.containsKey(_currentQuestion.id)) ...[
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: _checkAnswers,
-                      icon: const Icon(Icons.fact_check),
-                      label: const Text('Check Answers'),
+                      onPressed: _isValidating ? null : _checkAnswers,
+                      icon: _isValidating
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.fact_check),
+                      label: Text(_isValidating ? 'Checking...' : 'Check Answers'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.info,
                         foregroundColor: Colors.white,
@@ -486,7 +561,7 @@ class _QuizScreenState extends State<QuizScreen> {
                       onPressed: (_hasAnsweredCurrent &&
                                   (!_currentQuestion.isMultipleChoice ||
                                    !widget.questionnaire.isPracticeMode ||
-                                   _hasCheckedAnswers)) ? _nextQuestion : null,
+                                   _validatedAnswers.containsKey(_currentQuestion.id))) ? _nextQuestion : null,
                       icon: Icon(_isLastQuestion ? Icons.check : Icons.arrow_forward),
                       label: Text(_isLastQuestion ? 'Finish' : 'Next'),
                     ),

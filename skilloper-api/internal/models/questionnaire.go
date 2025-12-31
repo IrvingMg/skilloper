@@ -97,8 +97,8 @@ type QuestionResponse struct {
 	Code           string   `json:"code,omitempty"`
 	Language       string   `json:"language,omitempty"`
 	Options        []string `json:"options,omitempty"`
-	CorrectAnswer  int      `json:"correctAnswer"`             // For single_choice (1-indexed: 1, 2, 3, 4)
-	CorrectAnswers []int    `json:"correct_answers,omitempty"` // For multiple_choice (1-indexed: [1, 3, 4])
+	CorrectAnswer  int      `json:"-"` // Hidden from client - server validates answers
+	CorrectAnswers []int    `json:"-"` // Hidden from client - server validates answers
 	Explanation    string   `json:"explanation,omitempty"`
 }
 

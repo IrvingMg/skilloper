@@ -11,6 +11,7 @@ import (
 
 	apperrors "github.com/irvingmg/skilloper/skilloper-api/internal/errors"
 	"github.com/irvingmg/skilloper/skilloper-api/internal/models"
+	"github.com/irvingmg/skilloper/skilloper-api/internal/validation"
 )
 
 type AttemptService struct {
@@ -88,6 +89,7 @@ func (s *AttemptService) Start(req models.StartAttemptRequest) (*models.AttemptR
 }
 
 // Complete updates an in-progress attempt with final results
+// Server-side validation: fetches questions and validates answers
 func (s *AttemptService) Complete(attemptID uint, req models.CompleteAttemptRequest) (*models.AttemptResponse, error) {
 	var attempt models.QuizAttempt
 
@@ -106,60 +108,144 @@ func (s *AttemptService) Complete(attemptID uint, req models.CompleteAttemptRequ
 				"attempt is already completed")
 		}
 
-		// Update attempt with results
-		now := time.Now()
-		attempt.Status = models.AttemptStatusCompleted
-		attempt.Score = req.Score
-		attempt.CorrectCount = req.CorrectCount
-		attempt.TotalCount = req.TotalCount
-		attempt.CompletedAt = &now
+		// Fetch questionnaire with questions for validation
+		var questionnaire models.Questionnaire
+		if err := tx.Preload("Questions").First(&questionnaire, attempt.QuestionnaireID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperrors.ErrQuestionnaireNotFound
+			}
+			return err
+		}
 
-		// Build answers
+		// Build question lookup map
+		questionMap := make(map[uint]models.Question)
+		for _, q := range questionnaire.Questions {
+			questionMap[q.ID] = q
+		}
+
+		// Validate each answer and build answer records
+		// Track seen question IDs to prevent duplicate submissions inflating score
+		seenQuestions := make(map[uint]bool)
+		correctCount := 0
 		for _, answerReq := range req.Answers {
-			// Marshal user answers for multiple choice
-			var userAnswersJSON string
-			if len(answerReq.UserAnswers) > 0 {
-				userAnswersBytes, err := json.Marshal(answerReq.UserAnswers)
-				if err != nil {
-					return apperrors.ErrInvalidAttemptData
-				}
-				userAnswersJSON = string(userAnswersBytes)
+			// Skip duplicate question submissions
+			if seenQuestions[answerReq.QuestionID] {
+				s.logger.Warn("Duplicate question submission ignored",
+					zap.Uint("question_id", answerReq.QuestionID),
+					zap.Uint("attempt_id", attemptID))
+				continue
+			}
+			seenQuestions[answerReq.QuestionID] = true
+
+			question, found := questionMap[answerReq.QuestionID]
+			if !found {
+				s.logger.Warn("Question not found in questionnaire",
+					zap.Uint("question_id", answerReq.QuestionID),
+					zap.Uint("questionnaire_id", attempt.QuestionnaireID))
+				continue
 			}
 
-			// Marshal correct answers for multiple choice
-			var correctAnswersJSON string
-			if len(answerReq.CorrectAnswers) > 0 {
-				correctAnswersBytes, err := json.Marshal(answerReq.CorrectAnswers)
-				if err != nil {
-					return apperrors.ErrInvalidAttemptData
-				}
-				correctAnswersJSON = string(correctAnswersBytes)
+			// Parse options from question
+			var options []string
+			if err := json.Unmarshal([]byte(question.Options), &options); err != nil {
+				s.logger.Warn("Failed to unmarshal options",
+					zap.Uint("question_id", question.ID),
+					zap.Error(err))
+				options = []string{}
 			}
 
-			// Marshal options
-			var optionsJSON string
-			if len(answerReq.Options) > 0 {
-				optionsBytes, err := json.Marshal(answerReq.Options)
-				if err != nil {
-					return apperrors.ErrInvalidAttemptData
+			// Validate answer based on question type
+			var isCorrect bool
+			var correctAnswer *int
+			var correctAnswers []int
+			var userAnswersJSON, correctAnswersJSON, optionsJSON string
+
+			if question.QuestionType == models.QuestionTypeMultipleChoice {
+				// Parse correct answers from question
+				if err := json.Unmarshal([]byte(question.CorrectAnswers), &correctAnswers); err != nil {
+					s.logger.Warn("Failed to unmarshal correct answers",
+						zap.Uint("question_id", question.ID),
+						zap.Error(err))
 				}
-				optionsJSON = string(optionsBytes)
+
+				// Validate multiple choice answer
+				isCorrect = validation.ValidateMultipleChoice(answerReq.UserAnswers, correctAnswers)
+
+				// Marshal for storage
+				if len(answerReq.UserAnswers) > 0 {
+					if userAnswersBytes, err := json.Marshal(answerReq.UserAnswers); err != nil {
+						s.logger.Warn("Failed to marshal user answers",
+							zap.Uint("question_id", question.ID),
+							zap.Error(err))
+					} else {
+						userAnswersJSON = string(userAnswersBytes)
+					}
+				}
+				if len(correctAnswers) > 0 {
+					if correctAnswersBytes, err := json.Marshal(correctAnswers); err != nil {
+						s.logger.Warn("Failed to marshal correct answers",
+							zap.Uint("question_id", question.ID),
+							zap.Error(err))
+					} else {
+						correctAnswersJSON = string(correctAnswersBytes)
+					}
+				}
+			} else {
+				// Single choice - copy to avoid pointer to loop variable
+				ca := question.CorrectAnswer
+				correctAnswer = &ca
+
+				// Validate single choice answer
+				if answerReq.UserAnswer != nil {
+					isCorrect = *answerReq.UserAnswer == question.CorrectAnswer
+				}
+			}
+
+			if isCorrect {
+				correctCount++
+			}
+
+			// Marshal options for storage
+			if len(options) > 0 {
+				if optionsBytes, err := json.Marshal(options); err != nil {
+					s.logger.Warn("Failed to marshal options",
+						zap.Uint("question_id", question.ID),
+						zap.Error(err))
+				} else {
+					optionsJSON = string(optionsBytes)
+				}
 			}
 
 			answer := models.AttemptAnswer{
 				AttemptID:      attemptID,
 				QuestionID:     answerReq.QuestionID,
-				QuestionText:   answerReq.QuestionText,
-				QuestionType:   answerReq.QuestionType,
+				QuestionText:   question.QuestionText,
+				QuestionType:   question.QuestionType,
 				UserAnswer:     answerReq.UserAnswer,
 				UserAnswers:    userAnswersJSON,
-				CorrectAnswer:  answerReq.CorrectAnswer,
+				CorrectAnswer:  correctAnswer,
 				CorrectAnswers: correctAnswersJSON,
 				Options:        optionsJSON,
-				IsCorrect:      answerReq.IsCorrect,
+				IsCorrect:      isCorrect,
 			}
 			attempt.Answers = append(attempt.Answers, answer)
 		}
+
+		// Calculate score using questionnaire's total question count
+		// This ensures accurate scoring even if user skips questions
+		totalCount := len(questionnaire.Questions)
+		var score int
+		if totalCount > 0 {
+			score = (correctCount * 100) / totalCount
+		}
+
+		// Update attempt with calculated results
+		now := time.Now()
+		attempt.Status = models.AttemptStatusCompleted
+		attempt.Score = score
+		attempt.CorrectCount = correctCount
+		attempt.TotalCount = totalCount
+		attempt.CompletedAt = &now
 
 		// Save attempt (skip auto-saving Answers to control insertion ourselves)
 		if err := tx.Omit("Answers").Save(&attempt).Error; err != nil {
@@ -188,6 +274,7 @@ func (s *AttemptService) Complete(attemptID uint, req models.CompleteAttemptRequ
 	response := s.convertToResponse(attempt)
 	return &response, nil
 }
+
 
 // GetPaginatedByDeviceID returns paginated attempts for a device with search and filter
 func (s *AttemptService) GetPaginatedByDeviceID(deviceID string, params models.PaginationParams) (models.PaginatedAttemptSummaries, error) {

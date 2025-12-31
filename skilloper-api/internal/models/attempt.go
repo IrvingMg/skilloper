@@ -55,22 +55,14 @@ type StartAttemptRequest struct {
 }
 
 type CompleteAttemptRequest struct {
-	Score        int                          `json:"score"`
-	CorrectCount int                          `json:"correct_count"`
-	TotalCount   int                          `json:"total_count"`
-	Answers      []CreateAttemptAnswerRequest `json:"answers"`
+	Answers []UserAnswerRequest `json:"answers"`
 }
 
-type CreateAttemptAnswerRequest struct {
-	QuestionID     uint     `json:"question_id"`
-	QuestionText   string   `json:"question_text"`
-	QuestionType   string   `json:"question_type"`
-	UserAnswer     *int     `json:"user_answer,omitempty"`
-	UserAnswers    []int    `json:"user_answers,omitempty"`
-	CorrectAnswer  *int     `json:"correct_answer,omitempty"`
-	CorrectAnswers []int    `json:"correct_answers,omitempty"`
-	Options        []string `json:"options"`
-	IsCorrect      bool     `json:"is_correct"`
+// UserAnswerRequest contains only user-submitted data - no correct answers or scoring
+type UserAnswerRequest struct {
+	QuestionID  uint  `json:"question_id"`
+	UserAnswer  *int  `json:"user_answer,omitempty"`  // For single_choice
+	UserAnswers []int `json:"user_answers,omitempty"` // For multiple_choice
 }
 
 // Response DTOs
