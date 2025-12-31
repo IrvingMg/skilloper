@@ -11,6 +11,7 @@ Provides endpoints for managing programming skill assessments with support for p
 - **Alternative Content**: Randomized question texts and answer options for variety
 - **Configurable Option Limits**: Questionnaire-level control over maximum options per question
 - **Comprehensive Question Management**: Code syntax support with explanations
+- **Quiz History**: Track quiz attempts with detailed answer history per device
 
 ## Prerequisites
 

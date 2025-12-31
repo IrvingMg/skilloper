@@ -53,6 +53,12 @@ dependencies:
   # For list comparisons
   collection: ^1.18.0
 
+  # For device ID persistence
+  shared_preferences: ^2.2.2
+
+  # For generating unique device IDs
+  uuid: ^4.2.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

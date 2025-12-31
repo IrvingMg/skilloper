@@ -19,6 +19,7 @@ type Server struct {
 
 	// Handlers
 	questionnaireHandler *handlers.QuestionnaireHandler
+	attemptHandler       *handlers.AttemptHandler
 	healthHandler        *handlers.HealthHandler
 }
 
@@ -61,10 +62,12 @@ func (s *Server) setupServices() {
 
 	// Initialize services with dependency injection
 	questionnaireService := services.NewQuestionnaireService(s.db)
+	attemptService := services.NewAttemptService(s.db, s.logger)
 	healthService := services.NewHealthService()
 
 	// Initialize handlers
 	s.questionnaireHandler = handlers.NewQuestionnaireHandler(questionnaireService, s.logger)
+	s.attemptHandler = handlers.NewAttemptHandler(attemptService, s.logger)
 	s.healthHandler = handlers.NewHealthHandler(healthService, s.logger)
 }
 
@@ -81,6 +84,12 @@ func (s *Server) setupRoutes() {
 	api.GET("/questionnaires/:id", s.questionnaireHandler.GetQuestionnaire)
 	api.PUT("/questionnaires/:id", s.questionnaireHandler.UpdateQuestionnaire)
 	api.DELETE("/questionnaires/:id", s.questionnaireHandler.DeleteQuestionnaire)
+
+	// Attempt routes (quiz history)
+	api.POST("/attempts/start", s.attemptHandler.StartAttempt)
+	api.POST("/attempts/:id/complete", s.attemptHandler.CompleteAttempt)
+	api.GET("/attempts", s.attemptHandler.GetAttempts)
+	api.GET("/attempts/:id", s.attemptHandler.GetAttempt)
 
 	// Health check
 	api.GET("/health", s.healthHandler.HealthCheck)

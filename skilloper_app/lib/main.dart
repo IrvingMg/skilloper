@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
+import 'screens/history_screen.dart';
 import 'screens/import_screen.dart';
 import 'theme/app_theme.dart';
 import 'theme/app_colors.dart';
@@ -35,6 +36,7 @@ class _MainScreenState extends State<MainScreen> {
   
   final List<Widget> _screens = [
     const HomeScreen(),
+    const HistoryScreen(),
     const ImportScreen(),
   ];
 
@@ -81,6 +83,11 @@ class _MainScreenState extends State<MainScreen> {
             icon: Icon(AppIcons.home),
             selectedIcon: Icon(AppIcons.homeSelected),
             label: 'Home',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.history),
+            selectedIcon: Icon(Icons.history),
+            label: 'History',
           ),
           NavigationDestination(
             icon: Icon(AppIcons.upload),

@@ -173,6 +173,49 @@ var (
 		Code:    "DELETE_QUESTIONNAIRE_FAILED",
 		Message: "failed to delete questionnaire",
 	}
+
+	// Attempt errors
+	ErrAttemptNotFound = &AppError{
+		Type:    ErrTypeNotFound,
+		Code:    "ATTEMPT_NOT_FOUND",
+		Message: "attempt not found",
+	}
+
+	ErrDeviceIDRequired = &AppError{
+		Type:    ErrTypeValidation,
+		Code:    "DEVICE_ID_REQUIRED",
+		Message: "device ID is required",
+	}
+
+	ErrInvalidAttemptData = &AppError{
+		Type:    ErrTypeValidation,
+		Code:    "INVALID_ATTEMPT_DATA",
+		Message: "invalid attempt data",
+	}
+
+	ErrInvalidAttemptID = &AppError{
+		Type:    ErrTypeValidation,
+		Code:    "INVALID_ATTEMPT_ID",
+		Message: "invalid attempt ID",
+	}
+
+	ErrCreateAttemptFailed = &AppError{
+		Type:    ErrTypeDatabase,
+		Code:    "CREATE_ATTEMPT_FAILED",
+		Message: "failed to create attempt",
+	}
+
+	ErrFetchAttemptsFailed = &AppError{
+		Type:    ErrTypeDatabase,
+		Code:    "FETCH_ATTEMPTS_FAILED",
+		Message: "failed to fetch attempts",
+	}
+
+	ErrFetchAttemptFailed = &AppError{
+		Type:    ErrTypeDatabase,
+		Code:    "FETCH_ATTEMPT_FAILED",
+		Message: "failed to fetch attempt",
+	}
 )
 
 // NewValidationError creates a new validation error

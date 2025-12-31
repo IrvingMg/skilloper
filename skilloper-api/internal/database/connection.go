@@ -21,7 +21,12 @@ func New(cfg *config.Config, logger *zap.Logger) (*gorm.DB, error) {
 
 	logger.Info("Running database migrations")
 	// Auto-migrate models
-	err = db.AutoMigrate(&models.Questionnaire{}, &models.Question{})
+	err = db.AutoMigrate(
+		&models.Questionnaire{},
+		&models.Question{},
+		&models.QuizAttempt{},
+		&models.AttemptAnswer{},
+	)
 	if err != nil {
 		logger.Error("Failed to migrate database", zap.Error(err))
 		return nil, err

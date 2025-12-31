@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
 import 'package:collection/collection.dart';
 import '../models/questionnaire.dart';
+import '../models/attempt.dart';
+import '../services/api_service.dart';
+import '../services/device_service.dart';
 import '../widgets/answer_button.dart';
 import '../widgets/code_block.dart';
 import '../theme/app_colors.dart';
@@ -20,9 +23,88 @@ class QuizScreen extends StatefulWidget {
 }
 
 class _QuizScreenState extends State<QuizScreen> {
+  final ApiService _apiService = ApiService();
+  final DeviceService _deviceService = DeviceService();
+
   int _currentQuestionIndex = 0;
   final Map<int, int> _userAnswers = {}; // For single choice
   final Map<int, Set<int>> _userMultipleAnswers = {}; // For multiple choice
+
+  int? _attemptId; // Track the attempt ID for completion
+
+  @override
+  void initState() {
+    super.initState();
+    _startAttempt();
+  }
+
+  Future<void> _startAttempt() async {
+    // Only start tracking for exam mode (to track abandonments)
+    // Practice attempts are created on completion in ResultsScreen
+    if (widget.questionnaire.isPracticeMode) {
+      return;
+    }
+
+    try {
+      final deviceId = await _deviceService.getDeviceId();
+      final request = StartAttemptRequest(
+        deviceId: deviceId,
+        questionnaireId: widget.questionnaire.id,
+        questionnaireTitle: widget.questionnaire.title,
+        questionnaireType: widget.questionnaire.type,
+        totalCount: widget.questionnaire.questions.length,
+      );
+
+      final attempt = await _apiService.startAttempt(request);
+      if (mounted) {
+        setState(() {
+          _attemptId = attempt.id;
+        });
+      }
+    } catch (e) {
+      // Silently fail - quiz can continue without tracking
+      debugPrint('Failed to start attempt: $e');
+    }
+  }
+
+  Future<bool> _confirmExit() async {
+    final isExam = !widget.questionnaire.isPracticeMode;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isExam ? 'Leave Exam?' : 'Leave Practice?'),
+        content: Text(
+          isExam
+              ? 'If you leave now, this attempt will be marked as abandoned in your history. Are you sure you want to exit?'
+              : 'Are you sure you want to exit? Your progress will not be saved.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.error,
+            ),
+            child: Text(isExam ? 'Leave Exam' : 'Leave'),
+          ),
+        ],
+      ),
+    );
+
+    return result ?? false;
+  }
+
+  void _handleExit() async {
+    if (await _confirmExit()) {
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    }
+  }
 
   Question get _currentQuestion =>
       widget.questionnaire.questions[_currentQuestionIndex];
@@ -95,6 +177,7 @@ class _QuizScreenState extends State<QuizScreen> {
         builder: (context) => ResultsScreen(
           questionnaire: widget.questionnaire,
           results: results,
+          attemptId: _attemptId,
         ),
       ),
     );
@@ -150,14 +233,21 @@ class _QuizScreenState extends State<QuizScreen> {
     final userAnswer = _userAnswers[_currentQuestion.id];
     final userMultipleAnswers = _userMultipleAnswers[_currentQuestion.id] ?? <int>{};
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.questionnaire.title),
-        leading: IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: () => Navigator.pop(context),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          _handleExit();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(widget.questionnaire.title),
+          leading: IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: _handleExit,
+          ),
         ),
-      ),
       body: Column(
         children: [
           // Progress header
@@ -406,6 +496,7 @@ class _QuizScreenState extends State<QuizScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

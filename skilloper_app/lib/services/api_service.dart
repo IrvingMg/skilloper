@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/questionnaire.dart';
+import '../models/attempt.dart';
 
 /// Custom exception for API-related errors
 class ApiException implements Exception {
@@ -185,4 +186,93 @@ class ApiService {
     }
   }
 
+  /// Start a quiz attempt (creates in_progress record)
+  Future<QuizAttempt> startAttempt(StartAttemptRequest request) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/attempts/start'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(request.toJson()),
+      ).timeout(timeout);
+
+      _handleHttpResponse(response, 'start attempt');
+
+      final Map<String, dynamic> data = json.decode(response.body);
+      return QuizAttempt.fromJson(data);
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('Failed to start attempt: $e');
+    }
+  }
+
+  /// Complete a quiz attempt with results
+  Future<QuizAttempt> completeAttempt(int attemptId, CompleteAttemptRequest request) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/attempts/$attemptId/complete'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(request.toJson()),
+      ).timeout(timeout);
+
+      _handleHttpResponse(response, 'complete attempt');
+
+      final Map<String, dynamic> data = json.decode(response.body);
+      return QuizAttempt.fromJson(data);
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('Failed to complete attempt: $e');
+    }
+  }
+
+  /// Get quiz history for a device
+  Future<List<AttemptSummary>> getHistory(String deviceId) async {
+    if (deviceId.isEmpty) {
+      throw ApiException('Device ID is required');
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/attempts?device_id=$deviceId'),
+      ).timeout(timeout);
+
+      _handleHttpResponse(response, 'load history');
+
+      final dynamic decoded = json.decode(response.body);
+      if (decoded == null) {
+        return [];
+      }
+      final List<dynamic> data = decoded as List<dynamic>;
+      return data
+          .map((json) => AttemptSummary.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('Failed to load history: $e');
+    }
+  }
+
+  /// Get details of a specific attempt
+  Future<QuizAttempt> getAttemptDetails(int attemptId) async {
+    if (attemptId <= 0) {
+      throw ApiException('Invalid attempt ID: $attemptId');
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/attempts/$attemptId'),
+      ).timeout(timeout);
+
+      _handleHttpResponse(response, 'load attempt details');
+
+      final Map<String, dynamic> data = json.decode(response.body);
+      return QuizAttempt.fromJson(data);
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('Failed to load attempt details: $e');
+    }
+  }
 }

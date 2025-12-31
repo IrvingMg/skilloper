@@ -1,17 +1,114 @@
 import 'package:flutter/material.dart';
 import '../models/questionnaire.dart';
+import '../models/attempt.dart';
+import '../services/api_service.dart';
+import '../services/device_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/code_block.dart';
+import '../widgets/summary_card.dart';
 
-class ResultsScreen extends StatelessWidget {
+class ResultsScreen extends StatefulWidget {
   final Questionnaire questionnaire;
   final QuizResult results;
+  final int? attemptId;
 
   const ResultsScreen({
     super.key,
     required this.questionnaire,
     required this.results,
+    this.attemptId,
   });
+
+  @override
+  State<ResultsScreen> createState() => _ResultsScreenState();
+}
+
+class _ResultsScreenState extends State<ResultsScreen> {
+  final ApiService _apiService = ApiService();
+  final DeviceService _deviceService = DeviceService();
+  bool _isSaving = false;
+  bool _saveCompleted = false;
+  String? _saveError;
+
+  @override
+  void initState() {
+    super.initState();
+    _saveAttempt();
+  }
+
+  Future<void> _saveAttempt() async {
+    setState(() {
+      _isSaving = true;
+      _saveError = null;
+    });
+
+    try {
+      int? attemptId = widget.attemptId;
+
+      // For practice mode, create the attempt now (wasn't started at quiz begin)
+      if (attemptId == null && widget.questionnaire.isPracticeMode) {
+        final deviceId = await _deviceService.getDeviceId();
+        final startRequest = StartAttemptRequest(
+          deviceId: deviceId,
+          questionnaireId: widget.questionnaire.id,
+          questionnaireTitle: widget.questionnaire.title,
+          questionnaireType: widget.questionnaire.type,
+          totalCount: widget.questionnaire.questions.length,
+        );
+        final attempt = await _apiService.startAttempt(startRequest);
+        attemptId = attempt.id;
+      }
+
+      // If still no attemptId, skip saving (shouldn't happen normally)
+      if (attemptId == null) {
+        if (mounted) {
+          setState(() {
+            _isSaving = false;
+            _saveCompleted = true;
+          });
+        }
+        return;
+      }
+
+      // Build the completion request from quiz results
+      final answers = widget.results.questionResults.map((qr) {
+        return CreateAttemptAnswerRequest(
+          questionId: qr.question.id,
+          questionText: qr.question.question,
+          questionType: qr.question.questionType,
+          userAnswer: qr.userAnswer,
+          userAnswers: qr.userAnswers,
+          correctAnswer: qr.question.correctAnswer,
+          correctAnswers: qr.question.correctAnswers,
+          options: qr.question.options,
+          isCorrect: qr.isCorrect,
+        );
+      }).toList();
+
+      final completeRequest = CompleteAttemptRequest(
+        score: widget.results.score,
+        correctCount: widget.results.correct,
+        totalCount: widget.results.total,
+        answers: answers,
+      );
+
+      await _apiService.completeAttempt(attemptId, completeRequest);
+
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+          _saveCompleted = true;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+          _saveError = e.toString();
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +143,7 @@ class ResultsScreen extends StatelessWidget {
               child: Column(
                 children: [
                   Text(
-                    '${results.score}%',
+                    '${widget.results.score}%',
                     style: const TextStyle(
                       fontSize: 48,
                       fontWeight: FontWeight.w700,
@@ -55,13 +152,15 @@ class ResultsScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '${results.correct} out of ${results.total} questions correct',
+                    '${widget.results.correct} out of ${widget.results.total} questions correct',
                     style: const TextStyle(
                       fontSize: 18,
                       color: Colors.white,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  _buildSaveStatus(),
                 ],
               ),
             ),
@@ -74,33 +173,33 @@ class ResultsScreen extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: _SummaryCard(
+                        child: SummaryCard(
                           title: 'Score',
-                          value: '${results.score}%',
-                          color: _getScoreColor(results.score),
+                          value: '${widget.results.score}%',
+                          color: _getScoreColor(widget.results.score),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: _SummaryCard(
+                        child: SummaryCard(
                           title: 'Correct',
-                          value: '${results.correct}',
+                          value: '${widget.results.correct}',
                           color: AppColors.success,
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: _SummaryCard(
+                        child: SummaryCard(
                           title: 'Incorrect',
-                          value: '${results.total - results.correct}',
+                          value: '${widget.results.total - widget.results.correct}',
                           color: AppColors.error,
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: _SummaryCard(
+                        child: SummaryCard(
                           title: 'Total',
-                          value: '${results.total}',
+                          value: '${widget.results.total}',
                           color: AppColors.textTertiary,
                         ),
                       ),
@@ -125,12 +224,12 @@ class ResultsScreen extends StatelessWidget {
 
                   // Question review
                   ...List.generate(
-                    results.questionResults.length,
+                    widget.results.questionResults.length,
                     (index) => Padding(
                       padding: const EdgeInsets.only(bottom: 16),
                       child: _QuestionReviewCard(
                         questionNumber: index + 1,
-                        result: results.questionResults[index],
+                        result: widget.results.questionResults[index],
                       ),
                     ),
                   ),
@@ -171,49 +270,80 @@ class ResultsScreen extends StatelessWidget {
     if (score >= 60) return AppColors.achievement;
     return AppColors.error;
   }
-}
 
-class _SummaryCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final Color color;
-
-  const _SummaryCard({
-    required this.title,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
+  Widget _buildSaveStatus() {
+    if (_isSaving) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-              color: color,
+          SizedBox(
+            width: 14,
+            height: 14,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                Colors.white.withValues(alpha: 0.8),
+              ),
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(width: 8),
           Text(
-            title,
-            style: const TextStyle(
+            'Saving result...',
+            style: TextStyle(
               fontSize: 12,
-              color: Color(0xFF6B7280),
-              fontWeight: FontWeight.w500,
+              color: Colors.white.withValues(alpha: 0.8),
             ),
           ),
         ],
-      ),
-    );
+      );
+    }
+
+    if (_saveError != null) {
+      return GestureDetector(
+        onTap: _saveAttempt,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 14,
+              color: Colors.white.withValues(alpha: 0.8),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Save failed - tap to retry',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.white.withValues(alpha: 0.8),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_saveCompleted) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.cloud_done,
+            size: 14,
+            color: Colors.white.withValues(alpha: 0.8),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'Result saved',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.white.withValues(alpha: 0.8),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return const SizedBox.shrink();
   }
 }
 
