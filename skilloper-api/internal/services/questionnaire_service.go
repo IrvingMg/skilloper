@@ -74,8 +74,8 @@ func (s *QuestionnaireService) GetPaginatedSummaries(params models.PaginationPar
 		result = result.Where("questionnaires.type = ?", params.Type)
 	}
 
-	// Apply pagination and order
-	result = result.Order("questionnaires.created_at DESC").
+	// Apply pagination and order (dynamic sort from params)
+	result = result.Order(params.GetQuestionnaireOrderBy()).
 		Limit(params.Limit).
 		Offset(params.Offset).
 		Find(&rows)

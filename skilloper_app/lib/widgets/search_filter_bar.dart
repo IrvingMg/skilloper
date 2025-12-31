@@ -8,10 +8,35 @@ class FilterOption {
   const FilterOption({required this.value, required this.label});
 }
 
+class SortOption {
+  final String value;
+  final String label;
+
+  const SortOption({required this.value, required this.label});
+}
+
 /// Common filter options for quiz type (practice/exam)
 const kQuizTypeFilterOptions = [
   FilterOption(value: 'practice', label: 'Practice'),
   FilterOption(value: 'exam', label: 'Exam'),
+];
+
+/// Sort options for questionnaires (home screen)
+const kQuestionnaireSortOptions = [
+  SortOption(value: 'date_desc', label: 'Newest first'),
+  SortOption(value: 'date_asc', label: 'Oldest first'),
+  SortOption(value: 'title_asc', label: 'Title A-Z'),
+  SortOption(value: 'title_desc', label: 'Title Z-A'),
+];
+
+/// Sort options for attempts (history screen)
+const kAttemptSortOptions = [
+  SortOption(value: 'date_desc', label: 'Newest first'),
+  SortOption(value: 'date_asc', label: 'Oldest first'),
+  SortOption(value: 'score_desc', label: 'Highest score'),
+  SortOption(value: 'score_asc', label: 'Lowest score'),
+  SortOption(value: 'title_asc', label: 'Title A-Z'),
+  SortOption(value: 'title_desc', label: 'Title Z-A'),
 ];
 
 /// Helper to check if an item matches search query and type filter
@@ -41,6 +66,10 @@ class SearchFilterBar extends StatefulWidget {
   final List<FilterOption> filterOptions;
   final String selectedFilter; // Empty string means "All"
   final ValueChanged<String> onFilterChanged;
+  // Optional sort functionality
+  final List<SortOption>? sortOptions;
+  final String? selectedSort;
+  final ValueChanged<String>? onSortChanged;
 
   const SearchFilterBar({
     super.key,
@@ -50,6 +79,9 @@ class SearchFilterBar extends StatefulWidget {
     required this.filterOptions,
     required this.selectedFilter,
     required this.onFilterChanged,
+    this.sortOptions,
+    this.selectedSort,
+    this.onSortChanged,
   });
 
   @override
@@ -73,12 +105,27 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
     setState(() {});
   }
 
-  String _getSelectedLabel() {
+  String _getSelectedFilterLabel() {
     if (widget.selectedFilter.isEmpty) return 'All';
     return widget.filterOptions
         .firstWhere(
           (o) => o.value == widget.selectedFilter,
           orElse: () => const FilterOption(value: '', label: 'All'),
+        )
+        .label;
+  }
+
+  String _getSelectedSortLabel() {
+    final sortOptions = widget.sortOptions;
+    final selectedSort = widget.selectedSort;
+    if (sortOptions == null || sortOptions.isEmpty) return '';
+    if (selectedSort == null || selectedSort.isEmpty) {
+      return sortOptions.first.label;
+    }
+    return sortOptions
+        .firstWhere(
+          (o) => o.value == selectedSort,
+          orElse: () => sortOptions.first,
         )
         .label;
   }
@@ -188,7 +235,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  _getSelectedLabel(),
+                  _getSelectedFilterLabel(),
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
@@ -233,6 +280,63 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
             ),
           ],
         ),
+
+        // Sort button (optional, only if sortOptions is non-empty)
+        if (widget.sortOptions != null && widget.sortOptions!.isNotEmpty && widget.onSortChanged != null) ...[
+          const SizedBox(width: 8),
+          PopupMenuButton<String>(
+            onSelected: widget.onSortChanged,
+            offset: const Offset(0, 45),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceVariant,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.swap_vert,
+                    size: 20,
+                    color: AppColors.textTertiary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _getSelectedSortLabel(),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.arrow_drop_down,
+                    size: 20,
+                    color: AppColors.textTertiary,
+                  ),
+                ],
+              ),
+            ),
+            itemBuilder: (context) => widget.sortOptions!.map(
+              (option) => PopupMenuItem<String>(
+                value: option.value,
+                child: Row(
+                  children: [
+                    _buildCheckIcon(widget.selectedSort == option.value ||
+                        (widget.selectedSort?.isEmpty ?? true) && option == widget.sortOptions!.first),
+                    const SizedBox(width: 8),
+                    Text(option.label),
+                  ],
+                ),
+              ),
+            ).toList(),
+          ),
+        ],
       ],
     );
   }

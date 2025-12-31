@@ -81,6 +81,7 @@ class ApiService {
     int offset = 0,
     String search = '',
     String type = '',
+    String sort = '',
   }) async {
     try {
       final queryParams = <String, String>{
@@ -92,6 +93,9 @@ class ApiService {
       }
       if (type.isNotEmpty) {
         queryParams['type'] = type;
+      }
+      if (sort.isNotEmpty) {
+        queryParams['sort'] = sort;
       }
 
       final uri = Uri.parse('$baseUrl/questionnaires/summaries')
@@ -258,6 +262,7 @@ class ApiService {
     int offset = 0,
     String search = '',
     String type = '',
+    String sort = '',
   }) async {
     if (deviceId.isEmpty) {
       throw ApiException('Device ID is required');
@@ -274,6 +279,9 @@ class ApiService {
       }
       if (type.isNotEmpty) {
         queryParams['type'] = type;
+      }
+      if (sort.isNotEmpty) {
+        queryParams['sort'] = sort;
       }
 
       final uri = Uri.parse('$baseUrl/attempts')

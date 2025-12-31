@@ -4,6 +4,7 @@ import '../models/pagination.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
+import '../utils/date_formatter.dart';
 import '../utils/debouncer.dart';
 import '../widgets/search_filter_bar.dart';
 import 'quiz_screen.dart';
@@ -29,10 +30,11 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoadingMore = false;
   String? _error;
 
-  // Search and filter
+  // Search, filter, and sort
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _typeFilter = '';
+  String _sortBy = 'date_desc'; // Default sort
 
   @override
   void initState() {
@@ -70,9 +72,10 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
 
-    // Capture current search/filter state for race condition detection
+    // Capture current search/filter/sort state for race condition detection
     final requestSearch = _searchQuery;
     final requestType = _typeFilter;
+    final requestSort = _sortBy;
 
     try {
       final result = await _apiService.getQuestionnaireSummaries(
@@ -80,11 +83,12 @@ class _HomeScreenState extends State<HomeScreen> {
         offset: 0,
         search: _searchQuery,
         type: _typeFilter,
+        sort: _sortBy,
       );
 
       if (!mounted) return;
-      // Check if search/filter changed while request was in flight
-      if (requestSearch != _searchQuery || requestType != _typeFilter) {
+      // Check if search/filter/sort changed while request was in flight
+      if (requestSearch != _searchQuery || requestType != _typeFilter || requestSort != _sortBy) {
         // Query changed - clear loading flag and retry with current query
         setState(() {
           _isInitialLoading = false;
@@ -118,6 +122,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Capture current state for race condition detection
     final requestSearch = _searchQuery;
     final requestType = _typeFilter;
+    final requestSort = _sortBy;
     final requestOffset = _pagination.nextOffset;
 
     try {
@@ -126,11 +131,12 @@ class _HomeScreenState extends State<HomeScreen> {
         offset: requestOffset,
         search: _searchQuery,
         type: _typeFilter,
+        sort: _sortBy,
       );
 
       if (!mounted) return;
-      // Check if search/filter changed while request was in flight
-      if (requestSearch != _searchQuery || requestType != _typeFilter) {
+      // Check if search/filter/sort changed while request was in flight
+      if (requestSearch != _searchQuery || requestType != _typeFilter || requestSort != _sortBy) {
         // Query changed - discard stale results; a fresh load should already be in progress
         setState(() {
           _isLoadingMore = false;
@@ -168,6 +174,14 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onFilterChanged(String filter) {
     setState(() {
       _typeFilter = filter;
+    });
+    _loadQuestionnaires(refresh: true);
+  }
+
+  /// Handle sort change (immediate, no debounce)
+  void _onSortChanged(String sort) {
+    setState(() {
+      _sortBy = sort;
     });
     _loadQuestionnaires(refresh: true);
   }
@@ -243,6 +257,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 filterOptions: kQuizTypeFilterOptions,
                 selectedFilter: _typeFilter,
                 onFilterChanged: _onFilterChanged,
+                sortOptions: kQuestionnaireSortOptions,
+                selectedSort: _sortBy,
+                onSortChanged: _onSortChanged,
               ),
 
               const SizedBox(height: 16),
@@ -495,30 +512,37 @@ class _QuestionnaireListItem extends StatelessWidget {
                         // Stats - compact layout for narrow screens
                         if (isNarrowScreen) ...[
                           const SizedBox(height: 4),
-                          // Vertical layout for narrow screens
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          // Single row with questions and date
+                          Row(
                             children: [
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(
-                                    Icons.quiz_outlined,
-                                    size: 14,
-                                    color: AppColors.textDisabled,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '${questionnaire.questionCount} questions',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: AppColors.textTertiary,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
+                              const Icon(
+                                Icons.quiz_outlined,
+                                size: 14,
+                                color: AppColors.textDisabled,
                               ),
-                              // Max options info removed per user request
+                              const SizedBox(width: 4),
+                              Text(
+                                '${questionnaire.questionCount} questions',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textTertiary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Icon(
+                                Icons.schedule,
+                                size: 14,
+                                color: AppColors.textDisabled,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                formatRelativeDate(questionnaire.createdAt),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textTertiary,
+                                ),
+                              ),
                             ],
                           ),
                         ] else ...[
@@ -539,7 +563,20 @@ class _QuestionnaireListItem extends StatelessWidget {
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
-                              // Max options info removed per user request
+                              const SizedBox(width: 16),
+                              const Icon(
+                                Icons.schedule,
+                                size: 16,
+                                color: AppColors.textDisabled,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                formatRelativeDate(questionnaire.createdAt),
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.textTertiary,
+                                ),
+                              ),
                             ],
                           ),
                         ],

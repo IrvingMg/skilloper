@@ -302,9 +302,9 @@ func (s *AttemptService) GetPaginatedByDeviceID(deviceID string, params models.P
 		return models.PaginatedAttemptSummaries{}, apperrors.ErrFetchAttemptsFailed
 	}
 
-	// Apply pagination and fetch
+	// Apply pagination and fetch (dynamic sort from params)
 	var attempts []models.QuizAttempt
-	result := query.Order("created_at DESC").
+	result := query.Order(params.GetAttemptOrderBy()).
 		Limit(params.Limit).
 		Offset(params.Offset).
 		Find(&attempts)

@@ -32,10 +32,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
   bool _isLoadingMore = false;
   String? _error;
 
-  // Search and filter
+  // Search, filter, and sort
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _typeFilter = '';
+  String _sortBy = 'date_desc'; // Default sort
 
   @override
   void initState() {
@@ -79,9 +80,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
       }
     });
 
-    // Capture current search/filter state for race condition detection
+    // Capture current search/filter/sort state for race condition detection
     final requestSearch = _searchQuery;
     final requestType = _typeFilter;
+    final requestSort = _sortBy;
 
     try {
       final result = await _apiService.getHistory(
@@ -90,11 +92,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
         offset: 0,
         search: _searchQuery,
         type: _typeFilter,
+        sort: _sortBy,
       );
 
       if (!mounted) return;
-      // Check if search/filter changed while request was in flight
-      if (requestSearch != _searchQuery || requestType != _typeFilter) {
+      // Check if search/filter/sort changed while request was in flight
+      if (requestSearch != _searchQuery || requestType != _typeFilter || requestSort != _sortBy) {
         // Query changed - clear loading flag and retry with current query
         setState(() {
           _isInitialLoading = false;
@@ -128,6 +131,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     // Capture current state for race condition detection
     final requestSearch = _searchQuery;
     final requestType = _typeFilter;
+    final requestSort = _sortBy;
     final requestOffset = _pagination.nextOffset;
 
     try {
@@ -137,11 +141,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
         offset: requestOffset,
         search: _searchQuery,
         type: _typeFilter,
+        sort: _sortBy,
       );
 
       if (!mounted) return;
-      // Check if search/filter changed while request was in flight
-      if (requestSearch != _searchQuery || requestType != _typeFilter) {
+      // Check if search/filter/sort changed while request was in flight
+      if (requestSearch != _searchQuery || requestType != _typeFilter || requestSort != _sortBy) {
         // Query changed - discard stale results; a fresh load should already be in progress
         setState(() {
           _isLoadingMore = false;
@@ -179,6 +184,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
   void _onFilterChanged(String filter) {
     setState(() {
       _typeFilter = filter;
+    });
+    _loadHistory(refresh: true);
+  }
+
+  /// Handle sort change (immediate, no debounce)
+  void _onSortChanged(String sort) {
+    setState(() {
+      _sortBy = sort;
     });
     _loadHistory(refresh: true);
   }
@@ -250,6 +263,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 filterOptions: kQuizTypeFilterOptions,
                 selectedFilter: _typeFilter,
                 onFilterChanged: _onFilterChanged,
+                sortOptions: kAttemptSortOptions,
+                selectedSort: _sortBy,
+                onSortChanged: _onSortChanged,
               ),
 
               const SizedBox(height: 16),

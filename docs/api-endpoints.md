@@ -32,7 +32,7 @@ Base URL: `http://localhost:8080/api/v1`
 
 ### Pagination Parameters
 
-Both `/questionnaires/summaries` and `/attempts` support pagination and filtering:
+Both `/questionnaires/summaries` and `/attempts` support pagination, filtering, and sorting:
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -40,8 +40,29 @@ Both `/questionnaires/summaries` and `/attempts` support pagination and filterin
 | `offset` | int | 0 | Items to skip |
 | `search` | string | "" | Search in title (case-insensitive) |
 | `type` | string | "" | Filter by type: `practice` or `exam` |
+| `sort` | string | `date_desc` | Sort order (see below) |
 
 **Note:** `/attempts` also requires `device_id` parameter.
+
+#### Sort Options
+
+**For questionnaires (`/questionnaires/summaries`):**
+| Value | Description |
+|-------|-------------|
+| `date_desc` | Newest first (default) |
+| `date_asc` | Oldest first |
+| `title_asc` | Title A-Z |
+| `title_desc` | Title Z-A |
+
+**For attempts (`/attempts`):**
+| Value | Description |
+|-------|-------------|
+| `date_desc` | Newest first (default) |
+| `date_asc` | Oldest first |
+| `score_desc` | Highest score first |
+| `score_asc` | Lowest score first |
+| `title_asc` | Quiz title A-Z |
+| `title_desc` | Quiz title Z-A |
 
 #### Attempt Tracking Behavior
 

@@ -7,12 +7,33 @@ var validTypes = map[string]bool{
 	"exam":     true,
 }
 
+// Valid sort options for questionnaires
+var validQuestionnaireSorts = map[string]string{
+	"":           "questionnaires.created_at DESC", // default
+	"date_desc":  "questionnaires.created_at DESC",
+	"date_asc":   "questionnaires.created_at ASC",
+	"title_asc":  "questionnaires.title ASC",
+	"title_desc": "questionnaires.title DESC",
+}
+
+// Valid sort options for attempts
+var validAttemptSorts = map[string]string{
+	"":           "created_at DESC", // default
+	"date_desc":  "created_at DESC",
+	"date_asc":   "created_at ASC",
+	"score_desc": "score DESC",
+	"score_asc":  "score ASC",
+	"title_asc":  "questionnaire_title ASC",
+	"title_desc": "questionnaire_title DESC",
+}
+
 // PaginationParams holds common pagination and filter parameters
 type PaginationParams struct {
 	Limit  int    `form:"limit"`
 	Offset int    `form:"offset"`
 	Search string `form:"search"`
 	Type   string `form:"type"`
+	Sort   string `form:"sort"`
 }
 
 // Validate ensures pagination params are within acceptable bounds
@@ -28,6 +49,24 @@ func (p *PaginationParams) Validate() bool {
 		p.Offset = 0
 	}
 	return validTypes[p.Type]
+}
+
+// GetQuestionnaireOrderBy returns the SQL ORDER BY clause for questionnaires
+// Falls back to default (date_desc) if sort value is invalid
+func (p *PaginationParams) GetQuestionnaireOrderBy() string {
+	if orderBy, ok := validQuestionnaireSorts[p.Sort]; ok {
+		return orderBy
+	}
+	return validQuestionnaireSorts[""]
+}
+
+// GetAttemptOrderBy returns the SQL ORDER BY clause for attempts
+// Falls back to default (date_desc) if sort value is invalid
+func (p *PaginationParams) GetAttemptOrderBy() string {
+	if orderBy, ok := validAttemptSorts[p.Sort]; ok {
+		return orderBy
+	}
+	return validAttemptSorts[""]
 }
 
 // PaginationMeta holds pagination metadata for responses
