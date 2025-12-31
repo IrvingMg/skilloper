@@ -216,6 +216,12 @@ var (
 		Code:    "FETCH_ATTEMPT_FAILED",
 		Message: "failed to fetch attempt",
 	}
+
+	ErrInvalidPaginationParams = &AppError{
+		Type:    ErrTypeValidation,
+		Code:    "INVALID_PAGINATION_PARAMS",
+		Message: "invalid pagination parameters",
+	}
 )
 
 // NewValidationError creates a new validation error

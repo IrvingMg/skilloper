@@ -9,7 +9,7 @@ Base URL: `http://localhost:8080/api/v1`
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/health` | Health check |
-| `GET` | `/questionnaires/summaries` | Get questionnaire summaries (optimized for home page) |
+| `GET` | `/questionnaires/summaries` | Get paginated questionnaire summaries |
 | `POST` | `/questionnaires/import` | Import questionnaire from file (JSON/CSV) |
 | `GET` | `/questionnaires/{id}` | Get specific questionnaire (shuffled questions) |
 | `PUT` | `/questionnaires/{id}` | Update questionnaire |
@@ -21,8 +21,21 @@ Base URL: `http://localhost:8080/api/v1`
 |--------|----------|-------------|
 | `POST` | `/attempts/start` | Start a quiz attempt (creates in_progress record) |
 | `POST` | `/attempts/{id}/complete` | Complete a quiz attempt with results |
-| `GET` | `/attempts?device_id={id}` | Get attempt history for a device |
+| `GET` | `/attempts` | Get paginated attempt history for a device |
 | `GET` | `/attempts/{id}` | Get specific attempt with answers |
+
+### Pagination Parameters
+
+Both `/questionnaires/summaries` and `/attempts` support pagination and filtering:
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `limit` | int | 20 | Items per page (max 100) |
+| `offset` | int | 0 | Items to skip |
+| `search` | string | "" | Search in title (case-insensitive) |
+| `type` | string | "" | Filter by type: `practice` or `exam` |
+
+**Note:** `/attempts` also requires `device_id` parameter.
 
 #### Attempt Tracking Behavior
 
@@ -45,7 +58,35 @@ curl http://localhost:8080/api/v1/health
 
 ### Get Questionnaire Summaries
 ```bash
+# Basic request (returns first 20 items)
 curl http://localhost:8080/api/v1/questionnaires/summaries
+
+# With pagination and filters
+curl "http://localhost:8080/api/v1/questionnaires/summaries?limit=10&offset=0&search=javascript&type=practice"
+```
+
+Response:
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "title": "JavaScript Basics",
+      "description": "Learn JS fundamentals",
+      "type": "practice",
+      "max_options": 4,
+      "question_count": 10,
+      "created_at": "2025-01-15T10:00:00Z",
+      "updated_at": "2025-01-15T10:00:00Z"
+    }
+  ],
+  "pagination": {
+    "limit": 10,
+    "offset": 0,
+    "total_count": 25,
+    "has_more": true
+  }
+}
 ```
 
 ### Import Questionnaire from File
@@ -129,27 +170,39 @@ curl -X POST http://localhost:8080/api/v1/attempts/1/complete \
 
 ### Get Attempt History
 ```bash
+# Basic request (returns first 20 items)
 curl "http://localhost:8080/api/v1/attempts?device_id=550e8400-e29b-41d4-a716-446655440000"
+
+# With pagination and filters
+curl "http://localhost:8080/api/v1/attempts?device_id=550e8400-e29b-41d4-a716-446655440000&limit=10&offset=0&search=javascript&type=exam"
 ```
 
 Response:
 ```json
-[
-  {
-    "id": 1,
-    "device_id": "550e8400-e29b-41d4-a716-446655440000",
-    "questionnaire_id": 1,
-    "questionnaire_title": "JavaScript Basics",
-    "questionnaire_type": "practice",
-    "attempt_number": 1,
-    "status": "completed",
-    "score": 80,
-    "correct_count": 8,
-    "total_count": 10,
-    "created_at": "2025-01-15T10:30:00Z",
-    "completed_at": "2025-01-15T10:45:00Z"
+{
+  "data": [
+    {
+      "id": 1,
+      "device_id": "550e8400-e29b-41d4-a716-446655440000",
+      "questionnaire_id": 1,
+      "questionnaire_title": "JavaScript Basics",
+      "questionnaire_type": "practice",
+      "attempt_number": 1,
+      "status": "completed",
+      "score": 80,
+      "correct_count": 8,
+      "total_count": 10,
+      "created_at": "2025-01-15T10:30:00Z",
+      "completed_at": "2025-01-15T10:45:00Z"
+    }
+  ],
+  "pagination": {
+    "limit": 10,
+    "offset": 0,
+    "total_count": 5,
+    "has_more": false
   }
-]
+}
 ```
 
 ### Get Specific Attempt
@@ -181,6 +234,7 @@ The API returns structured error responses:
 | `DEVICE_ID_REQUIRED` | Device ID query parameter is missing |
 | `ATTEMPT_ALREADY_COMPLETED` | Cannot complete an already completed attempt |
 | `INVALID_ATTEMPT_DATA` | Invalid data in attempt request |
+| `INVALID_PAGINATION_PARAMS` | Invalid pagination parameters (e.g., invalid type filter) |
 
 ### HTTP Status Codes
 

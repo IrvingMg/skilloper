@@ -111,9 +111,25 @@ func (h *AttemptHandler) GetAttempts(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Fetching attempts for device", zap.String("device_id", deviceID))
+	// Parse pagination params
+	var params models.PaginationParams
+	if err := c.ShouldBindQuery(&params); err != nil {
+		h.handleError(c, apperrors.ErrInvalidPaginationParams, "parse_pagination_params")
+		return
+	}
+	if !params.Validate() {
+		h.handleError(c, apperrors.ErrInvalidPaginationParams, "validate_pagination_params")
+		return
+	}
 
-	attempts, err := h.service.GetByDeviceID(deviceID)
+	h.logger.Info("Fetching attempts for device",
+		zap.String("device_id", deviceID),
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset),
+		zap.String("search", params.Search),
+		zap.String("type", params.Type))
+
+	result, err := h.service.GetPaginatedByDeviceID(deviceID, params)
 	if err != nil {
 		h.handleError(c, err, "fetch_attempts")
 		return
@@ -121,8 +137,9 @@ func (h *AttemptHandler) GetAttempts(c *gin.Context) {
 
 	h.logger.Info("Successfully fetched attempts",
 		zap.String("device_id", deviceID),
-		zap.Int("count", len(attempts)))
-	c.JSON(http.StatusOK, attempts)
+		zap.Int("count", len(result.Data)),
+		zap.Int("total", result.Pagination.TotalCount))
+	c.JSON(http.StatusOK, result)
 }
 
 // GetAttempt handles GET /attempts/:id

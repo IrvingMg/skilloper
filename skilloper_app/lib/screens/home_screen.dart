@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../models/questionnaire.dart';
+import '../models/pagination.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
+import '../utils/debouncer.dart';
 import '../widgets/search_filter_bar.dart';
 import 'quiz_screen.dart';
 
@@ -15,8 +17,16 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final ApiService _apiService = ApiService();
+  final ScrollController _scrollController = ScrollController();
+  final Debouncer _searchDebouncer = Debouncer(delay: const Duration(milliseconds: 300));
+
+  // Data state
   List<QuestionnaireSummary> _questionnaires = [];
-  bool _isLoading = false;
+  PaginationMeta _pagination = PaginationMeta.initial();
+
+  // Loading states
+  bool _isInitialLoading = false;
+  bool _isLoadingMore = false;
   String? _error;
 
   // Search and filter
@@ -27,43 +37,139 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadQuestionnaires();
+    _scrollController.addListener(_onScroll);
+    _loadQuestionnaires(refresh: true);
   }
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _searchController.dispose();
+    _searchDebouncer.dispose();
     super.dispose();
   }
 
-  List<QuestionnaireSummary> get _filteredQuestionnaires {
-    final normalizedQuery = _searchQuery.toLowerCase();
-    return _questionnaires.where((q) => matchesFilter(
-      title: q.title,
-      type: q.type,
-      searchQuery: normalizedQuery,
-      typeFilter: _typeFilter,
-    )).toList();
+  /// Handle scroll to trigger load more
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      _loadMore();
+    }
   }
 
-  Future<void> _loadQuestionnaires() async {
+  /// Load questionnaires (initial or refresh)
+  Future<void> _loadQuestionnaires({bool refresh = false}) async {
+    if (_isInitialLoading) return;
+
     setState(() {
-      _isLoading = true;
+      _isInitialLoading = true;
       _error = null;
+      if (refresh) {
+        _questionnaires = [];
+        _pagination = PaginationMeta.initial();
+      }
     });
 
+    // Capture current search/filter state for race condition detection
+    final requestSearch = _searchQuery;
+    final requestType = _typeFilter;
+
     try {
-      final questionnaires = await _apiService.getQuestionnaireSummaries();
+      final result = await _apiService.getQuestionnaireSummaries(
+        limit: 20,
+        offset: 0,
+        search: _searchQuery,
+        type: _typeFilter,
+      );
+
+      if (!mounted) return;
+      // Check if search/filter changed while request was in flight
+      if (requestSearch != _searchQuery || requestType != _typeFilter) {
+        // Query changed - clear loading flag and retry with current query
+        setState(() {
+          _isInitialLoading = false;
+        });
+        _loadQuestionnaires(refresh: true);
+        return;
+      }
+
       setState(() {
-        _questionnaires = questionnaires;
-        _isLoading = false;
+        _questionnaires = result.data;
+        _pagination = result.pagination;
+        _isInitialLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
-        _isLoading = false;
+        _isInitialLoading = false;
       });
     }
+  }
+
+  /// Load more questionnaires (infinite scroll)
+  Future<void> _loadMore() async {
+    if (_isLoadingMore || !_pagination.hasMore || _isInitialLoading) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    // Capture current state for race condition detection
+    final requestSearch = _searchQuery;
+    final requestType = _typeFilter;
+    final requestOffset = _pagination.nextOffset;
+
+    try {
+      final result = await _apiService.getQuestionnaireSummaries(
+        limit: _pagination.limit,
+        offset: requestOffset,
+        search: _searchQuery,
+        type: _typeFilter,
+      );
+
+      if (!mounted) return;
+      // Check if search/filter changed while request was in flight
+      if (requestSearch != _searchQuery || requestType != _typeFilter) {
+        // Query changed - discard stale results; a fresh load should already be in progress
+        setState(() {
+          _isLoadingMore = false;
+        });
+        return;
+      }
+
+      setState(() {
+        _questionnaires.addAll(result.data);
+        _pagination = result.pagination;
+        _isLoadingMore = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingMore = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load more: $e')),
+      );
+    }
+  }
+
+  /// Handle search text change with debounce
+  void _onSearchChanged(String query) {
+    _searchDebouncer.run(() {
+      setState(() {
+        _searchQuery = query;
+      });
+      _loadQuestionnaires(refresh: true);
+    });
+  }
+
+  /// Handle filter change (immediate, no debounce)
+  void _onFilterChanged(String filter) {
+    setState(() {
+      _typeFilter = filter;
+    });
+    _loadQuestionnaires(refresh: true);
   }
 
   Future<void> _startQuiz(QuestionnaireSummary summary) async {
@@ -103,7 +209,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: RefreshIndicator(
-        onRefresh: _loadQuestionnaires,
+        onRefresh: () => _loadQuestionnaires(refresh: true),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -133,23 +239,15 @@ class _HomeScreenState extends State<HomeScreen> {
               SearchFilterBar(
                 searchHint: 'Search quizzes...',
                 searchController: _searchController,
-                onSearchChanged: (query) {
-                  setState(() {
-                    _searchQuery = query;
-                  });
-                },
+                onSearchChanged: _onSearchChanged,
                 filterOptions: kQuizTypeFilterOptions,
                 selectedFilter: _typeFilter,
-                onFilterChanged: (filter) {
-                  setState(() {
-                    _typeFilter = filter;
-                  });
-                },
+                onFilterChanged: _onFilterChanged,
               ),
 
               const SizedBox(height: 16),
 
-              if (_isLoading)
+              if (_isInitialLoading && _questionnaires.isEmpty)
                 const Expanded(
                   child: Center(
                     child: Column(
@@ -165,7 +263,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 )
-              else if (_error != null)
+              else if (_error != null && _questionnaires.isEmpty)
                 Expanded(
                   child: Center(
                     child: Column(
@@ -177,24 +275,24 @@ class _HomeScreenState extends State<HomeScreen> {
                           color: AppColors.textDisabled,
                         ),
                         const SizedBox(height: 16),
-                        Text(
+                        const Text(
                           'Failed to load questionnaires',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Text(
+                        const Text(
                           'Make sure the API is running on localhost:8080',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: AppColors.textTertiary,
                           ),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 16),
                         ElevatedButton(
-                          onPressed: _loadQuestionnaires,
+                          onPressed: () => _loadQuestionnaires(refresh: true),
                           child: const Text('Retry'),
                         ),
                       ],
@@ -202,73 +300,52 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 )
               else if (_questionnaires.isEmpty)
-                const Expanded(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.quiz_outlined,
-                          size: 64,
-                          color: AppColors.textDisabled,
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          'No questionnaires available',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Upload some questionnaires using the Import tab',
-                          style: TextStyle(
-                            color: AppColors.textTertiary,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else if (_filteredQuestionnaires.isEmpty)
                 Expanded(
                   child: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(
-                          Icons.search_off,
+                        Icon(
+                          _searchQuery.isNotEmpty || _typeFilter.isNotEmpty
+                              ? Icons.search_off
+                              : Icons.quiz_outlined,
                           size: 64,
                           color: AppColors.textDisabled,
                         ),
                         const SizedBox(height: 16),
-                        const Text(
-                          'No matches found',
-                          style: TextStyle(
+                        Text(
+                          _searchQuery.isNotEmpty || _typeFilter.isNotEmpty
+                              ? 'No matches found'
+                              : 'No questionnaires available',
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                         const SizedBox(height: 8),
-                        const Text(
-                          'Try a different search or filter',
-                          style: TextStyle(
+                        Text(
+                          _searchQuery.isNotEmpty || _typeFilter.isNotEmpty
+                              ? 'Try a different search or filter'
+                              : 'Upload some questionnaires using the Import tab',
+                          style: const TextStyle(
                             color: AppColors.textTertiary,
                           ),
+                          textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 16),
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
+                        if (_searchQuery.isNotEmpty || _typeFilter.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          TextButton(
+                            onPressed: () {
                               _searchController.clear();
-                              _searchQuery = '';
-                              _typeFilter = '';
-                            });
-                          },
-                          child: const Text('Clear filters'),
-                        ),
+                              setState(() {
+                                _searchQuery = '';
+                                _typeFilter = '';
+                              });
+                              _loadQuestionnaires(refresh: true);
+                            },
+                            child: const Text('Clear filters'),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -276,10 +353,18 @@ class _HomeScreenState extends State<HomeScreen> {
               else
                 Expanded(
                   child: ListView.separated(
-                    itemCount: _filteredQuestionnaires.length,
+                    controller: _scrollController,
+                    itemCount: _questionnaires.length + (_isLoadingMore ? 1 : 0),
                     separatorBuilder: (context, index) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
-                      final questionnaire = _filteredQuestionnaires[index];
+                      // Show loading indicator at the bottom
+                      if (index == _questionnaires.length) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+                      final questionnaire = _questionnaires[index];
                       return _QuestionnaireListItem(
                         questionnaire: questionnaire,
                         onTap: () => _startQuiz(questionnaire),

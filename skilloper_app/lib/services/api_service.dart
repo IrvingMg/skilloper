@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/questionnaire.dart';
 import '../models/attempt.dart';
+import '../models/pagination.dart';
 
 /// Custom exception for API-related errors
 class ApiException implements Exception {
@@ -74,18 +75,42 @@ class ApiService {
   }
 
 
-  Future<List<QuestionnaireSummary>> getQuestionnaireSummaries() async {
+  /// Get paginated questionnaire summaries with search and filter
+  Future<PaginatedResponse<QuestionnaireSummary>> getQuestionnaireSummaries({
+    int limit = 20,
+    int offset = 0,
+    String search = '',
+    String type = '',
+  }) async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/questionnaires/summaries'),
-      ).timeout(timeout);
+      final queryParams = <String, String>{
+        'limit': limit.toString(),
+        'offset': offset.toString(),
+      };
+      if (search.isNotEmpty) {
+        queryParams['search'] = search;
+      }
+      if (type.isNotEmpty) {
+        queryParams['type'] = type;
+      }
+
+      final uri = Uri.parse('$baseUrl/questionnaires/summaries')
+          .replace(queryParameters: queryParams);
+
+      final response = await http.get(uri).timeout(timeout);
 
       _handleHttpResponse(response, 'load questionnaire summaries');
 
-      final List<dynamic> data = json.decode(response.body);
-      return data
-          .map((json) => QuestionnaireSummary.fromJson(json as Map<String, dynamic>))
-          .toList();
+      final Map<String, dynamic> body = json.decode(response.body);
+      final List<dynamic> dataList = body['data'] ?? [];
+      final paginationJson = body['pagination'] as Map<String, dynamic>;
+
+      return PaginatedResponse(
+        data: dataList
+            .map((json) => QuestionnaireSummary.fromJson(json as Map<String, dynamic>))
+            .toList(),
+        pagination: PaginationMeta.fromJson(paginationJson),
+      );
     } on ApiException {
       rethrow;
     } catch (e) {
@@ -226,27 +251,48 @@ class ApiService {
     }
   }
 
-  /// Get quiz history for a device
-  Future<List<AttemptSummary>> getHistory(String deviceId) async {
+  /// Get paginated quiz history for a device with search and filter
+  Future<PaginatedResponse<AttemptSummary>> getHistory(
+    String deviceId, {
+    int limit = 20,
+    int offset = 0,
+    String search = '',
+    String type = '',
+  }) async {
     if (deviceId.isEmpty) {
       throw ApiException('Device ID is required');
     }
 
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/attempts?device_id=$deviceId'),
-      ).timeout(timeout);
+      final queryParams = <String, String>{
+        'device_id': deviceId,
+        'limit': limit.toString(),
+        'offset': offset.toString(),
+      };
+      if (search.isNotEmpty) {
+        queryParams['search'] = search;
+      }
+      if (type.isNotEmpty) {
+        queryParams['type'] = type;
+      }
+
+      final uri = Uri.parse('$baseUrl/attempts')
+          .replace(queryParameters: queryParams);
+
+      final response = await http.get(uri).timeout(timeout);
 
       _handleHttpResponse(response, 'load history');
 
-      final dynamic decoded = json.decode(response.body);
-      if (decoded == null) {
-        return [];
-      }
-      final List<dynamic> data = decoded as List<dynamic>;
-      return data
-          .map((json) => AttemptSummary.fromJson(json as Map<String, dynamic>))
-          .toList();
+      final Map<String, dynamic> body = json.decode(response.body);
+      final List<dynamic> dataList = body['data'] ?? [];
+      final paginationJson = body['pagination'] as Map<String, dynamic>;
+
+      return PaginatedResponse(
+        data: dataList
+            .map((json) => AttemptSummary.fromJson(json as Map<String, dynamic>))
+            .toList(),
+        pagination: PaginationMeta.fromJson(paginationJson),
+      );
     } on ApiException {
       rethrow;
     } catch (e) {

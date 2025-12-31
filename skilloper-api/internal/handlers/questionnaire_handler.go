@@ -54,15 +54,33 @@ func (h *QuestionnaireHandler) handleError(c *gin.Context, err error, operation 
 func (h *QuestionnaireHandler) GetQuestionnaireSummaries(c *gin.Context) {
 	h.logger.Info("Fetching questionnaire summaries")
 
-	summaries, err := h.service.GetAllSummaries()
+	// Parse pagination params
+	var params models.PaginationParams
+	if err := c.ShouldBindQuery(&params); err != nil {
+		h.handleError(c, apperrors.ErrInvalidPaginationParams, "parse_pagination_params")
+		return
+	}
+	if !params.Validate() {
+		h.handleError(c, apperrors.ErrInvalidPaginationParams, "validate_pagination_params")
+		return
+	}
+
+	h.logger.Info("Pagination params",
+		zap.Int("limit", params.Limit),
+		zap.Int("offset", params.Offset),
+		zap.String("search", params.Search),
+		zap.String("type", params.Type))
+
+	result, err := h.service.GetPaginatedSummaries(params)
 	if err != nil {
 		h.handleError(c, err, "fetch_questionnaire_summaries")
 		return
 	}
 
 	h.logger.Info("Successfully fetched questionnaire summaries",
-		zap.Int("count", len(summaries)))
-	c.JSON(http.StatusOK, summaries)
+		zap.Int("count", len(result.Data)),
+		zap.Int("total", result.Pagination.TotalCount))
+	c.JSON(http.StatusOK, result)
 }
 
 // GetQuestionnaire handles GET /questionnaires/{id}

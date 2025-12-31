@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -188,19 +189,45 @@ func (s *AttemptService) Complete(attemptID uint, req models.CompleteAttemptRequ
 	return &response, nil
 }
 
-// GetByDeviceID returns all attempts for a device (summaries only)
-func (s *AttemptService) GetByDeviceID(deviceID string) ([]models.AttemptSummaryResponse, error) {
+// GetPaginatedByDeviceID returns paginated attempts for a device with search and filter
+func (s *AttemptService) GetPaginatedByDeviceID(deviceID string, params models.PaginationParams) (models.PaginatedAttemptSummaries, error) {
 	if deviceID == "" {
-		return nil, apperrors.ErrDeviceIDRequired
+		return models.PaginatedAttemptSummaries{}, apperrors.ErrDeviceIDRequired
 	}
 
+	// Build query with filters
+	query := s.db.Model(&models.QuizAttempt{}).Where("device_id = ?", deviceID)
+
+	// Apply search filter (case-insensitive on questionnaire_title)
+	if params.Search != "" {
+		searchPattern := "%" + strings.ToLower(params.Search) + "%"
+		query = query.Where("LOWER(questionnaire_title) LIKE ?", searchPattern)
+	}
+
+	// Apply type filter (already validated by handler)
+	if params.Type != "" {
+		query = query.Where("questionnaire_type = ?", params.Type)
+	}
+
+	// Get total count
+	var totalCount int64
+	if err := query.Count(&totalCount).Error; err != nil {
+		return models.PaginatedAttemptSummaries{}, apperrors.ErrFetchAttemptsFailed
+	}
+
+	// Apply pagination and fetch
 	var attempts []models.QuizAttempt
-	result := s.db.Where("device_id = ?", deviceID).Order("created_at DESC").Find(&attempts)
+	result := query.Order("created_at DESC").
+		Limit(params.Limit).
+		Offset(params.Offset).
+		Find(&attempts)
+
 	if result.Error != nil {
-		return nil, apperrors.ErrFetchAttemptsFailed
+		return models.PaginatedAttemptSummaries{}, apperrors.ErrFetchAttemptsFailed
 	}
 
-	summaries := make([]models.AttemptSummaryResponse, 0)
+	// Convert to summaries
+	summaries := make([]models.AttemptSummaryResponse, 0, len(attempts))
 	for _, attempt := range attempts {
 		summaries = append(summaries, models.AttemptSummaryResponse{
 			ID:                 attempt.ID,
@@ -218,7 +245,7 @@ func (s *AttemptService) GetByDeviceID(deviceID string) ([]models.AttemptSummary
 		})
 	}
 
-	return summaries, nil
+	return models.NewPaginatedAttemptSummaries(summaries, params.Limit, params.Offset, int(totalCount)), nil
 }
 
 // GetByID returns a single attempt with all answers

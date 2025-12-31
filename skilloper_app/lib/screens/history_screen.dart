@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../models/attempt.dart';
+import '../models/pagination.dart';
 import '../services/api_service.dart';
 import '../services/device_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
+import '../utils/debouncer.dart';
 import '../widgets/search_filter_bar.dart';
 import 'history_detail_screen.dart';
 
@@ -17,8 +19,17 @@ class HistoryScreen extends StatefulWidget {
 class _HistoryScreenState extends State<HistoryScreen> {
   final ApiService _apiService = ApiService();
   final DeviceService _deviceService = DeviceService();
+  final ScrollController _scrollController = ScrollController();
+  final Debouncer _searchDebouncer = Debouncer(delay: const Duration(milliseconds: 300));
+
+  // Data state
   List<AttemptSummary> _attempts = [];
-  bool _isLoading = false;
+  PaginationMeta _pagination = PaginationMeta.initial();
+  String? _deviceId;
+
+  // Loading states
+  bool _isInitialLoading = false;
+  bool _isLoadingMore = false;
   String? _error;
 
   // Search and filter
@@ -29,44 +40,147 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   void initState() {
     super.initState();
-    _loadHistory();
+    _scrollController.addListener(_onScroll);
+    _initializeAndLoad();
   }
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _searchController.dispose();
+    _searchDebouncer.dispose();
     super.dispose();
   }
 
-  List<AttemptSummary> get _filteredAttempts {
-    final normalizedQuery = _searchQuery.toLowerCase();
-    return _attempts.where((a) => matchesFilter(
-      title: a.questionnaireTitle,
-      type: a.questionnaireType,
-      searchQuery: normalizedQuery,
-      typeFilter: _typeFilter,
-    )).toList();
+  Future<void> _initializeAndLoad() async {
+    _deviceId = await _deviceService.getDeviceId();
+    if (!mounted) return;
+    _loadHistory(refresh: true);
   }
 
-  Future<void> _loadHistory() async {
+  /// Handle scroll to trigger load more
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      _loadMore();
+    }
+  }
+
+  /// Load history (initial or refresh)
+  Future<void> _loadHistory({bool refresh = false}) async {
+    if (_isInitialLoading || _deviceId == null) return;
+
     setState(() {
-      _isLoading = true;
+      _isInitialLoading = true;
       _error = null;
+      if (refresh) {
+        _attempts = [];
+        _pagination = PaginationMeta.initial();
+      }
     });
 
+    // Capture current search/filter state for race condition detection
+    final requestSearch = _searchQuery;
+    final requestType = _typeFilter;
+
     try {
-      final deviceId = await _deviceService.getDeviceId();
-      final attempts = await _apiService.getHistory(deviceId);
+      final result = await _apiService.getHistory(
+        _deviceId!,
+        limit: 20,
+        offset: 0,
+        search: _searchQuery,
+        type: _typeFilter,
+      );
+
+      if (!mounted) return;
+      // Check if search/filter changed while request was in flight
+      if (requestSearch != _searchQuery || requestType != _typeFilter) {
+        // Query changed - clear loading flag and retry with current query
+        setState(() {
+          _isInitialLoading = false;
+        });
+        _loadHistory(refresh: true);
+        return;
+      }
+
       setState(() {
-        _attempts = attempts;
-        _isLoading = false;
+        _attempts = result.data;
+        _pagination = result.pagination;
+        _isInitialLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
-        _isLoading = false;
+        _isInitialLoading = false;
       });
     }
+  }
+
+  /// Load more history (infinite scroll)
+  Future<void> _loadMore() async {
+    if (_isLoadingMore || !_pagination.hasMore || _isInitialLoading || _deviceId == null) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    // Capture current state for race condition detection
+    final requestSearch = _searchQuery;
+    final requestType = _typeFilter;
+    final requestOffset = _pagination.nextOffset;
+
+    try {
+      final result = await _apiService.getHistory(
+        _deviceId!,
+        limit: _pagination.limit,
+        offset: requestOffset,
+        search: _searchQuery,
+        type: _typeFilter,
+      );
+
+      if (!mounted) return;
+      // Check if search/filter changed while request was in flight
+      if (requestSearch != _searchQuery || requestType != _typeFilter) {
+        // Query changed - discard stale results; a fresh load should already be in progress
+        setState(() {
+          _isLoadingMore = false;
+        });
+        return;
+      }
+
+      setState(() {
+        _attempts.addAll(result.data);
+        _pagination = result.pagination;
+        _isLoadingMore = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingMore = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load more: $e')),
+      );
+    }
+  }
+
+  /// Handle search text change with debounce
+  void _onSearchChanged(String query) {
+    _searchDebouncer.run(() {
+      setState(() {
+        _searchQuery = query;
+      });
+      _loadHistory(refresh: true);
+    });
+  }
+
+  /// Handle filter change (immediate, no debounce)
+  void _onFilterChanged(String filter) {
+    setState(() {
+      _typeFilter = filter;
+    });
+    _loadHistory(refresh: true);
   }
 
   void _viewAttemptDetails(AttemptSummary attempt) {
@@ -102,7 +216,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: RefreshIndicator(
-        onRefresh: _loadHistory,
+        onRefresh: () => _loadHistory(refresh: true),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -132,23 +246,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
               SearchFilterBar(
                 searchHint: 'Search history...',
                 searchController: _searchController,
-                onSearchChanged: (query) {
-                  setState(() {
-                    _searchQuery = query;
-                  });
-                },
+                onSearchChanged: _onSearchChanged,
                 filterOptions: kQuizTypeFilterOptions,
                 selectedFilter: _typeFilter,
-                onFilterChanged: (filter) {
-                  setState(() {
-                    _typeFilter = filter;
-                  });
-                },
+                onFilterChanged: _onFilterChanged,
               ),
 
               const SizedBox(height: 16),
 
-              if (_isLoading)
+              if (_isInitialLoading && _attempts.isEmpty)
                 const Expanded(
                   child: Center(
                     child: Column(
@@ -164,7 +270,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     ),
                   ),
                 )
-              else if (_error != null)
+              else if (_error != null && _attempts.isEmpty)
                 Expanded(
                   child: Center(
                     child: Column(
@@ -193,7 +299,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         ),
                         const SizedBox(height: 16),
                         ElevatedButton(
-                          onPressed: _loadHistory,
+                          onPressed: () => _loadHistory(refresh: true),
                           child: const Text('Retry'),
                         ),
                       ],
@@ -201,73 +307,52 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ),
                 )
               else if (_attempts.isEmpty)
-                const Expanded(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.history,
-                          size: 64,
-                          color: AppColors.textDisabled,
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          'No quiz attempts yet',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Complete a quiz to see your results here',
-                          style: TextStyle(
-                            color: AppColors.textTertiary,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else if (_filteredAttempts.isEmpty)
                 Expanded(
                   child: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(
-                          Icons.search_off,
+                        Icon(
+                          _searchQuery.isNotEmpty || _typeFilter.isNotEmpty
+                              ? Icons.search_off
+                              : Icons.history,
                           size: 64,
                           color: AppColors.textDisabled,
                         ),
                         const SizedBox(height: 16),
-                        const Text(
-                          'No matches found',
-                          style: TextStyle(
+                        Text(
+                          _searchQuery.isNotEmpty || _typeFilter.isNotEmpty
+                              ? 'No matches found'
+                              : 'No quiz attempts yet',
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                         const SizedBox(height: 8),
-                        const Text(
-                          'Try a different search or filter',
-                          style: TextStyle(
+                        Text(
+                          _searchQuery.isNotEmpty || _typeFilter.isNotEmpty
+                              ? 'Try a different search or filter'
+                              : 'Complete a quiz to see your results here',
+                          style: const TextStyle(
                             color: AppColors.textTertiary,
                           ),
+                          textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 16),
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
+                        if (_searchQuery.isNotEmpty || _typeFilter.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          TextButton(
+                            onPressed: () {
                               _searchController.clear();
-                              _searchQuery = '';
-                              _typeFilter = '';
-                            });
-                          },
-                          child: const Text('Clear filters'),
-                        ),
+                              setState(() {
+                                _searchQuery = '';
+                                _typeFilter = '';
+                              });
+                              _loadHistory(refresh: true);
+                            },
+                            child: const Text('Clear filters'),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -275,10 +360,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
               else
                 Expanded(
                   child: ListView.separated(
-                    itemCount: _filteredAttempts.length,
+                    controller: _scrollController,
+                    itemCount: _attempts.length + (_isLoadingMore ? 1 : 0),
                     separatorBuilder: (context, index) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
-                      final attempt = _filteredAttempts[index];
+                      // Show loading indicator at the bottom
+                      if (index == _attempts.length) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          child: Center(child: CircularProgressIndicator()),
+                        );
+                      }
+                      final attempt = _attempts[index];
                       return _AttemptListItem(
                         attempt: attempt,
                         formattedDate: _formatDate(attempt.createdAt),

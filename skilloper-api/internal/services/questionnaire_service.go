@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"strings"
 
 	"gorm.io/gorm"
 
@@ -27,36 +28,79 @@ func NewQuestionnaireService(db *gorm.DB) *QuestionnaireService {
 	}
 }
 
-// GetAllSummaries returns all questionnaires without questions (for home page)
-func (s *QuestionnaireService) GetAllSummaries() ([]models.QuestionnaireSummary, error) {
-	var questionnaires []models.Questionnaire
-	result := s.db.Find(&questionnaires)
-	if result.Error != nil {
-		return nil, apperrors.ErrFetchQuestionnairesFailed
+// QuestionnaireSummaryRow represents a questionnaire with question count from a single query
+type QuestionnaireSummaryRow struct {
+	models.Questionnaire
+	QuestionCount int64 `gorm:"column:question_count"`
+}
+
+// GetPaginatedSummaries returns paginated questionnaire summaries with search and filter
+func (s *QuestionnaireService) GetPaginatedSummaries(params models.PaginationParams) (models.PaginatedQuestionnaireSummaries, error) {
+	// Build base query with filters
+	baseQuery := s.db.Model(&models.Questionnaire{})
+
+	// Apply search filter (case-insensitive)
+	if params.Search != "" {
+		searchPattern := "%" + strings.ToLower(params.Search) + "%"
+		baseQuery = baseQuery.Where("LOWER(title) LIKE ?", searchPattern)
 	}
 
-	var summaries []models.QuestionnaireSummary
-	for _, q := range questionnaires {
-		// Count questions for this questionnaire
-		var questionCount int64
-		result := s.db.Model(&models.Question{}).Where("questionnaire_id = ?", q.ID).Count(&questionCount)
-		if result.Error != nil {
-			return nil, apperrors.ErrFetchQuestionnairesFailed
-		}
+	// Apply type filter (already validated by handler)
+	if params.Type != "" {
+		baseQuery = baseQuery.Where("type = ?", params.Type)
+	}
 
+	// Get total count (before pagination)
+	var totalCount int64
+	if err := baseQuery.Count(&totalCount).Error; err != nil {
+		return models.PaginatedQuestionnaireSummaries{}, apperrors.ErrFetchQuestionnairesFailed
+	}
+
+	// Fetch questionnaires with question counts in a single query using subquery
+	var rows []QuestionnaireSummaryRow
+	subquery := s.db.Model(&models.Question{}).
+		Select("questionnaire_id, COUNT(*) as cnt").
+		Group("questionnaire_id")
+
+	result := s.db.Table("questionnaires").
+		Select("questionnaires.*, COALESCE(q.cnt, 0) as question_count").
+		Joins("LEFT JOIN (?) as q ON questionnaires.id = q.questionnaire_id", subquery)
+
+	// Re-apply filters to the joined query
+	if params.Search != "" {
+		searchPattern := "%" + strings.ToLower(params.Search) + "%"
+		result = result.Where("LOWER(questionnaires.title) LIKE ?", searchPattern)
+	}
+	if params.Type != "" {
+		result = result.Where("questionnaires.type = ?", params.Type)
+	}
+
+	// Apply pagination and order
+	result = result.Order("questionnaires.created_at DESC").
+		Limit(params.Limit).
+		Offset(params.Offset).
+		Find(&rows)
+
+	if result.Error != nil {
+		return models.PaginatedQuestionnaireSummaries{}, apperrors.ErrFetchQuestionnairesFailed
+	}
+
+	// Convert to summaries
+	summaries := make([]models.QuestionnaireSummary, 0, len(rows))
+	for _, row := range rows {
 		summaries = append(summaries, models.QuestionnaireSummary{
-			ID:            q.ID,
-			Title:         q.Title,
-			Description:   q.Description,
-			Type:          q.Type,
-			MaxOptions:    q.MaxOptions,
-			CreatedAt:     q.CreatedAt,
-			UpdatedAt:     q.UpdatedAt,
-			QuestionCount: int(questionCount),
+			ID:            row.ID,
+			Title:         row.Title,
+			Description:   row.Description,
+			Type:          row.Type,
+			MaxOptions:    row.MaxOptions,
+			CreatedAt:     row.CreatedAt,
+			UpdatedAt:     row.UpdatedAt,
+			QuestionCount: int(row.QuestionCount),
 		})
 	}
 
-	return summaries, nil
+	return models.NewPaginatedQuestionnaireSummaries(summaries, params.Limit, params.Offset, int(totalCount)), nil
 }
 
 // GetByID retrieves a questionnaire by ID
