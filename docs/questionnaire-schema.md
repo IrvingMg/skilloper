@@ -1,11 +1,116 @@
-# Questionnaire JSON Schema
+# Questionnaire Import Formats
 
-This document defines the complete JSON schema for creating questionnaires in the Skilloper platform.
+This document defines the supported formats for importing questionnaires into Skilloper.
+
+## Supported Formats
+
+| Format | Extension | Indexing | Best For |
+|--------|-----------|----------|----------|
+| **Simple JSON** | `.json` | 1-based | Users, manual creation |
+| **CSV** | `.csv` | 1-based | Spreadsheets, bulk import |
+| **Internal JSON** | `.json` | 0-based | API consumers, programmatic use |
+
+---
+
+## Simple JSON Format (Recommended for Users)
+
+The user-friendly format with 1-based indexing and simplified `answer` field.
+
+```json
+{
+  "title": "My Quiz",
+  "description": "Optional description",
+  "type": "practice",
+  "max_options": 4,
+  "questions": [
+    {
+      "question": "What is 2+2?",
+      "options": ["1", "2", "3", "4"],
+      "answer": ["4"],
+      "explanation": "Basic math",
+      "code": "console.log(2+2);",
+      "language": "javascript",
+      "alternative_questions": ["Calculate 2+2"],
+      "alternative_options": ["5", "6"]
+    }
+  ]
+}
+```
+
+### Simple JSON Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `title` | Yes | Quiz title |
+| `questions` | Yes | Array of questions |
+| `question` | Yes | Question text |
+| `options` | Yes | Answer options (2-8) |
+| `answer` | Yes | **1-based** indices as strings: `["4"]` single, `["1","2","4"]` multiple |
+| `description` | No | Quiz description |
+| `type` | No | `"practice"` (default) or `"exam"` |
+| `max_options` | No | 2-8, limits options per question |
+| `explanation` | No | Answer explanation |
+| `code` | No | Code snippet |
+| `language` | No | Syntax highlighting (e.g., "javascript") |
+| `alternative_questions` | No | Alternative phrasings |
+| `alternative_options` | No | Additional distractor options |
+
+---
+
+## CSV Format
+
+Spreadsheet-friendly format with one question per row.
+
+```csv
+question,option1,option2,option3,option4,answer,explanation,code,language,alt_question1,alt_option1
+"What is 2+2?","1","2","3","4",4,"Basic math","console.log(2+2);","javascript","Calculate 2+2","5"
+"Select primes","2","3","4","5","1,2,4","2,3,5 are prime","","","","6"
+```
+
+### CSV Columns
+
+| Column | Required | Description |
+|--------|----------|-------------|
+| `question` | Yes | Question text |
+| `option1`-`option8` | 2+ required | Answer options |
+| `answer` | Yes | **1-based**: `4` single, `"1,2,4"` multiple |
+| `explanation` | No | Answer explanation |
+| `code` | No | Code snippet |
+| `language` | No | Syntax highlighting language |
+| `alt_question1`, `alt_question2`, ... | No | Alternative questions |
+| `alt_option1`, `alt_option2`, ... | No | Alternative options |
+
+### CSV Metadata
+
+**In the app:** When importing a CSV file, you'll be prompted to enter the quiz title, description, type, and max options.
+
+**Via API:** Quiz-level metadata is passed via query parameters:
+
+```bash
+curl -X POST "http://localhost:8080/api/v1/questionnaires/import?title=My%20Quiz&type=practice&max_options=4" \
+  -F "file=@questions.csv"
+```
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `title` | Filename | Quiz title |
+| `description` | Empty | Quiz description |
+| `type` | `practice` | `"practice"` or `"exam"` |
+| `max_options` | 4 | Maximum options per question |
+
+---
+
+## Internal JSON Format (Advanced)
+
+The internal API format with 0-based indexing. Used by the UI wizard and API consumers.
+
+To use this format, include `"format": "internal"` at the root level.
 
 ## Complete Schema
 
 ```json
 {
+  "format": "internal",
   "title": "string (required)",
   "description": "string (optional)",
   "type": "practice|exam (optional, defaults to 'practice')",
@@ -56,6 +161,21 @@ This document defines the complete JSON schema for creating questionnaires in th
 | `explanation` | string | No | Explanation shown after answering, describing why the answer is correct |
 
 *Either `correctAnswer` or `correct_answers` is required depending on `question_type`
+
+## Limits
+
+| Limit | Value | Description |
+|-------|-------|-------------|
+| Max file size | 10 MB | Maximum upload size for import |
+| Max questions | 500 | Maximum questions per questionnaire |
+| Max options | 8 | Maximum answer options per question |
+| Min options | 2 | Minimum answer options per question |
+| Max title length | 255 | Maximum characters for title |
+| Max description length | 1000 | Maximum characters for description |
+| Max alternative questions | 10 | Maximum alternative phrasings per question |
+| Max alternative options | 20 | Maximum additional distractor options per question |
+
+---
 
 ## Key Behaviors
 

@@ -42,11 +42,12 @@ class ImportHelpScreen extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header
             const Text(
               'Import Guide',
               style: TextStyle(
@@ -56,296 +57,567 @@ class ImportHelpScreen extends StatelessWidget {
                 letterSpacing: -0.5,
               ),
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'Learn how to import questionnaire JSON files',
+            const SizedBox(height: 4),
+            Text(
+              'Supported formats for importing quizzes',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 15,
                 color: AppColors.textTertiary,
-                fontWeight: FontWeight.w400,
               ),
             ),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    // Quick tips
-                    _buildSimpleSection(
-                      'Quick Tips',
-                      [
-                        'Files must be in JSON format with .json extension',
-                        'Maximum file size is 10MB',
-                        'Use double quotes for all strings in JSON',
-                        'Answer indices are 0-based (0 = first option)',
-                        'Test your JSON file with an online validator first',
-                      ],
-                      AppColors.primary,
-                    ),
+            const SizedBox(height: 24),
 
-                    const SizedBox(height: 16),
+            // Supported formats badges
+            Wrap(
+              spacing: 8,
+              children: [
+                Chip(
+                  avatar: Icon(Icons.data_object, size: 16, color: AppColors.primary),
+                  label: const Text('JSON'),
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                  side: BorderSide.none,
+                ),
+                Chip(
+                  avatar: Icon(Icons.table_chart, size: 16, color: AppColors.success),
+                  label: const Text('CSV'),
+                  backgroundColor: AppColors.success.withValues(alpha: 0.1),
+                  side: BorderSide.none,
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
 
-                    // JSON structure
-                    _buildCodeSection(
-                      'Required Structure',
-                      '''{
-  "title": "Your Quiz Title",
-  "description": "Quiz description (optional)",
+            // JSON Section
+            _SectionHeader(icon: Icons.data_object, title: 'JSON Format'),
+            const SizedBox(height: 12),
+
+            // JSON Quiz Fields Table
+            _buildTable(
+              title: 'Quiz Fields',
+              headers: ['Field', 'Type', 'Description'],
+              rows: [
+                ['title', 'string ✓', 'Quiz name'],
+                ['questions', 'array ✓', 'Array of question objects'],
+                ['description', 'string', 'Quiz description'],
+                ['type', 'string', '"practice" or "exam" (default: practice)'],
+                ['max_options', 'int', '2-8 (default: 4)'],
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // JSON Question Fields Table
+            _buildTable(
+              title: 'Question Fields',
+              headers: ['Field', 'Type', 'Description'],
+              rows: [
+                ['question', 'string ✓', 'The question text'],
+                ['options', 'string[] ✓', '2-8 answer choices'],
+                ['answer', 'string[] ✓', 'Correct option positions (1-based)'],
+                ['explanation', 'string', 'Why the answer is correct'],
+                ['code', 'string', 'Code snippet to display'],
+                ['language', 'string', 'Syntax highlighting (js, python, etc)'],
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Answer format explanation
+            _buildRulesBox(
+              title: 'Answer Format Rules',
+              rules: [
+                'Use 1-based position: "1" = first option, "2" = second, etc.',
+                'Single choice: ["2"] means 2nd option is correct',
+                'Multiple choice: ["1","3"] means 1st and 3rd are correct',
+                'Values must be strings in an array, even for single answers',
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // JSON Example
+            _buildCodeBlock(
+              title: 'Example',
+              code: '''{
+  "title": "My Quiz",
   "type": "practice",
-  "max_options": 4,
   "questions": [
     {
-      "question_type": "single_choice",
-      "question": "Your question text",
-      "options": ["Option A", "Option B", "Option C"],
-      "correctAnswer": 1,
-      "explanation": "Why this answer is correct (optional)"
+      "question": "What is 2+2?",
+      "options": ["1", "2", "3", "4"],
+      "answer": ["4"],
+      "explanation": "2+2 equals 4"
+    },
+    {
+      "question": "Which are even numbers?",
+      "options": ["1", "2", "3", "4"],
+      "answer": ["2", "4"],
+      "explanation": "2 and 4 are even"
     }
   ]
 }''',
-                    ),
+            ),
+            const SizedBox(height: 32),
 
-                    const SizedBox(height: 16),
+            // CSV Section
+            _SectionHeader(icon: Icons.table_chart, title: 'CSV Format'),
+            const SizedBox(height: 12),
 
-                    // Question types
-                    _buildSimpleSection(
-                      'Question Types',
-                      [
-                        'single_choice: One correct answer (use "correctAnswer": number)',
-                        'multiple_choice: Multiple correct answers (use "correct_answers": [0, 2])',
-                      ],
-                      AppColors.primary,
-                    ),
+            // CSV Columns Table
+            _buildTable(
+              title: 'Columns',
+              headers: ['Column', 'Type', 'Description'],
+              rows: [
+                ['question', 'text ✓', 'The question text'],
+                ['option1-8', 'text ✓', 'Answer options (min 2 required)'],
+                ['answer', 'text ✓', 'Position(s): 4 or "1,2,4"'],
+                ['explanation', 'text', 'Why the answer is correct'],
+                ['code', 'text', 'Code snippet to display'],
+                ['language', 'text', 'Syntax highlighting language'],
+              ],
+            ),
+            const SizedBox(height: 16),
 
-                    const SizedBox(height: 24),
+            // CSV answer rules
+            _buildRulesBox(
+              title: 'CSV Answer Format',
+              rules: [
+                'Single choice: just the number, e.g., 4',
+                'Multiple choice: quoted comma-separated, e.g., "1,2,4"',
+                'Uses 1-based positions (1 = first option)',
+              ],
+            ),
+            const SizedBox(height: 16),
 
-                    // Single comprehensive example button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () => _showCompleteExample(context),
-                        icon: const Icon(Icons.code),
-                        label: const Text('View Complete Example'),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
+            // CSV Metadata
+            _buildInfoBox(
+              icon: Icons.edit_note,
+              title: 'Quiz Metadata',
+              content: 'You\'ll be prompted to enter title, type, and max options when importing',
+            ),
+            const SizedBox(height: 32),
 
-                    // Bottom padding for small screens
-                    SizedBox(height: MediaQuery.of(context).size.height < 700 ? 20 : 0),
-                  ],
+            // Answer Format Section
+            _SectionHeader(icon: Icons.check_circle_outline, title: 'Answer Format'),
+            const SizedBox(height: 12),
+
+            Row(
+              children: [
+                Expanded(
+                  child: _AnswerTypeCard(
+                    type: 'Single Choice',
+                    jsonExample: '["4"]',
+                    csvExample: '4',
+                    description: 'One correct answer',
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _AnswerTypeCard(
+                    type: 'Multiple Choice',
+                    jsonExample: '["1","2","4"]',
+                    csvExample: '"1,2,4"',
+                    description: 'Multiple correct',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // View Examples Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _showFullExamples(context),
+                icon: const Icon(Icons.code, size: 18),
+                label: const Text('View Full Examples'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
             ),
+            const SizedBox(height: 24),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSimpleSection(String title, List<String> points, Color color) {
+  Widget _buildTable({
+    required String title,
+    required List<String> headers,
+    required List<List<String>> rows,
+  }) {
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               title,
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 14,
                 fontWeight: FontWeight.w600,
-                color: color,
+                color: AppColors.textSecondary,
               ),
             ),
-            const SizedBox(height: 16),
-            ...points.map((point) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    margin: const EdgeInsets.only(top: 8),
-                    width: 4,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
+            const SizedBox(height: 12),
+            Table(
+              columnWidths: const {
+                0: FlexColumnWidth(1.2),
+                1: FlexColumnWidth(0.8),
+                2: FlexColumnWidth(2),
+              },
+              children: [
+                TableRow(
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey.shade300),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      point,
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: AppColors.textPrimary,
-                        height: 1.4,
+                  children: headers
+                      .map((h) => Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Text(
+                              h,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textTertiary,
+                              ),
+                            ),
+                          ))
+                      .toList(),
+                ),
+                ...rows.map((row) => TableRow(
+                      children: row
+                          .asMap()
+                          .entries
+                          .map((e) => Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 6),
+                                child: Text(
+                                  e.value,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontFamily:
+                                        e.key == 0 ? 'monospace' : null,
+                                    fontWeight: e.key == 0
+                                        ? FontWeight.w500
+                                        : FontWeight.normal,
+                                    color: e.value == '✓'
+                                        ? AppColors.success
+                                        : AppColors.textPrimary,
+                                  ),
+                                ),
+                              ))
+                          .toList(),
+                    )),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCodeBlock({
+    required String title,
+    required String code,
+    bool isCSV = false,
+  }) {
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isCSV ? Icons.table_chart : Icons.data_object,
+                  size: 16,
+                  color: AppColors.textTertiary,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.codeBackground,
+              borderRadius:
+                  const BorderRadius.vertical(bottom: Radius.circular(12)),
+            ),
+            child: SelectableText(
+              code,
+              style: TextStyle(
+                fontSize: 12,
+                fontFamily: 'monospace',
+                height: 1.5,
+                color: AppColors.codeText,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRulesBox({
+    required String title,
+    required List<String> rules,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.lightbulb_outline, size: 18, color: AppColors.warning),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.warning,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...rules.map((rule) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('• ', style: TextStyle(color: AppColors.textSecondary)),
+                    Expanded(
+                      child: Text(
+                        rule,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                          height: 1.3,
+                        ),
                       ),
                     ),
+                  ],
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoBox({
+    required IconData icon,
+    required String title,
+    required String content,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: AppColors.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
                   ),
-                ],
-              ),
-            )),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCodeSection(String title, String code) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: AppColors.primary,
-              ),
+                ),
+                Text(
+                  content,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.codeBackground,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.codeBorder),
-              ),
-              child: _buildSyntaxHighlightedText(code),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildSyntaxHighlightedText(String code) {
-    return SelectableText.rich(
-      TextSpan(
-        style: TextStyle(
-          fontSize: 13,
-          fontFamily: 'monospace',
-          height: 1.4,
-          color: AppColors.codeText,
-        ),
-        children: _parseJsonSyntax(code),
-      ),
-    );
-  }
-
-  List<TextSpan> _parseJsonSyntax(String text) {
-    final List<TextSpan> spans = [];
-    final RegExp jsonRegex = RegExp(r'"[^"]*":|"[^"]*"|\b(?:true|false|null)\b|\b\d+(?:\.\d+)?\b|[{}\[\],:}]');
-    int lastEnd = 0;
-
-    for (final match in jsonRegex.allMatches(text)) {
-      if (match.start > lastEnd) {
-        spans.add(TextSpan(
-          text: text.substring(lastEnd, match.start),
-          style: TextStyle(color: AppColors.codeText),
-        ));
-      }
-
-      final matchText = match.group(0)!;
-      Color color = AppColors.codeText;
-
-      if (matchText.startsWith('"') && matchText.endsWith(':')) {
-        color = AppColors.codeKeyword; // Property names
-      } else if (matchText.startsWith('"') && matchText.endsWith('"')) {
-        color = AppColors.codeString; // String values
-      } else if (matchText == 'true' || matchText == 'false' || matchText == 'null') {
-        color = AppColors.warning; // Boolean/null
-      } else if (RegExp(r'^\d+(?:\.\d+)?$').hasMatch(matchText)) {
-        color = AppColors.achievement; // Numbers
-      } else if (RegExp(r'^[{}\[\],:}]$').hasMatch(matchText)) {
-        color = AppColors.codeComment; // Brackets and punctuation
-      }
-
-      spans.add(TextSpan(
-        text: matchText,
-        style: TextStyle(color: color, fontWeight: FontWeight.w500),
-      ));
-
-      lastEnd = match.end;
-    }
-
-    if (lastEnd < text.length) {
-      spans.add(TextSpan(
-        text: text.substring(lastEnd),
-        style: TextStyle(color: AppColors.codeText),
-      ));
-    }
-
-    return spans;
-  }
-
-
-  void _showCompleteExample(BuildContext context) {
+  void _showFullExamples(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Complete Example'),
+        title: const Text('Full Examples'),
         content: Container(
           width: MediaQuery.of(context).size.width * 0.9,
-          constraints: const BoxConstraints(maxHeight: 600),
-          child: SingleChildScrollView(
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.codeBackground,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.codeBorder),
-              ),
-              child: _buildSyntaxHighlightedText(
-                '''{
-  "title": "JavaScript Fundamentals",
-  "description": "Test your JavaScript knowledge",
+          constraints: const BoxConstraints(maxHeight: 550),
+          child: DefaultTabController(
+            length: 2,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TabBar(
+                  labelColor: AppColors.primary,
+                  unselectedLabelColor: AppColors.textTertiary,
+                  indicatorColor: AppColors.primary,
+                  tabs: const [
+                    Tab(text: 'JSON'),
+                    Tab(text: 'CSV'),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      // JSON Tab
+                      SingleChildScrollView(
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.codeBackground,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: SelectableText(
+                            '''{
+  "title": "JavaScript Basics",
+  "description": "Test your JS knowledge",
   "type": "practice",
   "max_options": 4,
   "questions": [
     {
-      "question_type": "single_choice",
-      "question": "What is the output of typeof null?",
-      "code": "console.log(typeof null);",
-      "language": "javascript",
+      "question": "What is typeof null?",
       "options": ["null", "undefined", "object", "boolean"],
-      "correctAnswer": 2,
-      "explanation": "typeof null returns 'object' due to a JavaScript quirk"
+      "answer": ["3"],
+      "explanation": "Returns 'object' due to JS quirk",
+      "code": "console.log(typeof null);",
+      "language": "javascript"
     },
     {
-      "question_type": "multiple_choice",
-      "question": "Which are valid JavaScript data types?",
-      "options": ["string", "number", "boolean", "undefined", "symbol"],
-      "correct_answers": [0, 1, 2, 3, 4],
-      "explanation": "All listed options are valid JavaScript data types"
-    },
-    {
-      "question_type": "single_choice",
-      "question": "Which method adds an element to the end of an array?",
-      "options": ["push()", "pop()", "shift()", "unshift()"],
-      "correctAnswer": 0,
-      "explanation": "push() adds elements to the end of an array"
+      "question": "Which are even?",
+      "options": ["1", "2", "3", "4"],
+      "answer": ["2", "4"],
+      "explanation": "2 and 4 are even numbers"
     }
   ]
 }''',
-              ),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontFamily: 'monospace',
+                              height: 1.4,
+                              color: AppColors.codeText,
+                            ),
+                          ),
+                        ),
+                      ),
+                      // CSV Tab - show as visual table
+                      SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            // Visual table representation
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppColors.surface,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.grey.shade300),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'CSV Structure',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  _buildCsvRow(['question', 'option1', 'option2', 'option3', 'option4', 'answer', 'expl.'], isHeader: true),
+                                  const Divider(height: 1),
+                                  _buildCsvRow(['What is 2+2?', '1', '2', '3', '4', '4', 'Math']),
+                                  _buildCsvRow(['Which even?', '1', '2', '3', '4', '"2,4"', 'Even #s']),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            // Raw CSV
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppColors.codeBackground,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Raw CSV file:',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textTertiary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  SelectableText(
+                                    'question,option1,option2,option3,option4,answer,explanation\n'
+                                    '"What is 2+2?","1","2","3","4",4,"Basic math"\n'
+                                    '"Which are even?","1","2","3","4","2,4","2 and 4 are even"',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontFamily: 'monospace',
+                                      height: 1.6,
+                                      color: AppColors.codeText,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -356,6 +628,139 @@ class ImportHelpScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  static Widget _buildCsvRow(List<String> cells, {bool isHeader = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: cells.asMap().entries.map((entry) {
+          final isFirst = entry.key == 0;
+          return Expanded(
+            flex: isFirst ? 3 : 2,
+            child: Text(
+              entry.value,
+              style: TextStyle(
+                fontSize: isFirst ? 11 : 10,
+                fontFamily: 'monospace',
+                fontWeight: isHeader ? FontWeight.w600 : FontWeight.normal,
+                color: isHeader ? AppColors.textSecondary : AppColors.textPrimary,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final IconData icon;
+  final String title;
+
+  const _SectionHeader({required this.icon, required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 22, color: AppColors.primary),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AnswerTypeCard extends StatelessWidget {
+  final String type;
+  final String jsonExample;
+  final String csvExample;
+  final String description;
+
+  const _AnswerTypeCard({
+    required this.type,
+    required this.jsonExample,
+    required this.csvExample,
+    required this.description,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            type,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          Text(
+            description,
+            style: TextStyle(
+              fontSize: 11,
+              color: AppColors.textTertiary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          _buildExample('JSON', jsonExample),
+          const SizedBox(height: 4),
+          _buildExample('CSV', csvExample),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExample(String label, String value) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 36,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              color: AppColors.textTertiary,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: AppColors.codeBackground,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 11,
+                fontFamily: 'monospace',
+                color: AppColors.codeText,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

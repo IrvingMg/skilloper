@@ -4,16 +4,13 @@ import (
 	"time"
 )
 
-// Database Models
+// Database Models - Question types
 const (
 	QuestionTypeSingleChoice   = "single_choice"
 	QuestionTypeMultipleChoice = "multiple_choice"
-
-	// Option limit constants
-	DefaultMaxOptions = 4
-	MinOptionsLimit   = 2
-	MaxOptionsLimit   = 8
 )
+
+// Note: Limit constants (MinOptionsLimit, MaxOptionsLimit, etc.) are in limits.go
 
 type Questionnaire struct {
 	ID          uint       `json:"id" gorm:"primaryKey"`

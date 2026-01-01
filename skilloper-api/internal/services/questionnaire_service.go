@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"mime/multipart"
 	"strings"
+	"sync"
 	"time"
 
 	"gorm.io/gorm"
@@ -16,6 +17,28 @@ import (
 	"github.com/irvingmg/skilloper/skilloper-api/internal/jsonutil"
 	"github.com/irvingmg/skilloper/skilloper-api/internal/models"
 )
+
+// Package-level RNG for alternative text selection (thread-safe via mutex)
+var (
+	globalRng     *rand.Rand
+	globalRngOnce sync.Once
+	globalRngMu   sync.Mutex
+)
+
+// getGlobalRng returns the package-level RNG (initialized once)
+func getGlobalRng() *rand.Rand {
+	globalRngOnce.Do(func() {
+		globalRng = rand.New(rand.NewSource(time.Now().UnixNano()))
+	})
+	return globalRng
+}
+
+// randomIntn returns a random int in [0,n) using the global RNG (thread-safe)
+func randomIntn(n int) int {
+	globalRngMu.Lock()
+	defer globalRngMu.Unlock()
+	return getGlobalRng().Intn(n)
+}
 
 type QuestionnaireService struct {
 	db *gorm.DB
@@ -122,6 +145,17 @@ func (s *QuestionnaireService) Create(req models.CreateQuestionnaireRequest) (*m
 	// Validate required fields
 	if req.Title == "" {
 		return nil, apperrors.ErrQuestionnaireTitleRequired
+	}
+
+	// Validate field lengths (centralized validation for all import paths)
+	// Constants defined in models/limits.go
+	if len(req.Title) > models.MaxTitleLength {
+		return nil, apperrors.NewValidationError("TITLE_TOO_LONG",
+			fmt.Sprintf("title exceeds %d character limit", models.MaxTitleLength))
+	}
+	if len(req.Description) > models.MaxDescriptionLength {
+		return nil, apperrors.NewValidationError("DESCRIPTION_TOO_LONG",
+			fmt.Sprintf("description exceeds %d character limit", models.MaxDescriptionLength))
 	}
 
 	// Validate questionnaire type
@@ -484,8 +518,17 @@ func (s *QuestionnaireService) Delete(id uint) error {
 	return nil
 }
 
-// ImportFromFile imports questionnaires from an uploaded JSON file
-func (s *QuestionnaireService) ImportFromFile(file *multipart.FileHeader) (*models.QuestionnaireSummary, error) {
+// MaxImportFileSize is the maximum allowed file size for imports (10MB)
+const MaxImportFileSize = 10 * 1024 * 1024
+
+// ImportFromFile imports questionnaires from an uploaded file (JSON or CSV)
+// Uses the parser registry to auto-detect format and parse
+func (s *QuestionnaireService) ImportFromFile(file *multipart.FileHeader, csvMeta ...CSVMetadata) (*models.QuestionnaireSummary, error) {
+	// Check file size before reading
+	if file.Size > MaxImportFileSize {
+		return nil, apperrors.NewValidationError("FILE_TOO_LARGE", "file exceeds 10MB limit")
+	}
+
 	// Open the uploaded file
 	src, err := file.Open()
 	if err != nil {
@@ -493,27 +536,54 @@ func (s *QuestionnaireService) ImportFromFile(file *multipart.FileHeader) (*mode
 	}
 	defer src.Close()
 
-	// Read file content
-	fileContent, err := io.ReadAll(src)
+	// Read file content with size limit as safety measure
+	fileContent, err := io.ReadAll(io.LimitReader(src, MaxImportFileSize+1))
 	if err != nil {
 		return nil, apperrors.ErrFileReadFailed
 	}
+	if int64(len(fileContent)) > MaxImportFileSize {
+		return nil, apperrors.NewValidationError("FILE_TOO_LARGE", "file exceeds 10MB limit")
+	}
 
-	// Parse JSON content with detailed error information
-	var req models.CreateQuestionnaireRequest
-	if err := json.Unmarshal(fileContent, &req); err != nil {
-		// Use utility function to get detailed error information
-		errorInfo := jsonutil.ParseJSONError(err, fileContent, file.Filename)
-		return nil, apperrors.NewValidationError("INVALID_JSON_FORMAT", errorInfo.Message)
+	// Build parser metadata
+	metadata := ParserMetadata{
+		Filename: file.Filename,
+	}
+	if len(csvMeta) > 0 {
+		metadata.Title = csvMeta[0].Title
+		metadata.Description = csvMeta[0].Description
+		metadata.Type = csvMeta[0].Type
+		metadata.MaxOptions = csvMeta[0].MaxOptions
+	}
+
+	// Use parser registry to auto-detect format and parse
+	registry := NewParserRegistry()
+	req, formatType, err := registry.Parse(fileContent, metadata)
+	if err != nil {
+		// Return format-specific error codes
+		switch formatType {
+		case "csv":
+			return nil, apperrors.NewValidationError("INVALID_CSV_FORMAT", err.Error())
+		case "json":
+			// Only use jsonutil for actual JSON syntax errors, not validation errors
+			errMsg := err.Error()
+			if strings.HasPrefix(errMsg, "invalid JSON:") || strings.HasPrefix(errMsg, "invalid internal format JSON:") {
+				errorInfo := jsonutil.ParseJSONError(err, fileContent, file.Filename)
+				return nil, apperrors.NewValidationError("INVALID_JSON_FORMAT", errorInfo.Message)
+			}
+			return nil, apperrors.NewValidationError("INVALID_JSON_FORMAT", errMsg)
+		default:
+			return nil, apperrors.NewValidationError("INVALID_FILE_FORMAT", err.Error())
+		}
 	}
 
 	// Use existing Create method to validate and create questionnaire
-	questionnaireResponse, err := s.Create(req)
+	questionnaireResponse, err := s.Create(*req)
 	if err != nil {
 		return nil, err
 	}
 
-	// Convert to summary instead of returning full questionnaire with questions
+	// Convert to summary
 	summary := &models.QuestionnaireSummary{
 		ID:            questionnaireResponse.ID,
 		Title:         questionnaireResponse.Title,
@@ -533,7 +603,6 @@ func (s *QuestionnaireService) ImportFromFile(file *multipart.FileHeader) (*mode
 // (frontend handles display shuffling to maintain server-side validation compatibility)
 func (s *QuestionnaireService) convertToResponse(q models.Questionnaire) models.QuestionnaireResponse {
 	var questions []models.QuestionResponse
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	for _, question := range q.Questions {
 		var options []string
@@ -547,7 +616,7 @@ func (s *QuestionnaireService) convertToResponse(q models.Questionnaire) models.
 			var alternatives []string
 			if err := json.Unmarshal([]byte(question.AlternativeQuestions), &alternatives); err == nil && len(alternatives) > 0 {
 				allTexts := append([]string{questionText}, alternatives...)
-				questionText = allTexts[rng.Intn(len(allTexts))]
+				questionText = allTexts[randomIntn(len(allTexts))]
 			}
 		}
 
@@ -556,7 +625,7 @@ func (s *QuestionnaireService) convertToResponse(q models.Questionnaire) models.
 			var alternatives []string
 			if err := json.Unmarshal([]byte(question.AlternativeAnswers), &alternatives); err == nil && len(alternatives) > 0 {
 				allTexts := append([]string{options[question.CorrectAnswer]}, alternatives...)
-				options[question.CorrectAnswer] = allTexts[rng.Intn(len(allTexts))]
+				options[question.CorrectAnswer] = allTexts[randomIntn(len(allTexts))]
 			}
 		}
 

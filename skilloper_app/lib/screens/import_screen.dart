@@ -13,6 +13,12 @@ class ImportScreen extends StatefulWidget {
 }
 
 class _ImportScreenState extends State<ImportScreen> {
+  // Constants for error processing
+  static const int _maxErrorDisplayLength = 2000;
+  static const int _shortErrorThreshold = 20;
+  static const int _longErrorThreshold = 80;
+  static const List<String> _allowedExtensions = ['json', 'csv'];
+
   final ApiService _apiService = ApiService();
   bool _isUploading = false;
   String? _message;
@@ -26,25 +32,27 @@ class _ImportScreenState extends State<ImportScreen> {
       );
 
       if (result != null && result.files.single.bytes != null) {
-        setState(() {
-          _isUploading = true;
-          _message = null;
-        });
-
         final fileBytes = result.files.single.bytes!;
         final fileName = result.files.single.name;
-        final importResponse = await _apiService.importQuestionnaire(fileBytes, fileName);
 
-        setState(() {
-          _isUploading = false;
-          _isSuccess = importResponse != null;
-          _message = null; // Remove the simple message
-        });
+        // Secondary validation - FilePicker allowedExtensions not guaranteed on all platforms
+        final extension = fileName.contains('.')
+            ? fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase()
+            : '';
+        if (!_allowedExtensions.contains(extension)) {
+          _handleError('Unsupported file type. Please select a JSON or CSV file.');
+          return;
+        }
 
-        // Show success dialog and snackbar if import was successful
-        if (importResponse != null && mounted) {
-          _showSuccessDialog(importResponse);
-          _showSnackBar('Questionnaire imported successfully!', true);
+        // Check if CSV file - show metadata dialog
+        if (fileName.toLowerCase().endsWith('.csv')) {
+          final metadata = await _showCsvMetadataDialog(fileName);
+          if (metadata == null) return; // User cancelled
+
+          await _uploadFile(fileBytes, fileName, metadata: metadata);
+        } else {
+          // JSON file - upload directly
+          await _uploadFile(fileBytes, fileName);
         }
       }
     } catch (e) {
@@ -57,6 +65,205 @@ class _ImportScreenState extends State<ImportScreen> {
       if (mounted) {
         _handleError(e.toString());
       }
+    }
+  }
+
+  Future<Map<String, dynamic>?> _showCsvMetadataDialog(String fileName) async {
+    // Remove extension case-insensitively
+    final baseName = fileName.replaceFirst(RegExp(r'\.csv$', caseSensitive: false), '');
+    final titleController = TextEditingController(text: baseName);
+    final descriptionController = TextEditingController();
+    String selectedType = 'practice';
+    int maxOptions = 4;
+
+    try {
+      return await showDialog<Map<String, dynamic>>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.table_chart, color: AppColors.primary, size: 28),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'CSV Quiz Details',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Enter quiz metadata for your CSV file',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Title field
+                TextField(
+                  controller: titleController,
+                  decoration: InputDecoration(
+                    labelText: 'Quiz Title *',
+                    hintText: 'Enter quiz title',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Description field
+                TextField(
+                  controller: descriptionController,
+                  decoration: InputDecoration(
+                    labelText: 'Description (optional)',
+                    hintText: 'Brief description of the quiz',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 16),
+
+                // Type selector
+                Text(
+                  'Quiz Type',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(
+                      value: 'practice',
+                      label: Text('Practice'),
+                      icon: Icon(Icons.school, size: 18),
+                    ),
+                    ButtonSegment(
+                      value: 'exam',
+                      label: Text('Exam'),
+                      icon: Icon(Icons.assignment, size: 18),
+                    ),
+                  ],
+                  selected: {selectedType},
+                  onSelectionChanged: (value) {
+                    setDialogState(() => selectedType = value.first);
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // Max options
+                Text(
+                  'Max Options per Question: $maxOptions',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                Slider(
+                  value: maxOptions.toDouble(),
+                  min: 2,
+                  max: 8,
+                  divisions: 6,
+                  label: maxOptions.toString(),
+                  onChanged: (value) {
+                    setDialogState(() => maxOptions = value.round());
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, null),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (titleController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Title is required')),
+                  );
+                  return;
+                }
+                Navigator.pop(context, {
+                  'title': titleController.text.trim(),
+                  'description': descriptionController.text.trim(),
+                  'type': selectedType,
+                  'maxOptions': maxOptions,
+                });
+              },
+              child: const Text('Import'),
+            ),
+          ],
+        ),
+      ),
+    );
+    } finally {
+      titleController.dispose();
+      descriptionController.dispose();
+    }
+  }
+
+  Future<void> _uploadFile(
+    List<int> fileBytes,
+    String fileName, {
+    Map<String, dynamic>? metadata,
+  }) async {
+    setState(() {
+      _isUploading = true;
+      _message = null;
+    });
+
+    try {
+      final importResponse = await _apiService.importQuestionnaire(
+        fileBytes,
+        fileName,
+        title: metadata?['title'],
+        description: metadata?['description'],
+        type: metadata?['type'],
+        maxOptions: metadata?['maxOptions'],
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _isUploading = false;
+        _isSuccess = importResponse != null;
+        _message = null;
+      });
+
+      if (importResponse != null) {
+        _showSuccessDialog(importResponse);
+        _showSnackBar('Questionnaire imported successfully!', true);
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isUploading = false;
+        _isSuccess = false;
+        _message = null;
+      });
+
+      _handleError(e.toString());
     }
   }
 
@@ -81,40 +288,46 @@ class _ImportScreenState extends State<ImportScreen> {
       cleanError = cleanError.substring('ApiException: '.length);
     }
 
+    // Limit error message length to prevent performance issues with very long errors
+    if (cleanError.length > _maxErrorDisplayLength) {
+      cleanError = '${cleanError.substring(0, _maxErrorDisplayLength)}... (truncated)';
+    }
+
+    // Use lowercase version for comparisons (single allocation)
+    final lowerError = cleanError.toLowerCase();
+
     // Determine error type and whether to show dialog
     String errorType = 'generic';
     bool shouldShowDialog = false;
 
-    if (cleanError.toLowerCase().contains('json') ||
-        cleanError.toLowerCase().contains('invalid json format')) {
+    if (lowerError.contains('json') || lowerError.contains('invalid json format')) {
       errorType = 'json';
       shouldShowDialog = true;
-    } else if (cleanError.toLowerCase().contains('validation') ||
-               cleanError.toLowerCase().contains('required') ||
-               cleanError.toLowerCase().contains('invalid file format') ||
-               cleanError.toLowerCase().contains('file validation failed')) {
+    } else if (lowerError.contains('validation') ||
+               lowerError.contains('required') ||
+               lowerError.contains('invalid file format') ||
+               lowerError.contains('file validation failed')) {
       errorType = 'validation';
       shouldShowDialog = true;
-    } else if (cleanError.toLowerCase().contains('file') &&
-               (cleanError.toLowerCase().contains('large') ||
-                cleanError.toLowerCase().contains('too large'))) {
+    } else if (lowerError.contains('file') &&
+               (lowerError.contains('large') || lowerError.contains('too large'))) {
       errorType = 'file_size';
       shouldShowDialog = true;
-    } else if (cleanError.toLowerCase().contains('server') ||
-               cleanError.toLowerCase().contains('500') ||
-               cleanError.toLowerCase().contains('server error')) {
+    } else if (lowerError.contains('server') ||
+               lowerError.contains('500') ||
+               lowerError.contains('server error')) {
       errorType = 'server';
       shouldShowDialog = false;
-    } else if (cleanError.toLowerCase().contains('network') ||
-               cleanError.toLowerCase().contains('connection') ||
-               cleanError.toLowerCase().contains('connect to api')) {
+    } else if (lowerError.contains('network') ||
+               lowerError.contains('connection') ||
+               lowerError.contains('connect to api')) {
       errorType = 'network';
       shouldShowDialog = false;
-    } else if (cleanError.length > 80) {
+    } else if (cleanError.length > _longErrorThreshold) {
       shouldShowDialog = true;
     } else {
       // For shorter error messages, show dialog if they seem important
-      shouldShowDialog = cleanError.length > 20;
+      shouldShowDialog = cleanError.length > _shortErrorThreshold;
     }
 
     return {
@@ -426,7 +639,7 @@ class _ImportScreenState extends State<ImportScreen> {
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                        'Upload JSON files to add new questionnaires',
+                        'Upload JSON or CSV files to add new questionnaires',
                         style: TextStyle(
                           fontSize: 16,
                           color: AppColors.textTertiary,
@@ -449,7 +662,7 @@ class _ImportScreenState extends State<ImportScreen> {
                     color: AppColors.primary,
                     size: 28,
                   ),
-                  tooltip: 'Import Help & JSON Schema',
+                  tooltip: 'Import Help & Format Guide',
                 ),
               ],
             ),
@@ -510,7 +723,7 @@ class _ImportScreenState extends State<ImportScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 const Text(
-                                  'Supports JSON format',
+                                  'Supports JSON and CSV formats',
                                   style: TextStyle(
                                     color: AppColors.textTertiary,
                                     fontSize: 14,
@@ -613,7 +826,7 @@ class _ImportScreenState extends State<ImportScreen> {
                           const SizedBox(height: 16),
                           _RequirementItem(
                             icon: Icons.description_outlined,
-                            text: 'JSON files should follow the questionnaire schema',
+                            text: 'JSON or CSV files following the format guide',
                           ),
                           const SizedBox(height: 12),
                           _RequirementItem(

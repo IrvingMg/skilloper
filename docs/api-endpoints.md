@@ -117,12 +117,20 @@ Response:
 ```
 
 ### Import Questionnaire from File
+
+Supports JSON and CSV formats. Maximum file size: **10 MB**.
+
 ```bash
+# JSON file (simple or internal format)
 curl -X POST http://localhost:8080/api/v1/questionnaires/import \
   -F "file=@questionnaire.json"
+
+# CSV file with metadata via query params
+curl -X POST "http://localhost:8080/api/v1/questionnaires/import?title=My%20Quiz&type=practice" \
+  -F "file=@questions.csv"
 ```
 
-See [questionnaire-schema.md](questionnaire-schema.md) for the complete JSON schema.
+See [questionnaire-schema.md](questionnaire-schema.md) for all supported formats and limits.
 
 ### Get Specific Questionnaire
 ```bash

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -174,6 +175,7 @@ func (h *QuestionnaireHandler) DeleteQuestionnaire(c *gin.Context) {
 }
 
 // ImportQuestionnaire handles POST /questionnaires/import
+// For CSV files, accepts optional query params: title, description, type, max_options
 func (h *QuestionnaireHandler) ImportQuestionnaire(c *gin.Context) {
 	h.logger.Info("Importing questionnaire from file")
 
@@ -186,8 +188,41 @@ func (h *QuestionnaireHandler) ImportQuestionnaire(c *gin.Context) {
 
 	h.logger.Info("Processing uploaded file", zap.String("filename", file.Filename), zap.Int64("size", file.Size))
 
+	// Parse CSV metadata from query params (used for CSV imports)
+	title := c.Query("title")
+	description := c.Query("description")
+
+	// Validate length limits (using centralized constants from models)
+	if len(title) > models.MaxTitleLength {
+		h.handleError(c, apperrors.NewValidationError("TITLE_TOO_LONG",
+			fmt.Sprintf("title exceeds %d character limit", models.MaxTitleLength)), "parse_csv_metadata")
+		return
+	}
+	if len(description) > models.MaxDescriptionLength {
+		h.handleError(c, apperrors.NewValidationError("DESCRIPTION_TOO_LONG",
+			fmt.Sprintf("description exceeds %d character limit", models.MaxDescriptionLength)), "parse_csv_metadata")
+		return
+	}
+
+	csvMeta := services.CSVMetadata{
+		Title:       title,
+		Description: description,
+		Type:        c.Query("type"),
+	}
+
+	// Validate max_options (using centralized constants)
+	if maxOpts := c.Query("max_options"); maxOpts != "" {
+		n, err := strconv.Atoi(maxOpts)
+		if err != nil || n < models.MinOptionsLimit || n > models.MaxOptionsLimit {
+			h.handleError(c, apperrors.NewValidationError("INVALID_MAX_OPTIONS",
+				fmt.Sprintf("max_options must be a number between %d and %d", models.MinOptionsLimit, models.MaxOptionsLimit)), "parse_csv_metadata")
+			return
+		}
+		csvMeta.MaxOptions = n
+	}
+
 	// Import questionnaire from file
-	questionnaire, err := h.service.ImportFromFile(file)
+	questionnaire, err := h.service.ImportFromFile(file, csvMeta)
 	if err != nil {
 		h.handleError(c, err, "import_questionnaire")
 		return

@@ -8,6 +8,7 @@ import '../utils/date_formatter.dart';
 import '../utils/debouncer.dart';
 import '../widgets/search_filter_bar.dart';
 import 'quiz_screen.dart';
+import 'create_quiz/create_quiz_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -219,9 +220,25 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
 
+  void _navigateToCreateQuiz() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const CreateQuizScreen()),
+    );
+    // Refresh list after returning in case a new quiz was created
+    _loadQuestionnaires(refresh: true);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _navigateToCreateQuiz,
+        icon: const Icon(Icons.add),
+        label: const Text('Create Quiz'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+      ),
       body: RefreshIndicator(
         onRefresh: () => _loadQuestionnaires(refresh: true),
         child: Padding(

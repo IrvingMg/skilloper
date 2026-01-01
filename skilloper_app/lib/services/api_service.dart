@@ -144,20 +144,34 @@ class ApiService {
     }
   }
 
-  Future<ImportResponse?> importQuestionnaire(List<int> fileBytes, String fileName) async {
+  Future<ImportResponse?> importQuestionnaire(
+    List<int> fileBytes,
+    String fileName, {
+    String? title,
+    String? description,
+    String? type,
+    int? maxOptions,
+  }) async {
     if (fileBytes.isEmpty) {
       throw ApiException('File is empty - validation failed');
     }
-    
+
     if (fileName.isEmpty) {
       throw ApiException('File name is required - validation failed');
     }
 
     try {
-      var request = http.MultipartRequest(
-        'POST',
-        Uri.parse('$baseUrl/questionnaires/import'),
+      // Build URL with optional query params for CSV metadata
+      final uri = Uri.parse('$baseUrl/questionnaires/import').replace(
+        queryParameters: {
+          if (title != null && title.isNotEmpty) 'title': title,
+          if (description != null && description.isNotEmpty) 'description': description,
+          if (type != null && type.isNotEmpty) 'type': type,
+          if (maxOptions != null) 'max_options': maxOptions.toString(),
+        },
       );
+
+      var request = http.MultipartRequest('POST', uri);
 
       request.files.add(
         http.MultipartFile.fromBytes(
@@ -327,6 +341,25 @@ class ApiService {
       rethrow;
     } catch (e) {
       throw ApiException('Failed to load attempt details: $e');
+    }
+  }
+
+  /// Create a new questionnaire using simplified JSON format
+  Future<Map<String, dynamic>> createQuestionnaire(Map<String, dynamic> data) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/questionnaires'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(data),
+      ).timeout(timeout);
+
+      _handleHttpResponse(response, 'create questionnaire');
+
+      return json.decode(response.body) as Map<String, dynamic>;
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('Failed to create questionnaire: $e');
     }
   }
 
