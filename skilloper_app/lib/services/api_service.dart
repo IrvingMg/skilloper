@@ -17,6 +17,7 @@ class ApiException implements Exception {
 class ApiService {
   static const String _defaultBaseUrl = 'http://localhost:8080/api/v1';
   static const Duration _defaultTimeout = Duration(seconds: 30);
+  static const String _viewModeEdit = 'edit'; // Query param value for edit mode
   
   final String baseUrl;
   final Duration timeout;
@@ -134,6 +135,28 @@ class ApiService {
       ).timeout(timeout);
 
       _handleHttpResponse(response, 'load questionnaire');
+
+      final Map<String, dynamic> data = json.decode(response.body);
+      return Questionnaire.fromJson(data);
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('Failed to connect to API: $e');
+    }
+  }
+
+  /// Get questionnaire with correct answers included (for edit mode)
+  Future<Questionnaire> getQuestionnaireForEdit(int id) async {
+    if (id <= 0) {
+      throw ApiException('Invalid questionnaire ID: $id');
+    }
+
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/questionnaires/$id?view=$_viewModeEdit'),
+      ).timeout(timeout);
+
+      _handleHttpResponse(response, 'load questionnaire for edit');
 
       final Map<String, dynamic> data = json.decode(response.body);
       return Questionnaire.fromJson(data);
@@ -360,6 +383,48 @@ class ApiService {
       rethrow;
     } catch (e) {
       throw ApiException('Failed to create questionnaire: $e');
+    }
+  }
+
+  /// Update an existing questionnaire
+  Future<Map<String, dynamic>> updateQuestionnaire(int id, Map<String, dynamic> data) async {
+    if (id <= 0) {
+      throw ApiException('Invalid questionnaire ID: $id');
+    }
+
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/questionnaires/$id'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(data),
+      ).timeout(timeout);
+
+      _handleHttpResponse(response, 'update questionnaire');
+
+      return json.decode(response.body) as Map<String, dynamic>;
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('Failed to update questionnaire: $e');
+    }
+  }
+
+  /// Delete a questionnaire
+  Future<void> deleteQuestionnaire(int id) async {
+    if (id <= 0) {
+      throw ApiException('Invalid questionnaire ID: $id');
+    }
+
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/questionnaires/$id'),
+      ).timeout(timeout);
+
+      _handleHttpResponse(response, 'delete questionnaire');
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('Failed to delete questionnaire: $e');
     }
   }
 

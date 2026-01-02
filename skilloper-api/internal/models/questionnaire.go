@@ -58,45 +58,70 @@ type QuestionRequest struct {
 	Language             string   `json:"language,omitempty"`
 	Options              []string `json:"options,omitempty"`
 	AlternativeOptions   []string `json:"alternative_options,omitempty"` // Additional options for variety
-	CorrectAnswer        int      `json:"correctAnswer,omitempty"`       // For single_choice (1-indexed: 1, 2, 3, 4)
-	CorrectAnswers       []int    `json:"correct_answers,omitempty"`     // For multiple_choice (1-indexed: [1, 3, 4])
+	CorrectAnswer        int      `json:"correctAnswer"`                 // For single_choice (0-indexed)
+	CorrectAnswers       []int    `json:"correct_answers,omitempty"`     // For multiple_choice (0-indexed)
 	AlternativeAnswers   []string `json:"alternative_answers,omitempty"` // Alternative correct answer texts
 	Explanation          string   `json:"explanation,omitempty"`
 }
 
 // Response DTOs
 type QuestionnaireSummary struct {
-	ID             uint      `json:"id"`
-	Title          string    `json:"title"`
-	Description    string    `json:"description"`
-	Type           string    `json:"type"`
-	MaxOptions     int       `json:"max_options"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
-	QuestionCount  int       `json:"question_count"`
+	ID            uint      `json:"id"`
+	Title         string    `json:"title"`
+	Description   string    `json:"description"`
+	Type          string    `json:"type"`
+	MaxOptions    int       `json:"max_options"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
+	QuestionCount int       `json:"question_count"`
 }
 
-type QuestionnaireResponse struct {
-	ID          uint               `json:"id"`
-	Title       string             `json:"title"`
-	Description string             `json:"description"`
-	Type        string             `json:"type"`
-	MaxOptions  int                `json:"max_options"`
-	CreatedAt   time.Time          `json:"created_at"`
-	UpdatedAt   time.Time          `json:"updated_at"`
-	Questions   []QuestionResponse `json:"questions"`
+// questionResponseBase contains shared fields for question responses (unexported, for embedding only)
+type questionResponseBase struct {
+	ID           uint     `json:"id"`
+	QuestionType string   `json:"question_type"`
+	Question     string   `json:"question"`
+	Code         string   `json:"code,omitempty"`
+	Language     string   `json:"language,omitempty"`
+	Options      []string `json:"options,omitempty"`
+	Explanation  string   `json:"explanation,omitempty"`
 }
 
+// QuestionResponse is the response DTO for questions (answers hidden for quiz play)
 type QuestionResponse struct {
-	ID             uint     `json:"id"`
-	QuestionType   string   `json:"question_type"`
-	Question       string   `json:"question"`
-	Code           string   `json:"code,omitempty"`
-	Language       string   `json:"language,omitempty"`
-	Options        []string `json:"options,omitempty"`
-	CorrectAnswer  int      `json:"-"` // Hidden from client - server validates answers
-	CorrectAnswers []int    `json:"-"` // Hidden from client - server validates answers
-	Explanation    string   `json:"explanation,omitempty"`
+	questionResponseBase
+	CorrectAnswer  int   `json:"-"` // Hidden from client - server validates answers
+	CorrectAnswers []int `json:"-"` // Hidden from client - server validates answers
+}
+
+// QuestionResponseWithAnswers includes correct answers (for edit mode)
+type QuestionResponseWithAnswers struct {
+	questionResponseBase
+	CorrectAnswer  int   `json:"correctAnswer"`             // 0-indexed
+	CorrectAnswers []int `json:"correct_answers,omitempty"` // 0-indexed
+}
+
+// questionnaireResponseBase contains shared fields for questionnaire responses (unexported, for embedding only)
+type questionnaireResponseBase struct {
+	ID          uint      `json:"id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Type        string    `json:"type"`
+	MaxOptions  int       `json:"max_options"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+// QuestionnaireResponse is the response DTO for questionnaires (answers hidden)
+type QuestionnaireResponse struct {
+	questionnaireResponseBase
+	Questions []QuestionResponse `json:"questions"`
+}
+
+// QuestionnaireResponseWithAnswers includes correct answers (for edit mode)
+type QuestionnaireResponseWithAnswers struct {
+	questionnaireResponseBase
+	Questions []QuestionResponseWithAnswers `json:"questions"`
 }
 
 // Health check response

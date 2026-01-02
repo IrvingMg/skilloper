@@ -14,6 +14,11 @@ import (
 	"github.com/irvingmg/skilloper/skilloper-api/internal/services"
 )
 
+// View mode constants for GET /questionnaires/{id}
+const (
+	ViewModeEdit = "edit" // Returns correct answers for editing
+)
+
 type QuestionnaireHandler struct {
 	service *services.QuestionnaireService
 	logger  *zap.Logger
@@ -85,10 +90,30 @@ func (h *QuestionnaireHandler) GetQuestionnaireSummaries(c *gin.Context) {
 }
 
 // GetQuestionnaire handles GET /questionnaires/{id}
+// Use ?view=edit query param to include correct answers (for edit mode)
 func (h *QuestionnaireHandler) GetQuestionnaire(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		h.handleError(c, apperrors.ErrInvalidQuestionnaireID, "parse_questionnaire_id")
+		return
+	}
+
+	// Check for edit mode query param (?view=edit)
+	includeAnswers := c.Query("view") == ViewModeEdit
+
+	if includeAnswers {
+		h.logger.Info("Fetching questionnaire with answers for edit mode", zap.Int("id", id))
+
+		questionnaire, err := h.service.GetByIDWithAnswers(uint(id))
+		if err != nil {
+			h.handleError(c, err, "fetch_questionnaire")
+			return
+		}
+
+		h.logger.Info("Successfully fetched questionnaire with answers",
+			zap.Int("id", id),
+			zap.String("title", questionnaire.Title))
+		c.JSON(http.StatusOK, questionnaire)
 		return
 	}
 

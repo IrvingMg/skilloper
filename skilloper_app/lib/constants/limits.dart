@@ -20,3 +20,12 @@ class QuizLimits {
   static const int maxAlternativeQuestions = 10;
   static const int maxAlternativeOptions = 20;
 }
+
+// Question type constants
+// Keep in sync with Go API constants in internal/models/questionnaire.go
+class QuestionTypes {
+  QuestionTypes._(); // Prevent instantiation
+
+  static const String singleChoice = 'single_choice';
+  static const String multipleChoice = 'multiple_choice';
+}

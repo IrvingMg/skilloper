@@ -140,6 +140,21 @@ func (s *QuestionnaireService) GetByID(id uint) (*models.QuestionnaireResponse, 
 	return &response, nil
 }
 
+// GetByIDWithAnswers retrieves a questionnaire by ID including correct answers (for edit mode)
+func (s *QuestionnaireService) GetByIDWithAnswers(id uint) (*models.QuestionnaireResponseWithAnswers, error) {
+	var questionnaire models.Questionnaire
+	result := s.db.Preload("Questions").First(&questionnaire, id)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, apperrors.ErrQuestionnaireNotFound
+		}
+		return nil, apperrors.ErrFetchQuestionnaireFailed
+	}
+
+	response := s.convertToResponseWithAnswers(questionnaire)
+	return &response, nil
+}
+
 // Create creates a new questionnaire
 func (s *QuestionnaireService) Create(req models.CreateQuestionnaireRequest) (*models.QuestionnaireResponse, error) {
 	// Validate required fields
@@ -598,6 +613,42 @@ func (s *QuestionnaireService) ImportFromFile(file *multipart.FileHeader, csvMet
 	return summary, nil
 }
 
+// parseOptionsJSON safely parses the options JSON string, returning empty slice on error
+func parseOptionsJSON(optionsJSON string) []string {
+	if optionsJSON == "" {
+		return []string{}
+	}
+	var options []string
+	if err := json.Unmarshal([]byte(optionsJSON), &options); err != nil {
+		return []string{}
+	}
+	return options
+}
+
+// parseCorrectAnswersJSON safely parses the correct_answers JSON string for multiple choice
+func parseCorrectAnswersJSON(answersJSON string) []int {
+	if answersJSON == "" {
+		return []int{}
+	}
+	var answers []int
+	if err := json.Unmarshal([]byte(answersJSON), &answers); err != nil {
+		return []int{}
+	}
+	return answers
+}
+
+// parseStringArrayJSON safely parses a JSON string array
+func parseStringArrayJSON(jsonStr string) []string {
+	if jsonStr == "" {
+		return nil
+	}
+	var result []string
+	if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
+		return nil
+	}
+	return result
+}
+
 // Helper method to convert database model to response
 // Applies alternative text selection for variety, but keeps options in original order
 // (frontend handles display shuffling to maintain server-side validation compatibility)
@@ -605,60 +656,90 @@ func (s *QuestionnaireService) convertToResponse(q models.Questionnaire) models.
 	var questions []models.QuestionResponse
 
 	for _, question := range q.Questions {
-		var options []string
-		if err := json.Unmarshal([]byte(question.Options), &options); err != nil {
-			options = []string{} // Use empty slice on parse error
-		}
+		options := parseOptionsJSON(question.Options)
 
 		// Pick alternative question text if available
 		questionText := question.QuestionText
-		if question.AlternativeQuestions != "" {
-			var alternatives []string
-			if err := json.Unmarshal([]byte(question.AlternativeQuestions), &alternatives); err == nil && len(alternatives) > 0 {
-				allTexts := append([]string{questionText}, alternatives...)
-				questionText = allTexts[randomIntn(len(allTexts))]
-			}
+		if alternatives := parseStringArrayJSON(question.AlternativeQuestions); len(alternatives) > 0 {
+			allTexts := append([]string{questionText}, alternatives...)
+			questionText = allTexts[randomIntn(len(allTexts))]
 		}
 
 		// Pick alternative answer text if available (for single choice)
-		if question.AlternativeAnswers != "" && question.CorrectAnswer >= 0 && question.CorrectAnswer < len(options) {
-			var alternatives []string
-			if err := json.Unmarshal([]byte(question.AlternativeAnswers), &alternatives); err == nil && len(alternatives) > 0 {
+		if alternatives := parseStringArrayJSON(question.AlternativeAnswers); len(alternatives) > 0 {
+			if question.CorrectAnswer >= 0 && question.CorrectAnswer < len(options) {
 				allTexts := append([]string{options[question.CorrectAnswer]}, alternatives...)
 				options[question.CorrectAnswer] = allTexts[randomIntn(len(allTexts))]
 			}
 		}
 
-		// Parse correct answers for multiple choice
-		var correctAnswers []int
-		if question.QuestionType == models.QuestionTypeMultipleChoice && question.CorrectAnswers != "" {
-			if err := json.Unmarshal([]byte(question.CorrectAnswers), &correctAnswers); err != nil {
-				correctAnswers = []int{} // Use empty slice on parse error
-			}
+		// Parse correct answers for multiple choice (always use empty slice, not nil)
+		correctAnswers := []int{}
+		if question.QuestionType == models.QuestionTypeMultipleChoice {
+			correctAnswers = parseCorrectAnswersJSON(question.CorrectAnswers)
 		}
 
 		// Options stay in ORIGINAL order (frontend will shuffle for display)
-		questions = append(questions, models.QuestionResponse{
-			ID:             question.ID,
-			QuestionType:   question.QuestionType,
-			Question:       questionText,
-			Code:           question.Code,
-			Language:       question.Language,
-			Options:        options,
-			CorrectAnswer:  question.CorrectAnswer,
-			CorrectAnswers: correctAnswers,
-			Explanation:    question.Explanation,
-		})
+		qr := models.QuestionResponse{}
+		qr.ID = question.ID
+		qr.QuestionType = question.QuestionType
+		qr.Question = questionText
+		qr.Code = question.Code
+		qr.Language = question.Language
+		qr.Options = options
+		qr.Explanation = question.Explanation
+		qr.CorrectAnswer = question.CorrectAnswer
+		qr.CorrectAnswers = correctAnswers
+		questions = append(questions, qr)
 	}
 
-	return models.QuestionnaireResponse{
-		ID:          q.ID,
-		Title:       q.Title,
-		Description: q.Description,
-		Type:        q.Type,
-		MaxOptions:  q.MaxOptions,
-		CreatedAt:   q.CreatedAt,
-		UpdatedAt:   q.UpdatedAt,
-		Questions:   questions,
+	resp := models.QuestionnaireResponse{}
+	resp.ID = q.ID
+	resp.Title = q.Title
+	resp.Description = q.Description
+	resp.Type = q.Type
+	resp.MaxOptions = q.MaxOptions
+	resp.CreatedAt = q.CreatedAt
+	resp.UpdatedAt = q.UpdatedAt
+	resp.Questions = questions
+	return resp
+}
+
+// convertToResponseWithAnswers converts database model to response including correct answers
+// Used for edit mode - does NOT apply alternative text selection to preserve original data
+func (s *QuestionnaireService) convertToResponseWithAnswers(q models.Questionnaire) models.QuestionnaireResponseWithAnswers {
+	var questions []models.QuestionResponseWithAnswers
+
+	for _, question := range q.Questions {
+		options := parseOptionsJSON(question.Options)
+
+		// Parse correct answers for multiple choice (always use empty slice, not nil)
+		correctAnswers := []int{}
+		if question.QuestionType == models.QuestionTypeMultipleChoice {
+			correctAnswers = parseCorrectAnswersJSON(question.CorrectAnswers)
+		}
+
+		qr := models.QuestionResponseWithAnswers{}
+		qr.ID = question.ID
+		qr.QuestionType = question.QuestionType
+		qr.Question = question.QuestionText
+		qr.Code = question.Code
+		qr.Language = question.Language
+		qr.Options = options
+		qr.Explanation = question.Explanation
+		qr.CorrectAnswer = question.CorrectAnswer
+		qr.CorrectAnswers = correctAnswers
+		questions = append(questions, qr)
 	}
+
+	resp := models.QuestionnaireResponseWithAnswers{}
+	resp.ID = q.ID
+	resp.Title = q.Title
+	resp.Description = q.Description
+	resp.Type = q.Type
+	resp.MaxOptions = q.MaxOptions
+	resp.CreatedAt = q.CreatedAt
+	resp.UpdatedAt = q.UpdatedAt
+	resp.Questions = questions
+	return resp
 }

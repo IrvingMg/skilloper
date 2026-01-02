@@ -3,6 +3,7 @@
 // Serializes to simplified JSON format for API submission
 
 import '../constants/limits.dart';
+import 'questionnaire.dart';
 
 class DraftQuestion {
   String question;
@@ -14,6 +15,7 @@ class DraftQuestion {
   String explanation;
   String code;
   String language;
+  String questionType; // 'single_choice' or 'multiple_choice'
 
   DraftQuestion({
     this.question = '',
@@ -25,14 +27,15 @@ class DraftQuestion {
     this.explanation = '',
     this.code = '',
     this.language = '',
+    this.questionType = 'single_choice',
   })  : alternativeQuestions = alternativeQuestions ?? [],
         options = options ?? ['', ''],
         alternativeOptions = alternativeOptions ?? [],
         correctAnswers = correctAnswers ?? [],
         alternativeAnswers = alternativeAnswers ?? [];
 
-  /// Whether this is a multiple choice question (multiple correct answers)
-  bool get isMultipleChoice => correctAnswers.length > 1;
+  /// Whether this is a multiple choice question
+  bool get isMultipleChoice => questionType == QuestionTypes.multipleChoice;
 
   /// For single choice, get the single correct answer (1-based)
   int? get singleAnswer =>
@@ -54,10 +57,20 @@ class DraftQuestion {
   }
 
   /// Check if question is valid
-  bool get isValid {
-    if (question.trim().isEmpty) return false;
-    if (options.where((o) => o.trim().isNotEmpty).length < 2) return false;
-    if (correctAnswers.isEmpty) return false;
+  bool get isValid => validationError == null;
+
+  /// Get validation error message, or null if valid
+  String? get validationError {
+    if (question.trim().isEmpty) {
+      return 'Question text required';
+    }
+    final nonEmptyOptions = options.where((o) => o.trim().isNotEmpty).length;
+    if (nonEmptyOptions < 2) {
+      return 'At least 2 options required';
+    }
+    if (correctAnswers.isEmpty) {
+      return 'Select correct answer';
+    }
     // Check all answers are valid indices
     final validOptions = options
         .asMap()
@@ -65,7 +78,10 @@ class DraftQuestion {
         .where((e) => e.value.trim().isNotEmpty)
         .map((e) => e.key + 1)
         .toList();
-    return correctAnswers.every((a) => validOptions.contains(a));
+    if (!correctAnswers.every((a) => validOptions.contains(a))) {
+      return 'Invalid answer selection';
+    }
+    return null;
   }
 
   /// Add an empty option
@@ -117,6 +133,7 @@ class DraftQuestion {
       'question': question,
       'options': nonEmptyOptions,
       'answer': remappedAnswers, // Always array of strings
+      'question_type': questionType, // Explicit question type
     };
 
     // Alternative texts
@@ -163,11 +180,39 @@ class DraftQuestion {
       explanation: explanation,
       code: code,
       language: language,
+      questionType: questionType,
+    );
+  }
+
+  /// Create a DraftQuestion from an API Question object
+  /// Note: Alternative questions/options/answers are not preserved as they're not in API response
+  factory DraftQuestion.fromQuestion(Question q) {
+    // Convert correct answers from 0-based to 1-based indexing
+    List<int> answers;
+    if (q.isMultipleChoice && q.correctAnswers != null) {
+      // Multiple choice: convert each answer from 0-based to 1-based
+      answers = q.correctAnswers!.map((a) => a + 1).toList();
+    } else if (q.correctAnswer != null) {
+      // Single choice: convert from 0-based to 1-based
+      answers = [q.correctAnswer! + 1];
+    } else {
+      answers = [];
+    }
+
+    return DraftQuestion(
+      question: q.question,
+      options: List<String>.from(q.options),
+      correctAnswers: answers,
+      explanation: q.explanation ?? '',
+      code: q.code ?? '',
+      language: q.language ?? '',
+      questionType: q.questionType, // Preserve question type from API
     );
   }
 }
 
 class DraftQuestionnaire {
+  int? id; // Set when editing an existing questionnaire
   String title;
   String description;
   String type; // 'practice' or 'exam'
@@ -175,12 +220,26 @@ class DraftQuestionnaire {
   List<DraftQuestion> questions;
 
   DraftQuestionnaire({
+    this.id,
     this.title = '',
     this.description = '',
     this.type = 'practice',
     this.maxOptions = 4, // Default to 4, range is 2-8
     List<DraftQuestion>? questions,
   }) : questions = questions ?? [];
+
+  /// Whether this is an existing questionnaire being edited
+  bool get isEditMode => id != null;
+
+  /// Load data from an existing questionnaire for editing
+  void loadFromQuestionnaire(Questionnaire q) {
+    id = q.id;
+    title = q.title;
+    description = q.description;
+    type = q.type;
+    maxOptions = q.maxOptions;
+    questions = q.questions.map((q) => DraftQuestion.fromQuestion(q)).toList();
+  }
 
   /// Check if questionnaire is valid for submission
   bool get isValid {
@@ -241,6 +300,7 @@ class DraftQuestionnaire {
 
   /// Clear all data
   void clear() {
+    id = null;
     title = '';
     description = '';
     type = 'practice';

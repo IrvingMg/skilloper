@@ -48,14 +48,13 @@ func (qs *QuestionShuffler) shuffleSingleChoiceQuestion(question models.Question
 		json.Unmarshal([]byte(question.AlternativeAnswers), &alternativeAnswers)
 	}
 
-	response := &models.QuestionResponse{
-		ID:           question.ID,
-		QuestionType: question.QuestionType,
-		Question:     question.QuestionText,
-		Code:         question.Code,
-		Language:     question.Language,
-		Explanation:  question.Explanation,
-	}
+	response := &models.QuestionResponse{}
+	response.ID = question.ID
+	response.QuestionType = question.QuestionType
+	response.Question = question.QuestionText
+	response.Code = question.Code
+	response.Language = question.Language
+	response.Explanation = question.Explanation
 
 	if len(alternativeQuestions) > 0 {
 		allTexts := append([]string{question.QuestionText}, alternativeQuestions...)
@@ -103,14 +102,13 @@ func (qs *QuestionShuffler) shuffleMultipleChoiceQuestion(question models.Questi
 		json.Unmarshal([]byte(question.AlternativeOptions), &alternativeOptions)
 	}
 
-	response := &models.QuestionResponse{
-		ID:           question.ID,
-		QuestionType: models.QuestionTypeMultipleChoice,
-		Question:     question.QuestionText,
-		Code:         question.Code,
-		Language:     question.Language,
-		Explanation:  question.Explanation,
-	}
+	response := &models.QuestionResponse{}
+	response.ID = question.ID
+	response.QuestionType = models.QuestionTypeMultipleChoice
+	response.Question = question.QuestionText
+	response.Code = question.Code
+	response.Language = question.Language
+	response.Explanation = question.Explanation
 
 	if len(alternativeQuestions) > 0 {
 		allTexts := append([]string{question.QuestionText}, alternativeQuestions...)
@@ -120,7 +118,7 @@ func (qs *QuestionShuffler) shuffleMultipleChoiceQuestion(question models.Questi
 	finalOptions := make([]string, len(originalOptions))
 	copy(finalOptions, originalOptions)
 
-	newCorrectAnswers := qs.shuffleOptionsWithMultipleCorrectTracking(finalOptions, finalOptions, originalCorrectAnswers)
+	newCorrectAnswers := qs.shuffleOptionsWithMultipleCorrectTracking(finalOptions, originalCorrectAnswers)
 
 	response.Options = finalOptions
 	// Keep 0-based indexing
@@ -128,10 +126,14 @@ func (qs *QuestionShuffler) shuffleMultipleChoiceQuestion(question models.Questi
 	return response, nil
 }
 
-func (qs *QuestionShuffler) shuffleOptionsWithMultipleCorrectTracking(options []string, originalOptions []string, correctIndices []int) []int {
+// shuffleOptionsWithMultipleCorrectTracking shuffles options in-place and returns new correct indices
+func (qs *QuestionShuffler) shuffleOptionsWithMultipleCorrectTracking(options []string, correctIndices []int) []int {
+	// Store correct answer texts before shuffling
 	correctTexts := make([]string, len(correctIndices))
 	for i, idx := range correctIndices {
-		correctTexts[i] = originalOptions[idx]
+		if idx >= 0 && idx < len(options) {
+			correctTexts[i] = options[idx]
+		}
 	}
 
 	indices := make([]int, len(options))

@@ -86,6 +86,7 @@ class Questionnaire {
   final String title;
   final String description;
   final String type; // 'practice' or 'exam'
+  final int maxOptions;
   final DateTime createdAt;
   final DateTime updatedAt;
   final List<Question> questions;
@@ -95,6 +96,7 @@ class Questionnaire {
     required this.title,
     required this.description,
     required this.type,
+    required this.maxOptions,
     required this.createdAt,
     required this.updatedAt,
     required this.questions,
@@ -106,6 +108,7 @@ class Questionnaire {
       title: json['title'] as String,
       description: json['description'] as String,
       type: json['type'] as String,
+      maxOptions: json['max_options'] as int? ?? 4,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
       questions: (json['questions'] as List)
@@ -114,9 +117,8 @@ class Questionnaire {
     );
   }
 
-
   bool get isPracticeMode => type == 'practice';
-  
+
   int get estimatedMinutes => (questions.length * 1.5).ceil();
 }
 

@@ -32,6 +32,7 @@ func (sq *SimplifiedQuestionnaire) IsInternalFormat() bool {
 // All values are 1-based indices
 type SimplifiedQuestion struct {
 	Question             string   `json:"question"`
+	QuestionType         string   `json:"question_type,omitempty"`         // Optional: "single_choice" or "multiple_choice"
 	AlternativeQuestions []string `json:"alternative_questions,omitempty"` // Alternative question phrasings
 	Options              []string `json:"options"`
 	AlternativeOptions   []string `json:"alternative_options,omitempty"` // Additional options for variety
@@ -52,6 +53,7 @@ type ParsedAnswer struct {
 // ParseAnswer converts the Answer string array to normalized form
 // Input: 1-based index(es) as strings from user
 // Output: 0-based index(es) for internal API
+// If QuestionType is explicitly set, it is respected; otherwise inferred from answer count
 func (sq *SimplifiedQuestion) ParseAnswer() (*ParsedAnswer, error) {
 	if len(sq.Answer) == 0 {
 		return nil, fmt.Errorf("answer is required")
@@ -85,8 +87,24 @@ func (sq *SimplifiedQuestion) ParseAnswer() (*ParsedAnswer, error) {
 		return nil, fmt.Errorf("at least one valid answer is required")
 	}
 
-	// Determine question type based on number of answers
-	if len(answers) == 1 {
+	// Determine question type: use explicit type if valid, otherwise infer from answer count
+	questionType := sq.QuestionType
+	if questionType != QuestionTypeSingleChoice && questionType != QuestionTypeMultipleChoice {
+		// Infer from answer count
+		if len(answers) == 1 {
+			questionType = QuestionTypeSingleChoice
+		} else {
+			questionType = QuestionTypeMultipleChoice
+		}
+	}
+
+	// Validate: single_choice should have exactly one answer
+	if questionType == QuestionTypeSingleChoice && len(answers) > 1 {
+		return nil, fmt.Errorf("single_choice question has %d answers, expected 1", len(answers))
+	}
+
+	// Return based on determined type
+	if questionType == QuestionTypeSingleChoice {
 		return &ParsedAnswer{
 			QuestionType:  QuestionTypeSingleChoice,
 			CorrectAnswer: answers[0],

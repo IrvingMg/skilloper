@@ -8,6 +8,7 @@ import '../utils/date_formatter.dart';
 import '../utils/debouncer.dart';
 import '../widgets/search_filter_bar.dart';
 import 'quiz_screen.dart';
+import 'create_quiz/create_quiz_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -224,6 +225,99 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _editQuestionnaire(QuestionnaireSummary summary) async {
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      // Fetch full questionnaire with answers included for edit mode
+      final questionnaire = await _apiService.getQuestionnaireForEdit(summary.id);
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => CreateQuizScreen(questionnaire: questionnaire),
+        ),
+      );
+
+      // Refresh list after returning
+      if (mounted) {
+        _loadQuestionnaires(refresh: true);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading questionnaire: $e')),
+      );
+    }
+  }
+
+  Future<void> _deleteQuestionnaire(QuestionnaireSummary summary) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Questionnaire?'),
+        content: Text(
+          'Are you sure you want to delete "${summary.title}"? This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await _apiService.deleteQuestionnaire(summary.id);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              const Text('Questionnaire deleted'),
+            ],
+          ),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      );
+
+      _loadQuestionnaires(refresh: true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error deleting questionnaire: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -390,6 +484,8 @@ class HomeScreenState extends State<HomeScreen> {
                       return _QuestionnaireListItem(
                         questionnaire: questionnaire,
                         onTap: () => _startQuiz(questionnaire),
+                        onEdit: () => _editQuestionnaire(questionnaire),
+                        onDelete: () => _deleteQuestionnaire(questionnaire),
                       );
                     },
                   ),
@@ -405,10 +501,14 @@ class HomeScreenState extends State<HomeScreen> {
 class _QuestionnaireListItem extends StatelessWidget {
   final QuestionnaireSummary questionnaire;
   final VoidCallback onTap;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   const _QuestionnaireListItem({
     required this.questionnaire,
     required this.onTap,
+    required this.onEdit,
+    required this.onDelete,
   });
 
   @override
@@ -589,13 +689,44 @@ class _QuestionnaireListItem extends StatelessWidget {
                     ),
                   ),
 
-                  SizedBox(width: isNarrowScreen ? 8 : 16),
+                  SizedBox(width: isNarrowScreen ? 8 : 12),
 
-                  // Arrow
-                  Icon(
-                    Icons.arrow_forward_ios,
-                    size: isNarrowScreen ? 14 : 16,
-                    color: const Color(0xFF9CA3AF),
+                  // Three-dot menu
+                  PopupMenuButton<String>(
+                    icon: Icon(
+                      Icons.more_vert,
+                      size: isNarrowScreen ? 20 : 24,
+                      color: AppColors.textTertiary,
+                    ),
+                    onSelected: (value) {
+                      if (value == 'edit') {
+                        onEdit();
+                      } else if (value == 'delete') {
+                        onDelete();
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit_outlined, size: 20),
+                            SizedBox(width: 12),
+                            Text('Edit'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_outline, size: 20, color: AppColors.error),
+                            const SizedBox(width: 12),
+                            Text('Delete', style: TextStyle(color: AppColors.error)),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

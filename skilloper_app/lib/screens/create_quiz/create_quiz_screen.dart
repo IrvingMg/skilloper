@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import '../../models/draft_questionnaire.dart';
+import '../../models/questionnaire.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_colors.dart';
 import 'question_editor_dialog.dart';
 
 class CreateQuizScreen extends StatefulWidget {
-  const CreateQuizScreen({super.key});
+  /// Optional questionnaire to edit. If null, creates a new quiz.
+  final Questionnaire? questionnaire;
+
+  const CreateQuizScreen({super.key, this.questionnaire});
 
   @override
   State<CreateQuizScreen> createState() => _CreateQuizScreenState();
@@ -19,6 +23,18 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
 
   int _currentStep = 0;
   bool _isSubmitting = false;
+
+  bool get _isEditMode => _draft.isEditMode;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.questionnaire != null) {
+      _draft.loadFromQuestionnaire(widget.questionnaire!);
+      _titleController.text = _draft.title;
+      _descController.text = _draft.description;
+    }
+  }
 
   @override
   void dispose() {
@@ -71,7 +87,12 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
     });
 
     try {
-      final response = await _apiService.createQuestionnaire(_draft.toJson());
+      final Map<String, dynamic> response;
+      if (_isEditMode) {
+        response = await _apiService.updateQuestionnaire(_draft.id!, _draft.toJson());
+      } else {
+        response = await _apiService.createQuestionnaire(_draft.toJson());
+      }
 
       if (mounted) {
         _showSuccessDialog(response);
@@ -90,6 +111,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
   }
 
   void _showSuccessDialog(Map<String, dynamic> response) {
+    final isEdit = _isEditMode;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -106,9 +128,9 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                 size: 28,
               ),
               const SizedBox(width: 12),
-              const Text(
-                'Quiz Created!',
-                style: TextStyle(
+              Text(
+                isEdit ? 'Quiz Updated!' : 'Quiz Created!',
+                style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
                 ),
@@ -120,7 +142,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Successfully created questionnaire:',
+                isEdit ? 'Successfully updated questionnaire:' : 'Successfully created questionnaire:',
                 style: TextStyle(
                   fontSize: 14,
                   color: AppColors.textSecondary,
@@ -196,18 +218,19 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _draft.clear();
-                _titleController.clear();
-                _descController.clear();
-                setState(() {
-                  _currentStep = 0;
-                });
-              },
-              child: const Text('Create Another'),
-            ),
+            if (!isEdit)
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _draft.clear();
+                  _titleController.clear();
+                  _descController.clear();
+                  setState(() {
+                    _currentStep = 0;
+                  });
+                },
+                child: const Text('Create Another'),
+              ),
             ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop();
@@ -302,7 +325,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Create Quiz'),
+        title: Text(_isEditMode ? 'Edit Quiz' : 'Create Quiz'),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => _showExitConfirmation(),
@@ -750,10 +773,13 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                         ],
                       ),
                     ),
-                    Icon(
-                      q.isValid ? Icons.check_circle : Icons.warning,
-                      size: 20,
-                      color: q.isValid ? AppColors.success : AppColors.warning,
+                    Tooltip(
+                      message: q.validationError ?? 'Valid',
+                      child: Icon(
+                        q.isValid ? Icons.check_circle : Icons.warning,
+                        size: 20,
+                        color: q.isValid ? AppColors.success : AppColors.warning,
+                      ),
                     ),
                   ],
                 ),
@@ -926,7 +952,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                         color: Colors.white,
                       ),
                     )
-                  : const Text('Create Quiz'),
+                  : Text(_isEditMode ? 'Save Changes' : 'Create Quiz'),
             ),
         ],
       ),
@@ -1075,7 +1101,10 @@ class _QuestionCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (!question.isValid)
-              Icon(Icons.warning, color: AppColors.warning, size: 20),
+              Tooltip(
+                message: question.validationError ?? 'Invalid',
+                child: Icon(Icons.warning, color: AppColors.warning, size: 20),
+              ),
             IconButton(
               icon: const Icon(Icons.edit_outlined, size: 20),
               onPressed: onEdit,

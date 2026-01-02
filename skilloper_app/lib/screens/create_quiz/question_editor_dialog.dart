@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../constants/limits.dart';
 import '../../models/draft_questionnaire.dart';
 import '../../theme/app_colors.dart';
 
@@ -145,10 +146,13 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
   void _setMultipleChoice(bool value) {
     setState(() {
       _isMultipleChoice = value;
+      _question.questionType =
+          value ? QuestionTypes.multipleChoice : QuestionTypes.singleChoice;
       if (!value && _question.correctAnswers.length > 1) {
-        // Keep only first answer when switching to single
+        // Keep only first answer when switching to single choice
         _question.correctAnswers = [_question.correctAnswers.first];
       }
+      // Note: empty correctAnswers is valid - user hasn't selected yet
     });
   }
 
