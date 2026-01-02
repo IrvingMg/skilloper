@@ -337,43 +337,33 @@ class _ImportScreenState extends State<ImportScreen> {
     };
   }
 
-  Map<String, dynamic> _getErrorDetails(String errorMessage, String errorType) {
-    String title = 'Import Failed';
-    String subtitle = 'Unable to process your questionnaire file';
-    String quickTip = 'Check the file format and try again';
-
-    // Customize based on error type
+  Map<String, String> _getErrorDetails(String errorType) {
     switch (errorType) {
       case 'json':
-        title = 'Invalid JSON Format';
-        subtitle = 'Your file contains JSON syntax errors';
-        quickTip = 'Validate your JSON syntax and ensure proper formatting';
-        break;
+        return {
+          'title': 'Invalid JSON Format',
+          'subtitle': 'Your file contains JSON syntax errors',
+        };
       case 'validation':
-        title = 'Validation Error';
-        subtitle = 'Your questionnaire is missing required information';
-        quickTip = 'Check that all required fields are present and correctly formatted';
-        break;
+        return {
+          'title': 'Validation Error',
+          'subtitle': 'Your questionnaire is missing required information',
+        };
       case 'file_size':
-        title = 'File Too Large';
-        subtitle = 'The uploaded file exceeds the 10MB size limit';
-        quickTip = 'Reduce your file size by removing unnecessary content';
-        break;
+        return {
+          'title': 'File Too Large',
+          'subtitle': 'The uploaded file exceeds the 10MB size limit',
+        };
       default:
-        title = 'Import Failed';
-        subtitle = 'Unable to process your questionnaire file';
-        quickTip = 'Review the file format requirements and try again';
+        return {
+          'title': 'Import Failed',
+          'subtitle': 'Unable to process your questionnaire file',
+        };
     }
-
-    return {
-      'title': title,
-      'subtitle': subtitle,
-      'quickTip': quickTip,
-    };
   }
 
   void _showErrorDialog(String errorMessage, String errorType) {
-    final errorDetails = _getErrorDetails(errorMessage, errorType);
+    final errorDetails = _getErrorDetails(errorType);
 
     showDialog(
       context: context,
@@ -617,56 +607,39 @@ class _ImportScreenState extends State<ImportScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Import'),
+        actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const ImportHelpScreen(),
+                ),
+              );
+            },
+            icon: Icon(
+              Icons.help_outline,
+              color: AppColors.primary,
+            ),
+            tooltip: 'Import Help & Format Guide',
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Import Questionnaires',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Upload JSON or CSV files to add new questionnaires',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: AppColors.textTertiary,
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const ImportHelpScreen(),
-                      ),
-                    );
-                  },
-                  icon: Icon(
-                    Icons.help_outline,
-                    color: AppColors.primary,
-                    size: 28,
-                  ),
-                  tooltip: 'Import Help & Format Guide',
-                ),
-              ],
+            const Text(
+              'Upload JSON or CSV files to add new questionnaires',
+              style: TextStyle(
+                fontSize: 16,
+                color: AppColors.textTertiary,
+                fontWeight: FontWeight.w400,
+              ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
 
             Expanded(
               child: SingleChildScrollView(

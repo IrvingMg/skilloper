@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'screens/home_screen.dart';
 import 'screens/history_screen.dart';
-import 'screens/import_screen.dart';
+import 'screens/add_quiz_screen.dart';
 import 'theme/app_theme.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_icons.dart';
@@ -33,12 +33,34 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
-  
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const HistoryScreen(),
-    const ImportScreen(),
+
+  // Keys to access screen states for refresh
+  final _homeKey = GlobalKey<HomeScreenState>();
+  final _historyKey = GlobalKey<HistoryScreenState>();
+
+  late final List<Widget> _screens = [
+    HomeScreen(key: _homeKey),
+    HistoryScreen(key: _historyKey),
+    const AddQuizScreen(),
   ];
+
+  void _onTabSelected(int index) {
+    final previousIndex = _currentIndex;
+
+    setState(() {
+      _currentIndex = index;
+    });
+
+    // Refresh Home or History when coming from Add tab
+    // This ensures newly created/imported quizzes appear
+    if (previousIndex == 2) {
+      if (index == 0) {
+        _homeKey.currentState?.refresh();
+      } else if (index == 1) {
+        _historyKey.currentState?.refresh();
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -70,14 +92,13 @@ class _MainScreenState extends State<MainScreen> {
           ],
         ),
       ),
-      body: _screens[_currentIndex],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _screens,
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
+        onDestinationSelected: _onTabSelected,
         destinations: const [
           NavigationDestination(
             icon: Icon(AppIcons.home),
@@ -90,9 +111,9 @@ class _MainScreenState extends State<MainScreen> {
             label: 'History',
           ),
           NavigationDestination(
-            icon: Icon(AppIcons.upload),
-            selectedIcon: Icon(AppIcons.uploadSelected),
-            label: 'Import',
+            icon: Icon(Icons.add_circle_outline),
+            selectedIcon: Icon(Icons.add_circle),
+            label: 'Add',
           ),
         ],
       ),

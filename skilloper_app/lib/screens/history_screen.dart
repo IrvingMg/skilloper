@@ -13,11 +13,17 @@ class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
 
   @override
-  State<HistoryScreen> createState() => _HistoryScreenState();
+  State<HistoryScreen> createState() => HistoryScreenState();
 }
 
-class _HistoryScreenState extends State<HistoryScreen> {
+class HistoryScreenState extends State<HistoryScreen> {
   final ApiService _apiService = ApiService();
+
+  /// Public method to refresh the history list.
+  /// Called by parent when tab becomes active.
+  void refresh() {
+    _loadHistory(refresh: true);
+  }
   final DeviceService _deviceService = DeviceService();
   final ScrollController _scrollController = ScrollController();
   final Debouncer _searchDebouncer = Debouncer(delay: const Duration(milliseconds: 300));
