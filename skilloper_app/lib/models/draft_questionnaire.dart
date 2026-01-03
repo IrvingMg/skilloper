@@ -104,24 +104,24 @@ class DraftQuestion {
     }
   }
 
-  /// Convert to simple JSON format for API
-  /// Answer is always an array of strings (1-based indices)
+  /// Convert to API JSON format for creating/updating questionnaires
+  /// Uses 0-based indices for correctAnswer/correct_answers as required by backend
   Map<String, dynamic> toJson() {
     // Filter out empty options and build mapping
     final nonEmptyOptions = <String>[];
-    final indexMapping = <int, int>{}; // old 1-based -> new 1-based
+    final indexMapping = <int, int>{}; // old 1-based -> new 0-based
 
     for (var i = 0; i < options.length; i++) {
       if (options[i].trim().isNotEmpty) {
         nonEmptyOptions.add(options[i]);
-        indexMapping[i + 1] = nonEmptyOptions.length;
+        indexMapping[i + 1] = nonEmptyOptions.length - 1; // 0-based index
       }
     }
 
-    // Remap correct answers to new indices as strings
+    // Remap correct answers to new 0-based indices
     final remappedAnswers = correctAnswers
         .where((a) => indexMapping.containsKey(a))
-        .map((a) => indexMapping[a]!.toString())
+        .map((a) => indexMapping[a]!)
         .toList();
 
     // Safety check - should not happen if isValid was checked first
@@ -132,9 +132,15 @@ class DraftQuestion {
     final json = <String, dynamic>{
       'question': question,
       'options': nonEmptyOptions,
-      'answer': remappedAnswers, // Always array of strings
-      'question_type': questionType, // Explicit question type
+      'question_type': questionType,
     };
+
+    // Use correctAnswer for single choice, correct_answers for multiple choice
+    if (questionType == QuestionTypes.multipleChoice) {
+      json['correct_answers'] = remappedAnswers;
+    } else {
+      json['correctAnswer'] = remappedAnswers.first;
+    }
 
     // Alternative texts
     final nonEmptyAltQuestions =
