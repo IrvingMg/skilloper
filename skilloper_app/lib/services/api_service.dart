@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/questionnaire.dart';
@@ -15,17 +16,21 @@ class ApiException implements Exception {
 }
 
 class ApiService {
-  static const String _defaultBaseUrl = 'http://localhost:8080/api/v1';
+  // API URL can be configured at build time via --dart-define=API_URL=https://your-api.com/api/v1
+  static const String _defaultBaseUrl = String.fromEnvironment(
+    'API_URL',
+    defaultValue: 'http://localhost:8080/api/v1',
+  );
   static const Duration _defaultTimeout = Duration(seconds: 30);
   static const String _viewModeEdit = 'edit'; // Query param value for edit mode
-  
+
   final String baseUrl;
   final Duration timeout;
-  
+
   // Singleton pattern with configurable base URL
   static final ApiService _instance = ApiService._internal();
   factory ApiService({String? baseUrl, Duration? timeout}) => _instance;
-  ApiService._internal({String? baseUrl, Duration? timeout}) 
+  ApiService._internal({String? baseUrl, Duration? timeout})
       : baseUrl = baseUrl ?? _defaultBaseUrl,
         timeout = timeout ?? _defaultTimeout;
 
@@ -75,6 +80,20 @@ class ApiService {
     throw ApiException(errorMessage);
   }
 
+  /// Converts caught exceptions to user-friendly ApiException
+  ApiException _handleException(dynamic e, String operation) {
+    if (e is TimeoutException) {
+      return ApiException('Request timed out - please check your connection and try again');
+    }
+    // Check for common network error patterns in the exception message
+    final errorStr = e.toString().toLowerCase();
+    if (errorStr.contains('socketexception') ||
+        errorStr.contains('connection refused') ||
+        errorStr.contains('network is unreachable')) {
+      return ApiException('Unable to connect to server - please check if the API is running');
+    }
+    return ApiException('Failed to $operation: $e');
+  }
 
   /// Get paginated questionnaire summaries with search and filter
   Future<PaginatedResponse<QuestionnaireSummary>> getQuestionnaireSummaries({
@@ -107,7 +126,11 @@ class ApiService {
       _handleHttpResponse(response, 'load questionnaire summaries');
 
       final Map<String, dynamic> body = json.decode(response.body);
-      final List<dynamic> dataList = body['data'] ?? [];
+      final dynamic rawData = body['data'];
+      if (rawData != null && rawData is! List) {
+        throw ApiException('Invalid response format: expected data array');
+      }
+      final List<dynamic> dataList = (rawData as List?) ?? [];
       final paginationJson = body['pagination'] as Map<String, dynamic>;
 
       return PaginatedResponse(
@@ -119,7 +142,7 @@ class ApiService {
     } on ApiException {
       rethrow;
     } catch (e) {
-      throw ApiException('Failed to connect to API: $e');
+      throw _handleException(e, 'load questionnaire summaries');
     }
   }
 
@@ -141,7 +164,7 @@ class ApiService {
     } on ApiException {
       rethrow;
     } catch (e) {
-      throw ApiException('Failed to connect to API: $e');
+      throw _handleException(e, 'load questionnaire');
     }
   }
 
@@ -163,7 +186,7 @@ class ApiService {
     } on ApiException {
       rethrow;
     } catch (e) {
-      throw ApiException('Failed to connect to API: $e');
+      throw _handleException(e, 'load questionnaire for edit');
     }
   }
 
@@ -248,7 +271,7 @@ class ApiService {
     } on ApiException {
       rethrow;
     } catch (e) {
-      throw ApiException('Failed to upload file: $e');
+      throw _handleException(e, 'upload file');
     }
   }
 
@@ -268,7 +291,7 @@ class ApiService {
     } on ApiException {
       rethrow;
     } catch (e) {
-      throw ApiException('Failed to start attempt: $e');
+      throw _handleException(e, 'start attempt');
     }
   }
 
@@ -288,7 +311,22 @@ class ApiService {
     } on ApiException {
       rethrow;
     } catch (e) {
-      throw ApiException('Failed to complete attempt: $e');
+      throw _handleException(e, 'complete attempt');
+    }
+  }
+
+  /// Abandon an in-progress quiz attempt (when user exits exam)
+  Future<void> abandonAttempt(int attemptId) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/attempts/$attemptId/abandon'),
+      ).timeout(timeout);
+
+      _handleHttpResponse(response, 'abandon attempt');
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw _handleException(e, 'abandon attempt');
     }
   }
 
@@ -329,7 +367,11 @@ class ApiService {
       _handleHttpResponse(response, 'load history');
 
       final Map<String, dynamic> body = json.decode(response.body);
-      final List<dynamic> dataList = body['data'] ?? [];
+      final dynamic rawData = body['data'];
+      if (rawData != null && rawData is! List) {
+        throw ApiException('Invalid response format: expected data array');
+      }
+      final List<dynamic> dataList = (rawData as List?) ?? [];
       final paginationJson = body['pagination'] as Map<String, dynamic>;
 
       return PaginatedResponse(
@@ -341,7 +383,7 @@ class ApiService {
     } on ApiException {
       rethrow;
     } catch (e) {
-      throw ApiException('Failed to load history: $e');
+      throw _handleException(e, 'load history');
     }
   }
 
@@ -363,7 +405,7 @@ class ApiService {
     } on ApiException {
       rethrow;
     } catch (e) {
-      throw ApiException('Failed to load attempt details: $e');
+      throw _handleException(e, 'load attempt details');
     }
   }
 
@@ -382,7 +424,7 @@ class ApiService {
     } on ApiException {
       rethrow;
     } catch (e) {
-      throw ApiException('Failed to create questionnaire: $e');
+      throw _handleException(e, 'create questionnaire');
     }
   }
 
@@ -405,7 +447,7 @@ class ApiService {
     } on ApiException {
       rethrow;
     } catch (e) {
-      throw ApiException('Failed to update questionnaire: $e');
+      throw _handleException(e, 'update questionnaire');
     }
   }
 
@@ -424,7 +466,7 @@ class ApiService {
     } on ApiException {
       rethrow;
     } catch (e) {
-      throw ApiException('Failed to delete questionnaire: $e');
+      throw _handleException(e, 'delete questionnaire');
     }
   }
 
@@ -448,7 +490,7 @@ class ApiService {
     } on ApiException {
       rethrow;
     } catch (e) {
-      throw ApiException('Failed to validate answer: $e');
+      throw _handleException(e, 'validate answer');
     }
   }
 }

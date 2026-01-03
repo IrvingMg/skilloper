@@ -19,17 +19,24 @@ class DeviceService {
       return _cachedDeviceId!;
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    String? deviceId = prefs.getString(_deviceIdKey);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      String? deviceId = prefs.getString(_deviceIdKey);
 
-    if (deviceId == null || deviceId.isEmpty) {
-      // Generate a new UUID
-      deviceId = const Uuid().v4();
-      await prefs.setString(_deviceIdKey, deviceId);
+      if (deviceId == null || deviceId.isEmpty) {
+        // Generate a new UUID
+        deviceId = const Uuid().v4();
+        await prefs.setString(_deviceIdKey, deviceId);
+      }
+
+      _cachedDeviceId = deviceId;
+      return deviceId;
+    } catch (e) {
+      // If SharedPreferences fails, generate a temporary in-memory ID
+      // This handles edge cases on some platforms (especially web)
+      _cachedDeviceId ??= const Uuid().v4();
+      return _cachedDeviceId!;
     }
-
-    _cachedDeviceId = deviceId;
-    return deviceId;
   }
 
   /// Clears the cached device ID (useful for testing)

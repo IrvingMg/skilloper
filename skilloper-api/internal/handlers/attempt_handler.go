@@ -59,6 +59,13 @@ func (h *AttemptHandler) StartAttempt(c *gin.Context) {
 		return
 	}
 
+	// Validate device ID length
+	if len(req.DeviceID) > models.MaxDeviceIDLength {
+		h.handleError(c, apperrors.NewValidationError("DEVICE_ID_TOO_LONG",
+			"device ID exceeds maximum length"), "validate_device_id")
+		return
+	}
+
 	h.logger.Info("Starting attempt",
 		zap.String("device_id", req.DeviceID),
 		zap.Uint("questionnaire_id", req.QuestionnaireID))
@@ -103,11 +110,35 @@ func (h *AttemptHandler) CompleteAttempt(c *gin.Context) {
 	c.JSON(http.StatusOK, attempt)
 }
 
+// AbandonAttempt handles POST /attempts/:id/abandon
+func (h *AttemptHandler) AbandonAttempt(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		h.handleError(c, apperrors.ErrInvalidAttemptID, "parse_attempt_id")
+		return
+	}
+
+	h.logger.Info("Abandoning quiz attempt", zap.Int("id", id))
+
+	if err := h.service.Abandon(uint(id)); err != nil {
+		h.handleError(c, err, "abandon_attempt")
+		return
+	}
+
+	h.logger.Info("Successfully abandoned attempt", zap.Int("id", id))
+	c.JSON(http.StatusOK, gin.H{"message": "Attempt abandoned"})
+}
+
 // GetAttempts handles GET /attempts?device_id=xxx
 func (h *AttemptHandler) GetAttempts(c *gin.Context) {
 	deviceID := c.Query("device_id")
 	if deviceID == "" {
 		h.handleError(c, apperrors.ErrDeviceIDRequired, "parse_device_id")
+		return
+	}
+	if len(deviceID) > models.MaxDeviceIDLength {
+		h.handleError(c, apperrors.NewValidationError("DEVICE_ID_TOO_LONG",
+			"device ID exceeds maximum length"), "validate_device_id")
 		return
 	}
 

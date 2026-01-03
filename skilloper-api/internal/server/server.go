@@ -91,6 +91,7 @@ func (s *Server) setupRoutes() {
 	// Attempt routes (quiz history)
 	api.POST("/attempts/start", s.attemptHandler.StartAttempt)
 	api.POST("/attempts/:id/complete", s.attemptHandler.CompleteAttempt)
+	api.POST("/attempts/:id/abandon", s.attemptHandler.AbandonAttempt)
 	api.GET("/attempts", s.attemptHandler.GetAttempts)
 	api.GET("/attempts/:id", s.attemptHandler.GetAttempt)
 

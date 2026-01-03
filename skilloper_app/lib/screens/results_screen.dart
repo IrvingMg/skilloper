@@ -31,6 +31,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
   bool _isLoading = true;
   QuizAttempt? _completedAttempt;
   String? _error;
+  int? _createdAttemptId; // Track locally created attempt to avoid duplicates on retry
 
   @override
   void initState() {
@@ -45,10 +46,11 @@ class _ResultsScreenState extends State<ResultsScreen> {
     });
 
     try {
-      int? attemptId = widget.attemptId;
+      // Use widget's attemptId, or locally created one, or create new
+      int? attemptId = widget.attemptId ?? _createdAttemptId;
 
-      // For practice mode, create the attempt now (wasn't started at quiz begin)
-      if (attemptId == null && widget.questionnaire.isPracticeMode) {
+      // Create attempt if we don't have one (practice mode always, exam mode if it failed earlier)
+      if (attemptId == null) {
         final deviceId = await _deviceService.getDeviceId();
         final startRequest = StartAttemptRequest(
           deviceId: deviceId,
@@ -57,19 +59,21 @@ class _ResultsScreenState extends State<ResultsScreen> {
           questionnaireType: widget.questionnaire.type,
           totalCount: widget.questionnaire.questions.length,
         );
-        final attempt = await _apiService.startAttempt(startRequest);
-        attemptId = attempt.id;
-      }
-
-      // If still no attemptId, show error
-      if (attemptId == null) {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-            _error = 'Failed to create attempt';
-          });
+        if (!mounted) return;
+        try {
+          final attempt = await _apiService.startAttempt(startRequest);
+          attemptId = attempt.id;
+          _createdAttemptId = attemptId; // Store for retry
+        } catch (e) {
+          // If attempt creation fails, show error
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+              _error = 'Failed to save results: $e';
+            });
+          }
+          return;
         }
-        return;
       }
 
       // Complete the attempt - server validates answers and calculates score
@@ -464,7 +468,9 @@ class _AnswerReviewCard extends StatelessWidget {
                       correctAnswer: answer.correctAnswer!,
                       options: answer.options,
                     ),
-                  ] else if (answer.userAnswer != null) ...[
+                  ] else if (answer.userAnswer != null &&
+                      answer.userAnswer! >= 0 &&
+                      answer.userAnswer! < answer.options.length) ...[
                     // Show only user answer when correct
                     _AnswerDisplay(
                       label: answer.isCorrect ? 'Your answer (Correct)' : 'Your answer',
@@ -648,7 +654,9 @@ class _MultipleAnswerDisplay extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                ...userAnswers.map((answerIndex) => Padding(
+                ...userAnswers
+                    .where((i) => i >= 0 && i < options.length)
+                    .map((answerIndex) => Padding(
                   padding: const EdgeInsets.only(bottom: 4),
                   child: Text(
                     '${String.fromCharCode(65 + answerIndex)}. ${options[answerIndex]}',
@@ -681,30 +689,36 @@ class _CompactAnswerComparison extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Bounds check for safety
+    final userAnswerValid = userAnswer >= 0 && userAnswer < options.length;
+    final correctAnswerValid = correctAnswer >= 0 && correctAnswer < options.length;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // User answer (incorrect)
-        Expanded(
-          child: _AnswerDisplay(
-            label: 'Your answer',
-            option: String.fromCharCode(65 + userAnswer),
-            text: options[userAnswer],
-            isCorrect: false,
-            isUserAnswer: true,
+        if (userAnswerValid)
+          Expanded(
+            child: _AnswerDisplay(
+              label: 'Your answer',
+              option: String.fromCharCode(65 + userAnswer),
+              text: options[userAnswer],
+              isCorrect: false,
+              isUserAnswer: true,
+            ),
           ),
-        ),
-        const SizedBox(width: 8),
+        if (userAnswerValid && correctAnswerValid) const SizedBox(width: 8),
         // Correct answer
-        Expanded(
-          child: _AnswerDisplay(
-            label: 'Correct answer',
-            option: String.fromCharCode(65 + correctAnswer),
-            text: options[correctAnswer],
-            isCorrect: true,
-            isUserAnswer: false,
+        if (correctAnswerValid)
+          Expanded(
+            child: _AnswerDisplay(
+              label: 'Correct answer',
+              option: String.fromCharCode(65 + correctAnswer),
+              text: options[correctAnswer],
+              isCorrect: true,
+              isUserAnswer: false,
+            ),
           ),
-        ),
       ],
     );
   }

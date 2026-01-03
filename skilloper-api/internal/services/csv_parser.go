@@ -121,7 +121,7 @@ func (p *CSVParser) ParseCSV(reader io.Reader, metadata CSVMetadata) (*models.Cr
 	// Read header
 	header, err := csvReader.Read()
 	if err != nil {
-		return nil, fmt.Errorf("failed to read CSV header: %w", err)
+		return nil, fmt.Errorf("failed to read CSV header - ensure file is valid CSV format")
 	}
 
 	// Parse header to find column indices
@@ -141,7 +141,7 @@ func (p *CSVParser) ParseCSV(reader io.Reader, metadata CSVMetadata) (*models.Cr
 			break
 		}
 		if err != nil {
-			return nil, fmt.Errorf("row %d: failed to read: %w", rowNum, err)
+			return nil, fmt.Errorf("row %d: failed to read - check for unquoted commas or special characters", rowNum)
 		}
 
 		// Skip empty rows

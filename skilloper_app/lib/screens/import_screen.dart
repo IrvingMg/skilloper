@@ -56,13 +56,12 @@ class _ImportScreenState extends State<ImportScreen> {
         }
       }
     } catch (e) {
-      setState(() {
-        _isUploading = false;
-        _isSuccess = false;
-        _message = null;
-      });
-
       if (mounted) {
+        setState(() {
+          _isUploading = false;
+          _isSuccess = false;
+          _message = null;
+        });
         _handleError(e.toString());
       }
     }

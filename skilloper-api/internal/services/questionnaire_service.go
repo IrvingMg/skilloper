@@ -20,24 +20,20 @@ import (
 
 // Package-level RNG for alternative text selection (thread-safe via mutex)
 var (
-	globalRng     *rand.Rand
-	globalRngOnce sync.Once
-	globalRngMu   sync.Mutex
+	globalRng   *rand.Rand
+	globalRngMu sync.Mutex
 )
 
-// getGlobalRng returns the package-level RNG (initialized once)
-func getGlobalRng() *rand.Rand {
-	globalRngOnce.Do(func() {
-		globalRng = rand.New(rand.NewSource(time.Now().UnixNano()))
-	})
-	return globalRng
+// init initializes the global RNG at package load time
+func init() {
+	globalRng = rand.New(rand.NewSource(time.Now().UnixNano()))
 }
 
 // randomIntn returns a random int in [0,n) using the global RNG (thread-safe)
 func randomIntn(n int) int {
 	globalRngMu.Lock()
 	defer globalRngMu.Unlock()
-	return getGlobalRng().Intn(n)
+	return globalRng.Intn(n)
 }
 
 type QuestionnaireService struct {
@@ -56,15 +52,22 @@ type QuestionnaireSummaryRow struct {
 	QuestionCount int64 `gorm:"column:question_count"`
 }
 
+// escapeLikePattern escapes SQL LIKE special characters (%, _) in search terms
+func escapeLikePattern(s string) string {
+	s = strings.ReplaceAll(s, "%", "\\%")
+	s = strings.ReplaceAll(s, "_", "\\_")
+	return s
+}
+
 // GetPaginatedSummaries returns paginated questionnaire summaries with search and filter
 func (s *QuestionnaireService) GetPaginatedSummaries(params models.PaginationParams) (models.PaginatedQuestionnaireSummaries, error) {
 	// Build base query with filters
 	baseQuery := s.db.Model(&models.Questionnaire{})
 
-	// Apply search filter (case-insensitive)
+	// Apply search filter (case-insensitive, escape LIKE wildcards)
 	if params.Search != "" {
-		searchPattern := "%" + strings.ToLower(params.Search) + "%"
-		baseQuery = baseQuery.Where("LOWER(title) LIKE ?", searchPattern)
+		searchPattern := "%" + escapeLikePattern(strings.ToLower(params.Search)) + "%"
+		baseQuery = baseQuery.Where("LOWER(title) LIKE ? ESCAPE '\\'", searchPattern)
 	}
 
 	// Apply type filter (already validated by handler)
@@ -90,8 +93,8 @@ func (s *QuestionnaireService) GetPaginatedSummaries(params models.PaginationPar
 
 	// Re-apply filters to the joined query
 	if params.Search != "" {
-		searchPattern := "%" + strings.ToLower(params.Search) + "%"
-		result = result.Where("LOWER(questionnaires.title) LIKE ?", searchPattern)
+		searchPattern := "%" + escapeLikePattern(strings.ToLower(params.Search)) + "%"
+		result = result.Where("LOWER(questionnaires.title) LIKE ? ESCAPE '\\'", searchPattern)
 	}
 	if params.Type != "" {
 		result = result.Where("questionnaires.type = ?", params.Type)
@@ -190,6 +193,12 @@ func (s *QuestionnaireService) Create(req models.CreateQuestionnaireRequest) (*m
 		maxOptions = models.MaxOptionsLimit
 	}
 
+	// Validate at least one question
+	if len(req.Questions) == 0 {
+		return nil, apperrors.NewValidationError("NO_QUESTIONS",
+			"questionnaire must have at least one question")
+	}
+
 	// Create questionnaire
 	questionnaire := models.Questionnaire{
 		Title:       req.Title,
@@ -218,9 +227,9 @@ func (s *QuestionnaireService) Create(req models.CreateQuestionnaireRequest) (*m
 		}
 
 		// Handle options - both single choice and multiple choice need options
-		if len(qReq.Options) == 0 {
+		if len(qReq.Options) < models.MinOptionsLimit {
 			return nil, apperrors.NewValidationError(apperrors.ErrQuestionOptionsRequired.Code,
-				fmt.Sprintf("Question %d is missing required options", i+1))
+				fmt.Sprintf("Question %d requires at least %d options", i+1, models.MinOptionsLimit))
 		}
 
 		// Validate options don't exceed questionnaire's maxOptions limit
@@ -271,9 +280,15 @@ func (s *QuestionnaireService) Create(req models.CreateQuestionnaireRequest) (*m
 				return nil, apperrors.NewValidationError(apperrors.ErrMultipleChoiceAnswersRequired.Code,
 					fmt.Sprintf("Question %d (multiple_choice) is missing required correct_answers array", i+1))
 			}
-			// Validate range (already 0-based)
+			// Validate range and check for duplicates (already 0-based)
 			validCorrectAnswers := []int{}
+			seenAnswers := make(map[int]bool)
 			for _, answer := range qReq.CorrectAnswers {
+				if seenAnswers[answer] {
+					return nil, apperrors.NewValidationError("DUPLICATE_ANSWER",
+						fmt.Sprintf("Question %d has duplicate correct answer index: %d", i+1, answer))
+				}
+				seenAnswers[answer] = true
 				if answer >= 0 && answer < len(qReq.Options) {
 					validCorrectAnswers = append(validCorrectAnswers, answer)
 				}
@@ -346,62 +361,96 @@ func (s *QuestionnaireService) Update(id uint, req models.CreateQuestionnaireReq
 		maxOptions = models.MaxOptionsLimit
 	}
 
-	// Find existing questionnaire
-	var questionnaire models.Questionnaire
-	result := s.db.First(&questionnaire, id)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, apperrors.ErrQuestionnaireNotFound
-		}
-		return nil, apperrors.ErrFetchQuestionnaireFailed
+	// Validate at least one question
+	if len(req.Questions) == 0 {
+		return nil, apperrors.NewValidationError("NO_QUESTIONS",
+			"questionnaire must have at least one question")
 	}
 
-	// Update questionnaire fields
-	questionnaire.Title = req.Title
-	questionnaire.Description = req.Description
-	questionnaire.Type = req.Type
-	questionnaire.MaxOptions = maxOptions
+	// Pre-validate all questions and build validated data before transaction
+	type validatedQuestion struct {
+		questionType             string
+		optionsJSON              string
+		alternativeQuestionsJSON string
+		alternativeOptionsJSON   string
+		alternativeAnswersJSON   string
+		correctAnswersJSON       string
+		finalCorrectAnswer       int
+		qReq                     models.QuestionRequest
+	}
+	validatedQuestions := make([]validatedQuestion, 0, len(req.Questions))
 
-	// Validate questions first
 	for i, qReq := range req.Questions {
 		if qReq.Question == "" {
 			return nil, apperrors.NewValidationError(apperrors.ErrQuestionTextRequired.Code,
 				fmt.Sprintf("Question %d is missing required text", i+1))
 		}
 
-		// Set default question type
 		questionType := qReq.QuestionType
 		if questionType == "" {
 			questionType = models.QuestionTypeSingleChoice
 		}
 
-		// Validate question type
 		if questionType != models.QuestionTypeSingleChoice && questionType != models.QuestionTypeMultipleChoice {
 			return nil, apperrors.NewValidationError(apperrors.ErrInvalidQuestionType.Code,
 				fmt.Sprintf("Question %d has invalid type '%s'. Must be 'single_choice' or 'multiple_choice'", i+1, questionType))
 		}
 
-		// Handle options - both single choice and multiple choice need options
-		if len(qReq.Options) == 0 {
+		if len(qReq.Options) < models.MinOptionsLimit {
 			return nil, apperrors.NewValidationError(apperrors.ErrQuestionOptionsRequired.Code,
-				fmt.Sprintf("Question %d is missing required options", i+1))
+				fmt.Sprintf("Question %d requires at least %d options", i+1, models.MinOptionsLimit))
 		}
 
-		// Validate options don't exceed questionnaire's maxOptions limit
 		if len(qReq.Options) > maxOptions {
 			return nil, apperrors.NewValidationError(apperrors.ErrTooManyOptions.Code,
 				fmt.Sprintf("Question has %d options but questionnaire max_options is %d", len(qReq.Options), maxOptions))
 		}
 
-		// Validate correct answers based on question type
+		optionBytes, err := json.Marshal(qReq.Options)
+		if err != nil {
+			return nil, apperrors.ErrInvalidOptionsFormat
+		}
+
+		var alternativeQuestionsJSON, alternativeOptionsJSON, alternativeAnswersJSON string
+		if len(qReq.AlternativeQuestions) > 0 {
+			b, err := json.Marshal(qReq.AlternativeQuestions)
+			if err != nil {
+				return nil, apperrors.ErrInvalidOptionsFormat
+			}
+			alternativeQuestionsJSON = string(b)
+		}
+		if len(qReq.AlternativeOptions) > 0 {
+			b, err := json.Marshal(qReq.AlternativeOptions)
+			if err != nil {
+				return nil, apperrors.ErrInvalidOptionsFormat
+			}
+			alternativeOptionsJSON = string(b)
+		}
+		if len(qReq.AlternativeAnswers) > 0 {
+			b, err := json.Marshal(qReq.AlternativeAnswers)
+			if err != nil {
+				return nil, apperrors.ErrInvalidOptionsFormat
+			}
+			alternativeAnswersJSON = string(b)
+		}
+
+		var correctAnswersJSON string
+		var finalCorrectAnswer int
+
 		if questionType == models.QuestionTypeMultipleChoice {
 			if len(qReq.CorrectAnswers) == 0 {
 				return nil, apperrors.NewValidationError(apperrors.ErrMultipleChoiceAnswersRequired.Code,
 					fmt.Sprintf("Question %d (multiple_choice) is missing required correct_answers array", i+1))
 			}
-			// Validate range (already 0-based)
+			// Validate range and check for duplicates
 			validCorrectAnswers := []int{}
+			seenAnswers := make(map[int]bool)
 			for _, answer := range qReq.CorrectAnswers {
+				if seenAnswers[answer] {
+					return nil, apperrors.NewValidationError("DUPLICATE_ANSWER",
+						fmt.Sprintf("Question %d has duplicate correct answer index: %d", i+1, answer))
+				}
+				seenAnswers[answer] = true
 				if answer >= 0 && answer < len(qReq.Options) {
 					validCorrectAnswers = append(validCorrectAnswers, answer)
 				}
@@ -410,102 +459,94 @@ func (s *QuestionnaireService) Update(id uint, req models.CreateQuestionnaireReq
 				return nil, apperrors.NewValidationError(apperrors.ErrInvalidCorrectAnswer.Code,
 					fmt.Sprintf("Question %d has invalid correct_answers indices. All indices must be between 0 and %d", i+1, len(qReq.Options)-1))
 			}
-		} else {
-			// Single choice - validate range (already 0-based)
-			if qReq.CorrectAnswer < 0 || qReq.CorrectAnswer >= len(qReq.Options) {
-				return nil, apperrors.NewValidationError(apperrors.ErrInvalidCorrectAnswer.Code,
-					fmt.Sprintf("Question %d has invalid correctAnswer index %d. Must be between 0 and %d", i+1, qReq.CorrectAnswer, len(qReq.Options)-1))
-			}
-		}
-	}
-
-	// Delete existing questions
-	result = s.db.Where("questionnaire_id = ?", questionnaire.ID).Delete(&models.Question{})
-	if result.Error != nil {
-		return nil, apperrors.ErrDeleteQuestionsFailed
-	}
-
-	// Create new questions
-	for _, qReq := range req.Questions {
-		// Set default question type
-		questionType := qReq.QuestionType
-		if questionType == "" {
-			questionType = models.QuestionTypeSingleChoice
-		}
-
-		optionBytes, err := json.Marshal(qReq.Options)
-		if err != nil {
-			return nil, apperrors.ErrInvalidOptionsFormat
-		}
-		optionsJSON := string(optionBytes)
-
-		// Marshal optional fields
-		var alternativeQuestionsJSON, alternativeOptionsJSON, alternativeAnswersJSON string
-		if len(qReq.AlternativeQuestions) > 0 {
-			alternativeQuestions, err := json.Marshal(qReq.AlternativeQuestions)
-			if err != nil {
-				return nil, apperrors.ErrInvalidOptionsFormat
-			}
-			alternativeQuestionsJSON = string(alternativeQuestions)
-		}
-		if len(qReq.AlternativeOptions) > 0 {
-			alternativeOptions, err := json.Marshal(qReq.AlternativeOptions)
-			if err != nil {
-				return nil, apperrors.ErrInvalidOptionsFormat
-			}
-			alternativeOptionsJSON = string(alternativeOptions)
-		}
-		if len(qReq.AlternativeAnswers) > 0 {
-			alternativeAnswers, err := json.Marshal(qReq.AlternativeAnswers)
-			if err != nil {
-				return nil, apperrors.ErrInvalidOptionsFormat
-			}
-			alternativeAnswersJSON = string(alternativeAnswers)
-		}
-
-		// Handle correct answers
-		var correctAnswersJSON string
-		var finalCorrectAnswer int
-		if questionType == models.QuestionTypeMultipleChoice {
-			correctAnswersBytes, err := json.Marshal(qReq.CorrectAnswers)
+			// Use filtered valid answers, not original
+			correctAnswersBytes, err := json.Marshal(validCorrectAnswers)
 			if err != nil {
 				return nil, apperrors.ErrInvalidOptionsFormat
 			}
 			correctAnswersJSON = string(correctAnswersBytes)
 		} else {
+			if qReq.CorrectAnswer < 0 || qReq.CorrectAnswer >= len(qReq.Options) {
+				return nil, apperrors.NewValidationError(apperrors.ErrInvalidCorrectAnswer.Code,
+					fmt.Sprintf("Question %d has invalid correctAnswer index %d. Must be between 0 and %d", i+1, qReq.CorrectAnswer, len(qReq.Options)-1))
+			}
 			finalCorrectAnswer = qReq.CorrectAnswer
 		}
 
-		question := models.Question{
-			QuestionnaireID:      questionnaire.ID,
-			QuestionType:         questionType,
-			QuestionText:         qReq.Question,
-			AlternativeQuestions: alternativeQuestionsJSON,
-			Code:                 qReq.Code,
-			Language:             qReq.Language,
-			Options:              optionsJSON,
-			AlternativeOptions:   alternativeOptionsJSON,
-			CorrectAnswer:        finalCorrectAnswer,
-			CorrectAnswers:       correctAnswersJSON,
-			AlternativeAnswers:   alternativeAnswersJSON,
-			Explanation:          qReq.Explanation,
-		}
-		result = s.db.Create(&question)
-		if result.Error != nil {
-			return nil, apperrors.ErrCreateQuestionFailed
-		}
+		validatedQuestions = append(validatedQuestions, validatedQuestion{
+			questionType:             questionType,
+			optionsJSON:              string(optionBytes),
+			alternativeQuestionsJSON: alternativeQuestionsJSON,
+			alternativeOptionsJSON:   alternativeOptionsJSON,
+			alternativeAnswersJSON:   alternativeAnswersJSON,
+			correctAnswersJSON:       correctAnswersJSON,
+			finalCorrectAnswer:       finalCorrectAnswer,
+			qReq:                     qReq,
+		})
 	}
 
-	// Save questionnaire changes
-	result = s.db.Save(&questionnaire)
-	if result.Error != nil {
+	// Use transaction to ensure atomicity - either all changes succeed or none
+	var questionnaire models.Questionnaire
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		// Find existing questionnaire
+		if err := tx.First(&questionnaire, id).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperrors.ErrQuestionnaireNotFound
+			}
+			return apperrors.ErrFetchQuestionnaireFailed
+		}
+
+		// Update questionnaire fields
+		questionnaire.Title = req.Title
+		questionnaire.Description = req.Description
+		questionnaire.Type = req.Type
+		questionnaire.MaxOptions = maxOptions
+
+		// Delete existing questions
+		if err := tx.Where("questionnaire_id = ?", questionnaire.ID).Delete(&models.Question{}).Error; err != nil {
+			return apperrors.ErrDeleteQuestionsFailed
+		}
+
+		// Create new questions
+		for _, vq := range validatedQuestions {
+			question := models.Question{
+				QuestionnaireID:      questionnaire.ID,
+				QuestionType:         vq.questionType,
+				QuestionText:         vq.qReq.Question,
+				AlternativeQuestions: vq.alternativeQuestionsJSON,
+				Code:                 vq.qReq.Code,
+				Language:             vq.qReq.Language,
+				Options:              vq.optionsJSON,
+				AlternativeOptions:   vq.alternativeOptionsJSON,
+				CorrectAnswer:        vq.finalCorrectAnswer,
+				CorrectAnswers:       vq.correctAnswersJSON,
+				AlternativeAnswers:   vq.alternativeAnswersJSON,
+				Explanation:          vq.qReq.Explanation,
+			}
+			if err := tx.Create(&question).Error; err != nil {
+				return apperrors.ErrCreateQuestionFailed
+			}
+		}
+
+		// Save questionnaire changes
+		if err := tx.Save(&questionnaire).Error; err != nil {
+			return apperrors.ErrUpdateQuestionnaireFailed
+		}
+
+		// Reload questionnaire with questions
+		if err := tx.Preload("Questions").First(&questionnaire, id).Error; err != nil {
+			return apperrors.ErrFetchQuestionnaireFailed
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		var appErr *apperrors.AppError
+		if errors.As(err, &appErr) {
+			return nil, appErr
+		}
 		return nil, apperrors.ErrUpdateQuestionnaireFailed
-	}
-
-	// Reload questionnaire with questions
-	result = s.db.Preload("Questions").First(&questionnaire, id)
-	if result.Error != nil {
-		return nil, apperrors.ErrFetchQuestionnaireFailed
 	}
 
 	response := s.convertToResponse(questionnaire)
@@ -552,12 +593,9 @@ func (s *QuestionnaireService) ImportFromFile(file *multipart.FileHeader, csvMet
 	defer src.Close()
 
 	// Read file content with size limit as safety measure
-	fileContent, err := io.ReadAll(io.LimitReader(src, MaxImportFileSize+1))
+	fileContent, err := io.ReadAll(io.LimitReader(src, MaxImportFileSize))
 	if err != nil {
 		return nil, apperrors.ErrFileReadFailed
-	}
-	if int64(len(fileContent)) > MaxImportFileSize {
-		return nil, apperrors.NewValidationError("FILE_TOO_LARGE", "file exceeds 10MB limit")
 	}
 
 	// Build parser metadata
@@ -667,7 +705,7 @@ func (s *QuestionnaireService) convertToResponse(q models.Questionnaire) models.
 
 		// Pick alternative answer text if available (for single choice)
 		if alternatives := parseStringArrayJSON(question.AlternativeAnswers); len(alternatives) > 0 {
-			if question.CorrectAnswer >= 0 && question.CorrectAnswer < len(options) {
+			if len(options) > 0 && question.CorrectAnswer >= 0 && question.CorrectAnswer < len(options) {
 				allTexts := append([]string{options[question.CorrectAnswer]}, alternatives...)
 				options[question.CorrectAnswer] = allTexts[randomIntn(len(allTexts))]
 			}

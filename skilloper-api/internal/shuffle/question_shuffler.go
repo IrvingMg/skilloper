@@ -2,7 +2,9 @@ package shuffle
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/irvingmg/skilloper/skilloper-api/internal/models"
@@ -10,12 +12,27 @@ import (
 
 type QuestionShuffler struct {
 	rng *rand.Rand
+	mu  sync.Mutex
 }
 
 func New() *QuestionShuffler {
 	return &QuestionShuffler{
 		rng: rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
+}
+
+// rngIntn returns a random int in [0, n) with thread-safety
+func (qs *QuestionShuffler) rngIntn(n int) int {
+	qs.mu.Lock()
+	defer qs.mu.Unlock()
+	return qs.rng.Intn(n)
+}
+
+// rngShuffle shuffles a slice with thread-safety
+func (qs *QuestionShuffler) rngShuffle(n int, swap func(i, j int)) {
+	qs.mu.Lock()
+	defer qs.mu.Unlock()
+	qs.rng.Shuffle(n, swap)
 }
 
 func (qs *QuestionShuffler) ShuffleQuestion(question models.Question) (*models.QuestionResponse, error) {
@@ -30,22 +47,34 @@ func (qs *QuestionShuffler) ShuffleQuestion(question models.Question) (*models.Q
 func (qs *QuestionShuffler) shuffleSingleChoiceQuestion(question models.Question) (*models.QuestionResponse, error) {
 	var originalOptions []string
 	if err := json.Unmarshal([]byte(question.Options), &originalOptions); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse options: %w", err)
+	}
+
+	// Validate correct answer index bounds
+	if question.CorrectAnswer < 0 || question.CorrectAnswer >= len(originalOptions) {
+		return nil, fmt.Errorf("invalid correct answer index %d for %d options", question.CorrectAnswer, len(originalOptions))
 	}
 
 	var alternativeQuestions []string
 	if question.AlternativeQuestions != "" {
-		json.Unmarshal([]byte(question.AlternativeQuestions), &alternativeQuestions)
+		if err := json.Unmarshal([]byte(question.AlternativeQuestions), &alternativeQuestions); err != nil {
+			// Log but continue - alternative questions are optional
+			alternativeQuestions = nil
+		}
 	}
 
 	var alternativeOptions []string
 	if question.AlternativeOptions != "" {
-		json.Unmarshal([]byte(question.AlternativeOptions), &alternativeOptions)
+		if err := json.Unmarshal([]byte(question.AlternativeOptions), &alternativeOptions); err != nil {
+			alternativeOptions = nil
+		}
 	}
 
 	var alternativeAnswers []string
 	if question.AlternativeAnswers != "" {
-		json.Unmarshal([]byte(question.AlternativeAnswers), &alternativeAnswers)
+		if err := json.Unmarshal([]byte(question.AlternativeAnswers), &alternativeAnswers); err != nil {
+			alternativeAnswers = nil
+		}
 	}
 
 	response := &models.QuestionResponse{}
@@ -58,7 +87,7 @@ func (qs *QuestionShuffler) shuffleSingleChoiceQuestion(question models.Question
 
 	if len(alternativeQuestions) > 0 {
 		allTexts := append([]string{question.QuestionText}, alternativeQuestions...)
-		response.Question = allTexts[qs.rng.Intn(len(allTexts))]
+		response.Question = allTexts[qs.rngIntn(len(allTexts))]
 	}
 
 	finalOptions := make([]string, len(originalOptions))
@@ -67,7 +96,7 @@ func (qs *QuestionShuffler) shuffleSingleChoiceQuestion(question models.Question
 	correctAnswerText := originalOptions[question.CorrectAnswer]
 	if len(alternativeAnswers) > 0 {
 		allCorrectTexts := append([]string{correctAnswerText}, alternativeAnswers...)
-		correctAnswerText = allCorrectTexts[qs.rng.Intn(len(allCorrectTexts))]
+		correctAnswerText = allCorrectTexts[qs.rngIntn(len(allCorrectTexts))]
 		finalOptions[question.CorrectAnswer] = correctAnswerText
 	}
 
@@ -84,22 +113,33 @@ func (qs *QuestionShuffler) shuffleSingleChoiceQuestion(question models.Question
 func (qs *QuestionShuffler) shuffleMultipleChoiceQuestion(question models.Question) (*models.QuestionResponse, error) {
 	var originalOptions []string
 	if err := json.Unmarshal([]byte(question.Options), &originalOptions); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse options: %w", err)
 	}
 
 	var originalCorrectAnswers []int
 	if err := json.Unmarshal([]byte(question.CorrectAnswers), &originalCorrectAnswers); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to parse correct answers: %w", err)
+	}
+
+	// Validate all correct answer indices are in bounds
+	for _, idx := range originalCorrectAnswers {
+		if idx < 0 || idx >= len(originalOptions) {
+			return nil, fmt.Errorf("invalid correct answer index %d for %d options", idx, len(originalOptions))
+		}
 	}
 
 	var alternativeQuestions []string
 	if question.AlternativeQuestions != "" {
-		json.Unmarshal([]byte(question.AlternativeQuestions), &alternativeQuestions)
+		if err := json.Unmarshal([]byte(question.AlternativeQuestions), &alternativeQuestions); err != nil {
+			alternativeQuestions = nil
+		}
 	}
 
 	var alternativeOptions []string
 	if question.AlternativeOptions != "" {
-		json.Unmarshal([]byte(question.AlternativeOptions), &alternativeOptions)
+		if err := json.Unmarshal([]byte(question.AlternativeOptions), &alternativeOptions); err != nil {
+			alternativeOptions = nil
+		}
 	}
 
 	response := &models.QuestionResponse{}
@@ -112,7 +152,7 @@ func (qs *QuestionShuffler) shuffleMultipleChoiceQuestion(question models.Questi
 
 	if len(alternativeQuestions) > 0 {
 		allTexts := append([]string{question.QuestionText}, alternativeQuestions...)
-		response.Question = allTexts[qs.rng.Intn(len(allTexts))]
+		response.Question = allTexts[qs.rngIntn(len(allTexts))]
 	}
 
 	finalOptions := make([]string, len(originalOptions))
@@ -128,11 +168,11 @@ func (qs *QuestionShuffler) shuffleMultipleChoiceQuestion(question models.Questi
 
 // shuffleOptionsWithMultipleCorrectTracking shuffles options in-place and returns new correct indices
 func (qs *QuestionShuffler) shuffleOptionsWithMultipleCorrectTracking(options []string, correctIndices []int) []int {
-	// Store correct answer texts before shuffling
-	correctTexts := make([]string, len(correctIndices))
-	for i, idx := range correctIndices {
+	// Store correct answer texts before shuffling, skipping invalid indices
+	correctTexts := make([]string, 0, len(correctIndices))
+	for _, idx := range correctIndices {
 		if idx >= 0 && idx < len(options) {
-			correctTexts[i] = options[idx]
+			correctTexts = append(correctTexts, options[idx])
 		}
 	}
 
@@ -141,7 +181,7 @@ func (qs *QuestionShuffler) shuffleOptionsWithMultipleCorrectTracking(options []
 		indices[i] = i
 	}
 
-	qs.rng.Shuffle(len(indices), func(i, j int) {
+	qs.rngShuffle(len(indices), func(i, j int) {
 		indices[i], indices[j] = indices[j], indices[i]
 	})
 
@@ -168,7 +208,7 @@ func (qs *QuestionShuffler) shuffleOptionsWithCorrectTracking(options []string, 
 		indices[i] = i
 	}
 
-	qs.rng.Shuffle(len(indices), func(i, j int) {
+	qs.rngShuffle(len(indices), func(i, j int) {
 		indices[i], indices[j] = indices[j], indices[i]
 	})
 

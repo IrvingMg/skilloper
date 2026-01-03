@@ -138,9 +138,40 @@ class _QuizScreenState extends State<QuizScreen> {
         });
       }
     } catch (e) {
-      // Silently fail - quiz can continue without tracking
       debugPrint('Failed to start attempt: $e');
+      if (mounted) {
+        // Show error dialog for exam mode - results won't be saved
+        _showAttemptFailedDialog(e.toString());
+      }
     }
+  }
+
+  void _showAttemptFailedDialog(String error) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Cannot Start Exam'),
+        content: Text(
+          'Failed to create exam attempt: $error\n\n'
+          'You can continue in practice mode (results won\'t be saved to history), '
+          'or go back and try again.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              Navigator.pop(this.context); // Go back to home
+            },
+            child: const Text('Go Back'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context), // Continue anyway
+            child: const Text('Continue Anyway'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<bool> _confirmExit() async {
@@ -152,7 +183,7 @@ class _QuizScreenState extends State<QuizScreen> {
         title: Text(isExam ? 'Leave Exam?' : 'Leave Practice?'),
         content: Text(
           isExam
-              ? 'If you leave now, this attempt will be marked as abandoned in your history. Are you sure you want to exit?'
+              ? 'If you leave now, this attempt will be marked as abandoned (0%). Are you sure you want to exit?'
               : 'Are you sure you want to exit? Your progress will not be saved.',
         ),
         actions: [
@@ -174,8 +205,17 @@ class _QuizScreenState extends State<QuizScreen> {
     return result ?? false;
   }
 
-  void _handleExit() async {
+  Future<void> _handleExit() async {
     if (await _confirmExit()) {
+      // For exam mode, abandon the attempt so it doesn't block future attempts
+      if (!widget.questionnaire.isPracticeMode && _attemptId != null) {
+        try {
+          await _apiService.abandonAttempt(_attemptId!);
+        } catch (e) {
+          // Best effort - don't block exit on failure
+          debugPrint('Failed to abandon attempt: $e');
+        }
+      }
       if (mounted) {
         Navigator.pop(context);
       }

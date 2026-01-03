@@ -35,6 +35,8 @@ class HomeScreenState extends State<HomeScreen> {
   // Loading states
   bool _isInitialLoading = false;
   bool _isLoadingMore = false;
+  bool _isStartingQuiz = false; // Prevents double-tap on quiz start
+  bool _pendingRefresh = false; // Tracks if a refresh was requested during loading
   String? _error;
 
   // Search, filter, and sort
@@ -52,6 +54,7 @@ class HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _searchController.dispose();
     _searchDebouncer.dispose();
@@ -68,8 +71,13 @@ class HomeScreenState extends State<HomeScreen> {
 
   /// Load questionnaires (initial or refresh)
   Future<void> _loadQuestionnaires({bool refresh = false}) async {
-    if (_isInitialLoading) return;
+    // If already loading, mark that a refresh is pending
+    if (_isInitialLoading) {
+      _pendingRefresh = true;
+      return;
+    }
 
+    _pendingRefresh = false;
     setState(() {
       _isInitialLoading = true;
       _error = null;
@@ -95,8 +103,8 @@ class HomeScreenState extends State<HomeScreen> {
 
       if (!mounted) return;
       // Check if search/filter/sort changed while request was in flight
-      if (requestSearch != _searchQuery || requestType != _typeFilter || requestSort != _sortBy) {
-        // Query changed - clear loading flag and retry with current query
+      if (requestSearch != _searchQuery || requestType != _typeFilter || requestSort != _sortBy || _pendingRefresh) {
+        // Query changed or refresh pending - discard stale results and load with current filters
         setState(() {
           _isInitialLoading = false;
         });
@@ -115,6 +123,10 @@ class HomeScreenState extends State<HomeScreen> {
         _error = e.toString();
         _isInitialLoading = false;
       });
+      // Check for pending refresh even on error
+      if (_pendingRefresh) {
+        _loadQuestionnaires(refresh: true);
+      }
     }
   }
 
@@ -143,8 +155,8 @@ class HomeScreenState extends State<HomeScreen> {
 
       if (!mounted) return;
       // Check if search/filter/sort changed while request was in flight
-      if (requestSearch != _searchQuery || requestType != _typeFilter || requestSort != _sortBy) {
-        // Query changed - discard stale results; a fresh load should already be in progress
+      if (requestSearch != _searchQuery || requestType != _typeFilter || requestSort != _sortBy || _pendingRefresh) {
+        // Query changed or refresh pending - discard stale results; a fresh load should already be in progress
         setState(() {
           _isLoadingMore = false;
         });
@@ -161,9 +173,14 @@ class HomeScreenState extends State<HomeScreen> {
       setState(() {
         _isLoadingMore = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load more: $e')),
-      );
+      // Check for pending refresh even on error
+      if (_pendingRefresh) {
+        _loadQuestionnaires(refresh: true);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load more: $e')),
+        );
+      }
     }
   }
 
@@ -194,6 +211,10 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _startQuiz(QuestionnaireSummary summary) async {
+    // Prevent double-tap
+    if (_isStartingQuiz) return;
+    _isStartingQuiz = true;
+
     // Show loading indicator
     showDialog(
       context: context,
@@ -209,6 +230,7 @@ class HomeScreenState extends State<HomeScreen> {
 
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
+      _isStartingQuiz = false;
 
       Navigator.push(
         context,
@@ -217,6 +239,7 @@ class HomeScreenState extends State<HomeScreen> {
         ),
       );
     } catch (e) {
+      _isStartingQuiz = false;
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
       ScaffoldMessenger.of(context).showSnackBar(

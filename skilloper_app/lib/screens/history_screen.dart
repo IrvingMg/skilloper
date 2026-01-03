@@ -60,9 +60,16 @@ class HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _initializeAndLoad() async {
-    _deviceId = await _deviceService.getDeviceId();
-    if (!mounted) return;
-    _loadHistory(refresh: true);
+    try {
+      _deviceId = await _deviceService.getDeviceId();
+      if (!mounted) return;
+      _loadHistory(refresh: true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Failed to initialize device ID';
+      });
+    }
   }
 
   /// Handle scroll to trigger load more

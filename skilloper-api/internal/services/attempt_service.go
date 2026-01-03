@@ -38,15 +38,54 @@ func (s *AttemptService) Start(req models.StartAttemptRequest) (*models.AttemptR
 			"questionnaire ID is required")
 	}
 
-	if req.QuestionnaireTitle == "" {
-		return nil, apperrors.NewValidationError(apperrors.ErrInvalidAttemptData.Code,
-			"questionnaire title is required")
-	}
-
 	var attempt models.QuizAttempt
 
 	// Use transaction to ensure atomic attempt number calculation
 	err := s.db.Transaction(func(tx *gorm.DB) error {
+		// Verify questionnaire exists and get metadata (without preloading questions)
+		var questionnaire models.Questionnaire
+		if err := tx.First(&questionnaire, req.QuestionnaireID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperrors.ErrQuestionnaireNotFound
+			}
+			return err
+		}
+
+		// Get question count separately (more efficient than preloading all questions)
+		var questionCount int64
+		if err := tx.Model(&models.Question{}).
+			Where("questionnaire_id = ?", req.QuestionnaireID).
+			Count(&questionCount).Error; err != nil {
+			return err
+		}
+
+		// Clean up stale in-progress attempts (older than StaleAttemptHours)
+		// This prevents users from being permanently locked out after abandoning attempts
+		staleThreshold := time.Now().Add(-time.Duration(models.StaleAttemptHours) * time.Hour)
+		if err := tx.Model(&models.QuizAttempt{}).
+			Where("device_id = ? AND questionnaire_id = ? AND status = ? AND created_at < ?",
+				req.DeviceID, req.QuestionnaireID, models.AttemptStatusInProgress, staleThreshold).
+			Updates(map[string]interface{}{
+				"status":       models.AttemptStatusCompleted,
+				"completed_at": time.Now(),
+			}).Error; err != nil {
+			s.logger.Warn("Failed to clean up stale attempts", zap.Error(err))
+			// Continue anyway - cleanup is best-effort
+		}
+
+		// Check for too many in-progress attempts (prevents abuse)
+		var inProgressCount int64
+		if err := tx.Model(&models.QuizAttempt{}).
+			Where("device_id = ? AND questionnaire_id = ? AND status = ?",
+				req.DeviceID, req.QuestionnaireID, models.AttemptStatusInProgress).
+			Count(&inProgressCount).Error; err != nil {
+			return err
+		}
+		if inProgressCount >= models.MaxConcurrentAttempts {
+			return apperrors.NewValidationError("TOO_MANY_ATTEMPTS",
+				"too many in-progress attempts for this quiz - please wait or try again later")
+		}
+
 		// Calculate attempt number within transaction (count of existing attempts + 1)
 		var existingCount int64
 		if err := tx.Model(&models.QuizAttempt{}).
@@ -56,15 +95,15 @@ func (s *AttemptService) Start(req models.StartAttemptRequest) (*models.AttemptR
 		}
 		attemptNumber := int(existingCount) + 1
 
-		// Create attempt with in_progress status
+		// Create attempt with in_progress status using server-side data
 		attempt = models.QuizAttempt{
 			DeviceID:           req.DeviceID,
 			QuestionnaireID:    req.QuestionnaireID,
-			QuestionnaireTitle: req.QuestionnaireTitle,
-			QuestionnaireType:  req.QuestionnaireType,
+			QuestionnaireTitle: questionnaire.Title, // Use server data, not client
+			QuestionnaireType:  questionnaire.Type,  // Use server data, not client
 			AttemptNumber:      attemptNumber,
 			Status:             models.AttemptStatusInProgress,
-			TotalCount:         req.TotalCount,
+			TotalCount:         int(questionCount), // Use count query, not preloaded data
 		}
 
 		// Save to database within transaction
@@ -86,6 +125,30 @@ func (s *AttemptService) Start(req models.StartAttemptRequest) (*models.AttemptR
 	// Convert to response
 	response := s.convertToResponse(attempt)
 	return &response, nil
+}
+
+// Abandon marks an in-progress attempt as completed with 0 score
+// Used when user explicitly exits an exam without completing
+func (s *AttemptService) Abandon(attemptID uint) error {
+	now := time.Now()
+	result := s.db.Model(&models.QuizAttempt{}).
+		Where("id = ? AND status = ?", attemptID, models.AttemptStatusInProgress).
+		Updates(map[string]interface{}{
+			"status":       models.AttemptStatusCompleted,
+			"completed_at": now,
+		})
+
+	if result.Error != nil {
+		return apperrors.NewValidationError("ABANDON_FAILED", "failed to abandon attempt")
+	}
+
+	if result.RowsAffected == 0 {
+		// Either attempt not found or already completed - both are fine
+		s.logger.Debug("Abandon: no rows affected",
+			zap.Uint("attempt_id", attemptID))
+	}
+
+	return nil
 }
 
 // Complete updates an in-progress attempt with final results
@@ -157,7 +220,7 @@ func (s *AttemptService) Complete(attemptID uint, req models.CompleteAttemptRequ
 			// Validate answer based on question type
 			var isCorrect bool
 			var correctAnswer *int
-			var correctAnswers []int
+			correctAnswers := []int{} // Initialize to avoid nil on unmarshal error
 			var userAnswersJSON, correctAnswersJSON, optionsJSON string
 
 			if question.QuestionType == models.QuestionTypeMultipleChoice {
@@ -166,6 +229,7 @@ func (s *AttemptService) Complete(attemptID uint, req models.CompleteAttemptRequ
 					s.logger.Warn("Failed to unmarshal correct answers",
 						zap.Uint("question_id", question.ID),
 						zap.Error(err))
+					correctAnswers = []int{} // Ensure empty slice on error
 				}
 
 				// Validate multiple choice answer
@@ -285,10 +349,12 @@ func (s *AttemptService) GetPaginatedByDeviceID(deviceID string, params models.P
 	// Build query with filters
 	query := s.db.Model(&models.QuizAttempt{}).Where("device_id = ?", deviceID)
 
-	// Apply search filter (case-insensitive on questionnaire_title)
+	// Apply search filter (case-insensitive on questionnaire_title, escape LIKE wildcards)
 	if params.Search != "" {
-		searchPattern := "%" + strings.ToLower(params.Search) + "%"
-		query = query.Where("LOWER(questionnaire_title) LIKE ?", searchPattern)
+		escaped := strings.ReplaceAll(params.Search, "%", "\\%")
+		escaped = strings.ReplaceAll(escaped, "_", "\\_")
+		searchPattern := "%" + strings.ToLower(escaped) + "%"
+		query = query.Where("LOWER(questionnaire_title) LIKE ? ESCAPE '\\'", searchPattern)
 	}
 
 	// Apply type filter (already validated by handler)

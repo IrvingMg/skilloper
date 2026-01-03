@@ -19,4 +19,11 @@ const (
 	// Alternative fields (for question variety)
 	MaxAlternativeQuestions = 10 // Maximum alternative question phrasings
 	MaxAlternativeOptions   = 20 // Maximum alternative distractor options
+
+	// Device tracking
+	MaxDeviceIDLength = 128 // Maximum device ID length (UUID is 36 chars)
+
+	// Attempt limits
+	MaxConcurrentAttempts  = 2  // Maximum in-progress attempts per device per questionnaire
+	StaleAttemptHours      = 24 // Hours after which in-progress attempts are considered stale
 )

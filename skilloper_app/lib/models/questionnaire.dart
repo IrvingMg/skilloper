@@ -28,7 +28,9 @@ class Question {
       question: json['question'] as String,
       code: json['code'] as String?,
       language: json['language'] as String?,
-      options: List<String>.from(json['options'] as List),
+      options: json['options'] != null
+          ? List<String>.from(json['options'] as List)
+          : <String>[],
       correctAnswer: json['correctAnswer'] as int?,
       correctAnswers: json['correct_answers'] != null
           ? List<int>.from(json['correct_answers'] as List)
