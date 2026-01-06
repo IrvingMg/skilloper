@@ -51,14 +51,15 @@ class _MainScreenState extends State<MainScreen> {
       _currentIndex = index;
     });
 
-    // Refresh Home or History when coming from Add tab
-    // This ensures newly created/imported quizzes appear
-    if (previousIndex == 2) {
-      if (index == 0) {
-        _homeKey.currentState?.refresh();
-      } else if (index == 1) {
-        _historyKey.currentState?.refresh();
-      }
+    // Refresh Home when coming from Add tab (newly created/imported quizzes)
+    if (previousIndex == 2 && index == 0) {
+      _homeKey.currentState?.refresh();
+    }
+
+    // Always refresh History when navigating to it
+    // Quiz attempts can be completed from Home at any time
+    if (index == 1 && previousIndex != 1) {
+      _historyKey.currentState?.refresh();
     }
   }
 
