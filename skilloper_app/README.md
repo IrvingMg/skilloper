@@ -1,20 +1,10 @@
 # Skilloper App
 
-Flutter web application frontend for the Skilloper platform - delivers an interactive developer skills assessment experience.
-
-## Description
-
-Modern web interface for taking programming skill assessments with real-time feedback, code syntax highlighting, and responsive design. Features include:
-
-- **Multiple Question Types**: Single-choice and multiple-choice questions with distinct UI
-- **Randomized Content**: Fresh question and answer shuffling on each attempt
-- **Alternative Content**: Varied question texts and answer options for repeated practice
-- **Real-time Feedback**: Immediate explanations in practice mode
-- **Exam Simulation**: Realistic interview conditions with delayed feedback
+Flutter web application frontend for the Skilloper platform.
 
 ## Prerequisites
 
-- Flutter SDK 3.0+
+- Flutter SDK (with Dart 3.9+)
 - Chrome/Edge browser (for web development)
 - Skilloper API running on `http://localhost:8080`
 
@@ -38,11 +28,12 @@ flutter doctor
 # Run web app with hot reload
 flutter run -d chrome --web-port 3001
 
-# Or run on any available device
-flutter run
+# With custom API URL
+flutter run -d chrome --web-port 3001 --dart-define=API_URL=https://your-api.com/api/v1
 ```
 
 **App runs on:** `http://localhost:3001`
+**Default API:** `http://localhost:8080/api/v1`
 
 ### Production Build
 ```bash
@@ -52,25 +43,7 @@ flutter build web --release
 # Output in build/web/ - deploy to web server
 ```
 
-## How to Use
-
-### Taking Assessments
-1. **Browse** available quizzes on the home screen
-2. **Select** a quiz to start (content is shuffled fresh each time)
-3. **Answer questions:**
-   - **Single-choice**: Select one correct answer with radio buttons
-   - **Multiple-choice**: Select multiple correct answers with checkboxes
-4. **Get feedback:**
-   - **Practice mode**: Immediate feedback with explanations
-   - **Exam mode**: Review all answers at the end
-5. **Review results** with detailed explanations and correct answer highlights
-
-### Importing Quizzes
-1. **Navigate** to Import tab
-2. **Upload** JSON or CSV files
-3. **Files are processed** and added to available quizzes
-
-## Development Examples
+## Development
 
 ### Running Different Platforms
 ```bash
@@ -97,42 +70,8 @@ flutter analyze
 
 # Format code
 flutter format lib/
-
-# Generate app icons
-flutter pub run flutter_launcher_icons:main
 ```
-
-### Simple Quiz Example
-
-```json
-{
-  "title": "React Basics",
-  "description": "Test your React knowledge",
-  "type": "practice",
-  "questions": [
-    {
-      "question": "What hook is used for state management?",
-      "options": ["useState", "useEffect", "useContext"],
-      "correctAnswer": 0,
-      "explanation": "useState is the primary hook for managing component state"
-    }
-  ]
-}
-```
-
-For complete schema documentation with all features, see [Quiz Schema](../docs/quiz-schema.md).
-
 
 ## Quiz Format
 
-For complete documentation on creating quizzes, see [Quiz Schema](../docs/quiz-schema.md).
-
-### Key Features for Users
-
-- **Single-choice questions**: Use radio buttons for one correct answer
-- **Multiple-choice questions**: Use checkboxes for multiple correct answers
-- **Question shuffling**: Answer options randomize each time you take a quiz
-- **Alternative content**: Questions and answers vary on repeat attempts
-- **Code highlighting**: Programming code displays with syntax highlighting
-- **Practice vs Exam modes**: Immediate feedback or delayed results
-- **0-based Indexing**: Use 0, 1, 2... to indicate correct answers (programming convention)
+For creating quizzes, see [Quiz Schema](../docs/quiz-schema.md).

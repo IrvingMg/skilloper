@@ -17,7 +17,6 @@ type Server struct {
 	logger *zap.Logger
 	router *gin.Engine
 
-	// Handlers
 	quizHandler     *handlers.QuizHandler
 	attemptHandler  *handlers.AttemptHandler
 	questionHandler *handlers.QuestionHandler
@@ -42,7 +41,6 @@ func (s *Server) Initialize() {
 func (s *Server) setupMiddleware() {
 	s.logger.Info("Setting up middleware")
 
-	// CORS configuration
 	corsConfig := cors.Config{
 		AllowOrigins:     s.config.AllowedOrigins,
 		AllowMethods:     s.config.AllowedMethods,
@@ -61,13 +59,11 @@ func (s *Server) setupMiddleware() {
 func (s *Server) setupServices() {
 	s.logger.Info("Setting up services and handlers")
 
-	// Initialize services with dependency injection
 	quizService := services.NewQuizService(s.db)
 	attemptService := services.NewAttemptService(s.db, s.logger)
 	questionService := services.NewQuestionService(s.db, s.logger)
 	healthService := services.NewHealthService()
 
-	// Initialize handlers
 	s.quizHandler = handlers.NewQuizHandler(quizService, s.logger)
 	s.attemptHandler = handlers.NewAttemptHandler(attemptService, s.logger)
 	s.questionHandler = handlers.NewQuestionHandler(questionService, s.logger)
@@ -77,7 +73,6 @@ func (s *Server) setupServices() {
 func (s *Server) setupRoutes() {
 	s.logger.Info("Setting up routes")
 
-	// API routes group
 	api := s.router.Group("/api/v1")
 
 	// Quiz routes

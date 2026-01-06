@@ -20,30 +20,25 @@ class HomeScreen extends StatefulWidget {
 class HomeScreenState extends State<HomeScreen> {
   final ApiService _apiService = ApiService();
 
-  /// Public method to refresh the quiz list.
-  /// Called by parent when tab becomes active.
   void refresh() {
     _loadQuizzes(refresh: true);
   }
   final ScrollController _scrollController = ScrollController();
   final Debouncer _searchDebouncer = Debouncer(delay: const Duration(milliseconds: 300));
 
-  // Data state
   List<QuizSummary> _quizzes = [];
   PaginationMeta _pagination = PaginationMeta.initial();
 
-  // Loading states
   bool _isInitialLoading = false;
   bool _isLoadingMore = false;
-  bool _isStartingQuiz = false; // Prevents double-tap on quiz start
-  bool _pendingRefresh = false; // Tracks if a refresh was requested during loading
+  bool _isStartingQuiz = false;
+  bool _pendingRefresh = false;
   String? _error;
 
-  // Search, filter, and sort
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _typeFilter = '';
-  String _sortBy = 'date_desc'; // Default sort
+  String _sortBy = 'date_desc';
 
   @override
   void initState() {
@@ -61,7 +56,6 @@ class HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  /// Handle scroll to trigger load more
   void _onScroll() {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
@@ -69,7 +63,6 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// Load quizzes (initial or refresh)
   Future<void> _loadQuizzes({bool refresh = false}) async {
     // If already loading, mark that a refresh is pending
     if (_isInitialLoading) {
@@ -130,7 +123,6 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// Load more quizzes (infinite scroll)
   Future<void> _loadMore() async {
     if (_isLoadingMore || !_pagination.hasMore || _isInitialLoading) return;
 
@@ -184,7 +176,6 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// Handle search text change with debounce
   void _onSearchChanged(String query) {
     _searchDebouncer.run(() {
       setState(() {
@@ -194,7 +185,6 @@ class HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  /// Handle filter change (immediate, no debounce)
   void _onFilterChanged(String filter) {
     setState(() {
       _typeFilter = filter;
@@ -202,7 +192,6 @@ class HomeScreenState extends State<HomeScreen> {
     _loadQuizzes(refresh: true);
   }
 
-  /// Handle sort change (immediate, no debounce)
   void _onSortChanged(String sort) {
     setState(() {
       _sortBy = sort;
@@ -215,7 +204,6 @@ class HomeScreenState extends State<HomeScreen> {
     if (_isStartingQuiz) return;
     _isStartingQuiz = true;
 
-    // Show loading indicator
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -225,11 +213,10 @@ class HomeScreenState extends State<HomeScreen> {
     );
 
     try {
-      // Fetch full quiz with questions (fresh shuffled data)
       final quiz = await _apiService.getQuiz(summary.id);
 
       if (!mounted) return;
-      Navigator.pop(context); // Close loading dialog
+      Navigator.pop(context);
       _isStartingQuiz = false;
 
       Navigator.push(
@@ -241,7 +228,7 @@ class HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       _isStartingQuiz = false;
       if (!mounted) return;
-      Navigator.pop(context); // Close loading dialog
+      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error loading quiz: $e')),
       );
@@ -249,7 +236,6 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _editQuiz(QuizSummary summary) async {
-    // Show loading indicator
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -259,11 +245,10 @@ class HomeScreenState extends State<HomeScreen> {
     );
 
     try {
-      // Fetch full quiz with answers included for edit mode
       final quiz = await _apiService.getQuizForEdit(summary.id);
 
       if (!mounted) return;
-      Navigator.pop(context); // Close loading dialog
+      Navigator.pop(context);
 
       await Navigator.push(
         context,
@@ -272,13 +257,12 @@ class HomeScreenState extends State<HomeScreen> {
         ),
       );
 
-      // Refresh list after returning
       if (mounted) {
         _loadQuizzes(refresh: true);
       }
     } catch (e) {
       if (!mounted) return;
-      Navigator.pop(context); // Close loading dialog
+      Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error loading quiz: $e')),
       );
@@ -371,7 +355,6 @@ class HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Search and filter bar
               SearchFilterBar(
                 searchHint: 'Search quizzes...',
                 searchController: _searchController,
@@ -496,7 +479,6 @@ class HomeScreenState extends State<HomeScreen> {
                     itemCount: _quizzes.length + (_isLoadingMore ? 1 : 0),
                     separatorBuilder: (context, index) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
-                      // Show loading indicator at the bottom
                       if (index == _quizzes.length) {
                         return const Padding(
                           padding: EdgeInsets.symmetric(vertical: 16),
@@ -546,14 +528,12 @@ class _QuizListItem extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            // Responsive layout based on available width
             final isNarrowScreen = constraints.maxWidth < 360;
 
             return Padding(
               padding: EdgeInsets.all(isNarrowScreen ? 12 : 20),
               child: Row(
                 children: [
-                  // Icon - smaller on narrow screens
                   Container(
                     width: isNarrowScreen ? 44 : 56,
                     height: isNarrowScreen ? 44 : 56,
@@ -574,12 +554,10 @@ class _QuizListItem extends StatelessWidget {
 
                   SizedBox(width: isNarrowScreen ? 12 : 16),
 
-                  // Content
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Title and type badge
                         Row(
                           children: [
                             Expanded(
@@ -622,7 +600,6 @@ class _QuizListItem extends StatelessWidget {
 
                         if (!isNarrowScreen) const SizedBox(height: 6),
 
-                        // Description - only show on wider screens
                         if (!isNarrowScreen && quiz.description.isNotEmpty) ...[
                           Text(
                             quiz.description,
@@ -637,10 +614,8 @@ class _QuizListItem extends StatelessWidget {
                           const SizedBox(height: 8),
                         ],
 
-                        // Stats - compact layout for narrow screens
                         if (isNarrowScreen) ...[
                           const SizedBox(height: 4),
-                          // Single row with questions and date
                           Row(
                             children: [
                               const Icon(
@@ -674,7 +649,6 @@ class _QuizListItem extends StatelessWidget {
                             ],
                           ),
                         ] else ...[
-                          // Horizontal layout for wider screens
                           Row(
                             children: [
                               const Icon(
@@ -714,7 +688,6 @@ class _QuizListItem extends StatelessWidget {
 
                   SizedBox(width: isNarrowScreen ? 8 : 12),
 
-                  // Three-dot menu
                   PopupMenuButton<String>(
                     icon: Icon(
                       Icons.more_vert,

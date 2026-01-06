@@ -39,26 +39,6 @@ const kAttemptSortOptions = [
   SortOption(value: 'title_desc', label: 'Title Z-A'),
 ];
 
-/// Helper to check if an item matches search query and type filter
-bool matchesFilter({
-  required String title,
-  required String type,
-  required String searchQuery,
-  required String typeFilter,
-}) {
-  // Filter by search query
-  if (searchQuery.isNotEmpty) {
-    if (!title.toLowerCase().contains(searchQuery)) {
-      return false;
-    }
-  }
-  // Filter by type
-  if (typeFilter.isNotEmpty && type != typeFilter) {
-    return false;
-  }
-  return true;
-}
-
 class SearchFilterBar extends StatefulWidget {
   final String searchHint;
   final TextEditingController searchController;
@@ -66,7 +46,6 @@ class SearchFilterBar extends StatefulWidget {
   final List<FilterOption> filterOptions;
   final String selectedFilter; // Empty string means "All"
   final ValueChanged<String> onFilterChanged;
-  // Optional sort functionality
   final List<SortOption>? sortOptions;
   final String? selectedSort;
   final ValueChanged<String>? onSortChanged;
@@ -146,7 +125,6 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
 
     return Row(
       children: [
-        // Search field
         Expanded(
           child: TextField(
             controller: widget.searchController,
@@ -202,7 +180,6 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
 
         const SizedBox(width: 12),
 
-        // Filter button
         PopupMenuButton<String>(
           onSelected: widget.onFilterChanged,
           offset: const Offset(0, 45),
@@ -281,7 +258,6 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
           ],
         ),
 
-        // Sort button (optional, only if sortOptions is non-empty)
         if (widget.sortOptions != null && widget.sortOptions!.isNotEmpty && widget.onSortChanged != null) ...[
           const SizedBox(width: 8),
           PopupMenuButton<String>(

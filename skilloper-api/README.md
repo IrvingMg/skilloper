@@ -1,21 +1,10 @@
 # Skilloper API
 
-Go REST API backend for the Skilloper platform - a clean, maintainable service for managing programming skill assessments.
-
-## Description
-
-Provides endpoints for managing programming skill assessments with support for practice and exam modes. Features include:
-
-- **Question Shuffling**: Randomized answer options for each request
-- **Multiple Question Types**: Single-choice and multiple-choice questions
-- **Alternative Content**: Randomized question texts and answer options for variety
-- **Configurable Option Limits**: Quiz-level control over maximum options per question
-- **Comprehensive Question Management**: Code syntax support with explanations
-- **Quiz History**: Track quiz attempts with detailed answer history per device
+Go REST API backend for the Skilloper platform.
 
 ## Prerequisites
 
-- Go 1.19 or higher
+- Go 1.24+
 - Git (for cloning)
 
 ## Setup
@@ -76,54 +65,16 @@ PORT=8080 DATABASE_PATH=production.db ./skilloper-api
 
 ## Configuration
 
-The API supports environment-based configuration:
-
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PORT` | `8080` | Server port |
 | `DATABASE_PATH` | `skilloper.db` | SQLite database file path |
-| `FRONTEND_URL_1` | `http://localhost:3000` | Allowed CORS origin |
-| `FRONTEND_URL_2` | `http://127.0.0.1:3000` | Allowed CORS origin |
-| `FRONTEND_URL_3` | `http://localhost:3001` | Allowed CORS origin |
-| `FRONTEND_URL_4` | `http://127.0.0.1:3001` | Allowed CORS origin |
-
-### Example
-```bash
-# Custom configuration
-export PORT=9000
-export DATABASE_PATH=/data/skilloper.db
-export FRONTEND_URL_1=https://skilloper.example.com
-go run main.go
-```
+| `ALLOWED_ORIGINS` | http://localhost:3000,3001 + 127.0.0.1 variants | Comma-separated CORS origins |
 
 ## API Reference
 
-For complete API documentation, see:
-- **[API Endpoints](../docs/api-endpoints.md)** - Complete endpoint reference with examples
-- **[Quiz Schema](../docs/quiz-schema.md)** - JSON schema for creating quizzes
-
-## Quick Start
-
-Create a simple quiz:
-
-```bash
-curl -X POST http://localhost:8080/api/v1/quizzes \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "JavaScript Basics",
-    "type": "practice",
-    "questions": [
-      {
-        "question": "What is the correct way to declare a variable?",
-        "options": ["var x", "let x", "const x", "variable x"],
-        "correctAnswer": 1,
-        "explanation": "let is the modern way to declare variables in JavaScript"
-      }
-    ]
-  }'
-```
-
-For complete schema documentation with all features, see [Quiz Schema](../docs/quiz-schema.md).
+- **[API Endpoints](../docs/api-endpoints.md)** - Complete endpoint reference
+- **[Quiz Schema](../docs/quiz-schema.md)** - Quiz import formats
 
 ## Database
 

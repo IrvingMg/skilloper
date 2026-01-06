@@ -59,7 +59,6 @@ func (h *AttemptHandler) StartAttempt(c *gin.Context) {
 		return
 	}
 
-	// Validate device ID length
 	if len(req.DeviceID) > models.MaxDeviceIDLength {
 		h.handleError(c, apperrors.NewValidationError("DEVICE_ID_TOO_LONG",
 			"device ID exceeds maximum length"), "validate_device_id")
@@ -142,7 +141,6 @@ func (h *AttemptHandler) GetAttempts(c *gin.Context) {
 		return
 	}
 
-	// Parse pagination params
 	var params models.PaginationParams
 	if err := c.ShouldBindQuery(&params); err != nil {
 		h.handleError(c, apperrors.ErrInvalidPaginationParams, "parse_pagination_params")

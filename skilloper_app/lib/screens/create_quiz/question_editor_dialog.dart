@@ -189,7 +189,6 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -216,15 +215,12 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                 ],
               ),
             ),
-
-            // Content
             Flexible(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Question text
                     TextField(
                       controller: _questionController,
                       decoration: const InputDecoration(
@@ -235,8 +231,6 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                       maxLines: 2,
                     ),
                     const SizedBox(height: 20),
-
-                    // Question type toggle
                     Row(
                       children: [
                         const Text('Question Type:',
@@ -256,8 +250,6 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                       ],
                     ),
                     const SizedBox(height: 20),
-
-                    // Options
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -549,8 +541,6 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                 ),
               ),
             ),
-
-            // Actions
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(

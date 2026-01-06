@@ -22,14 +22,12 @@ func New(config Config) (*zap.Logger, error) {
 		zapConfig = zap.NewDevelopmentConfig()
 	}
 
-	// Set log level
 	level, err := zap.ParseAtomicLevel(config.Level)
 	if err != nil {
 		level = zap.NewAtomicLevelAt(zap.InfoLevel)
 	}
 	zapConfig.Level = level
 
-	// Build logger
 	logger, err := zapConfig.Build()
 	if err != nil {
 		return nil, err

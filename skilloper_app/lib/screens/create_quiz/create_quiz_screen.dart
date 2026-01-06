@@ -333,18 +333,13 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
       ),
       body: Column(
         children: [
-          // Step indicator
           _buildStepIndicator(),
-
-          // Step content
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: _buildStepContent(),
             ),
           ),
-
-          // Navigation buttons
           _buildNavigationBar(),
         ],
       ),

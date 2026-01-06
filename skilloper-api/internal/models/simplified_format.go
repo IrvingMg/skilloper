@@ -5,7 +5,6 @@ import (
 	"strconv"
 )
 
-// Format constants for JSON parsing
 const (
 	FormatSimple   = "simple"   // User-friendly: 1-based indexing, answer as string array (default)
 	FormatInternal = "internal" // API format: 0-based indexing, correctAnswer/correct_answers
@@ -59,7 +58,6 @@ func (sq *SimplifiedQuestion) ParseAnswer() (*ParsedAnswer, error) {
 		return nil, fmt.Errorf("answer is required")
 	}
 
-	// Parse all answers to 0-based indices
 	answers := make([]int, 0, len(sq.Answer))
 	seen := make(map[int]bool)
 
@@ -87,10 +85,8 @@ func (sq *SimplifiedQuestion) ParseAnswer() (*ParsedAnswer, error) {
 		return nil, fmt.Errorf("at least one valid answer is required")
 	}
 
-	// Determine question type: use explicit type if valid, otherwise infer from answer count
 	questionType := sq.QuestionType
 	if questionType != QuestionTypeSingleChoice && questionType != QuestionTypeMultipleChoice {
-		// Infer from answer count
 		if len(answers) == 1 {
 			questionType = QuestionTypeSingleChoice
 		} else {
@@ -98,12 +94,10 @@ func (sq *SimplifiedQuestion) ParseAnswer() (*ParsedAnswer, error) {
 		}
 	}
 
-	// Validate: single_choice should have exactly one answer
 	if questionType == QuestionTypeSingleChoice && len(answers) > 1 {
 		return nil, fmt.Errorf("single_choice question has %d answers, expected 1", len(answers))
 	}
 
-	// Return based on determined type
 	if questionType == QuestionTypeSingleChoice {
 		return &ParsedAnswer{
 			QuestionType:  QuestionTypeSingleChoice,

@@ -28,7 +28,6 @@ func Load() *Config {
 func parseAllowedOrigins() []string {
 	originsStr := getEnv("ALLOWED_ORIGINS", "")
 
-	// If not set, use development defaults
 	if originsStr == "" {
 		return []string{
 			"http://localhost:3000",
@@ -38,7 +37,6 @@ func parseAllowedOrigins() []string {
 		}
 	}
 
-	// Split by comma and trim spaces
 	origins := strings.Split(originsStr, ",")
 	for i, origin := range origins {
 		origins[i] = strings.TrimSpace(origin)

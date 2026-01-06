@@ -7,7 +7,6 @@ func ValidateMultipleChoice(userAnswers, correctAnswers []int) bool {
 		return false
 	}
 
-	// Create sets for comparison
 	userSet := make(map[int]bool)
 	for _, a := range userAnswers {
 		userSet[a] = true

@@ -10,27 +10,23 @@ import (
 )
 
 func main() {
-	// Initialize structured logger
 	log, err := logger.NewFromEnv()
 	if err != nil {
 		panic("Failed to initialize logger: " + err.Error())
 	}
 	defer log.Sync()
 
-	// Load configuration
 	cfg := config.Load()
 	log.Info("Configuration loaded",
 		zap.String("port", cfg.Port),
 		zap.String("database_path", cfg.DatabasePath),
 	)
 
-	// Initialize database
 	db, err := database.New(cfg, log)
 	if err != nil {
 		log.Fatal("Failed to initialize database", zap.Error(err))
 	}
 
-	// Initialize and start server
 	srv := server.New(cfg, db, log)
 	srv.Initialize()
 

@@ -46,7 +46,6 @@ class AnswerButton extends StatelessWidget {
         size: 20,
       );
     } else if (isCorrectButNotSelected) {
-      // Correct answer but user didn't select it - inverted colors with outline style
       borderColor = AppColors.success;
       backgroundColor = Colors.white;
       textColor = AppColors.success;
@@ -94,7 +93,6 @@ class AnswerButton extends StatelessWidget {
           ),
           child: Row(
             children: [
-              // Answer label or checkbox
               if (isMultipleChoice) ...[
                 Container(
                   width: 24,
@@ -117,7 +115,6 @@ class AnswerButton extends StatelessWidget {
                       : null,
                 ),
               ] else ...[
-                // Answer label (A, B, C, D) for single choice
                 Container(
                   width: 24,
                   height: 24,
@@ -140,7 +137,6 @@ class AnswerButton extends StatelessWidget {
 
               const SizedBox(width: 12),
 
-              // Answer text
               Expanded(
                 child: Text(
                   text,
@@ -152,7 +148,6 @@ class AnswerButton extends StatelessWidget {
                 ),
               ),
 
-              // Trailing icon (for feedback)
               if (trailingIcon != null) ...[
                 const SizedBox(width: 12),
                 trailingIcon,

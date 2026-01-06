@@ -44,7 +44,6 @@ class CodeBlock extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header with language and copy button
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
@@ -56,7 +55,6 @@ class CodeBlock extends StatelessWidget {
             ),
             child: Row(
               children: [
-                // Language indicator
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
@@ -86,8 +84,7 @@ class CodeBlock extends StatelessWidget {
                 ),
                 
                 const Spacer(),
-                
-                // Copy button
+
                 Material(
                   color: Colors.transparent,
                   child: InkWell(
@@ -120,8 +117,7 @@ class CodeBlock extends StatelessWidget {
               ],
             ),
           ),
-          
-          // Code content
+
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
@@ -178,7 +174,6 @@ class CodeBlock extends StatelessWidget {
     }
   }
 
-  // Custom theme that aligns with our app's design system
   static const Map<String, TextStyle> _customTheme = {
     'root': TextStyle(
       color: AppColors.codeText,

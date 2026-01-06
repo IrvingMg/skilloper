@@ -26,13 +26,11 @@ func NewQuestionService(db *gorm.DB, logger *zap.Logger) *QuestionService {
 
 // ValidateAnswer validates a user's answer against the correct answer for a question
 func (s *QuestionService) ValidateAnswer(questionID uint, req models.ValidateAnswerRequest) (*models.ValidateAnswerResponse, error) {
-	// Validate that at least one answer type is provided
 	if req.UserAnswer == nil && len(req.UserAnswers) == 0 {
 		return nil, apperrors.NewValidationError(apperrors.ErrInvalidAnswerData.Code,
 			"either user_answer or user_answers must be provided")
 	}
 
-	// Fetch the question
 	var question models.Question
 	if err := s.db.First(&question, questionID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -44,7 +42,6 @@ func (s *QuestionService) ValidateAnswer(questionID uint, req models.ValidateAns
 	response := &models.ValidateAnswerResponse{}
 
 	if question.QuestionType == models.QuestionTypeMultipleChoice {
-		// Parse correct answers
 		var correctAnswers []int
 		if err := json.Unmarshal([]byte(question.CorrectAnswers), &correctAnswers); err != nil {
 			s.logger.Warn("Failed to unmarshal correct answers",
@@ -53,11 +50,9 @@ func (s *QuestionService) ValidateAnswer(questionID uint, req models.ValidateAns
 			return nil, apperrors.ErrFetchQuestionFailed
 		}
 
-		// Validate multiple choice using shared utility
 		response.IsCorrect = validation.ValidateMultipleChoice(req.UserAnswers, correctAnswers)
 		response.CorrectAnswers = correctAnswers
 	} else {
-		// Single choice
 		if req.UserAnswer != nil {
 			response.IsCorrect = *req.UserAnswer == question.CorrectAnswer
 		}

@@ -31,12 +31,10 @@ class _QuizScreenState extends State<QuizScreen> {
 
   int? _attemptId; // Track the attempt ID for completion
 
-  // Practice mode: server-validated answers for immediate feedback
   final Map<int, ValidateAnswerResponse> _validatedAnswers = {};
   bool _isValidating = false;
 
   // Shuffle mappings: questionId -> list of original indices in display order
-  // e.g., [2, 0, 3, 1] means display position 0 shows original option 2
   final Map<int, List<int>> _shuffleMappings = {};
 
   @override
@@ -79,7 +77,6 @@ class _QuizScreenState extends State<QuizScreen> {
     return List.generate(
       shuffledOptions.length,
       (displayIndex) {
-        // Convert display position to original index for all state checks
         final originalIndex = _toOriginalIndex(_currentQuestion.id, displayIndex);
 
         return Padding(
@@ -115,8 +112,7 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   Future<void> _startAttempt() async {
-    // Only start tracking for exam mode (to track abandonments)
-    // Practice attempts are created on completion in ResultsScreen
+    // Only start tracking for exam mode; practice attempts are created on completion
     if (widget.quiz.isPracticeMode) {
       return;
     }
@@ -140,7 +136,6 @@ class _QuizScreenState extends State<QuizScreen> {
     } catch (e) {
       debugPrint('Failed to start attempt: $e');
       if (mounted) {
-        // Show error dialog for exam mode - results won't be saved
         _showAttemptFailedDialog(e.toString());
       }
     }
@@ -207,12 +202,10 @@ class _QuizScreenState extends State<QuizScreen> {
 
   Future<void> _handleExit() async {
     if (await _confirmExit()) {
-      // For exam mode, abandon the attempt so it doesn't block future attempts
       if (!widget.quiz.isPracticeMode && _attemptId != null) {
         try {
           await _apiService.abandonAttempt(_attemptId!);
         } catch (e) {
-          // Best effort - don't block exit on failure
           debugPrint('Failed to abandon attempt: $e');
         }
       }
@@ -252,7 +245,6 @@ class _QuizScreenState extends State<QuizScreen> {
         }
       } else {
         _userAnswers[_currentQuestion.id] = answerIndex;
-        // For practice mode single choice, validate immediately
         if (widget.quiz.isPracticeMode) {
           _validateCurrentAnswer();
         }
@@ -261,7 +253,6 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   void _checkAnswers() {
-    // For practice mode multiple choice, validate when user clicks "Check"
     if (widget.quiz.isPracticeMode) {
       _validateCurrentAnswer();
     }
@@ -325,7 +316,6 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   void _finishQuiz() {
-    // Build user answers to send to results screen
     final userAnswers = _buildUserAnswers();
     Navigator.pushReplacement(
       context,
@@ -383,7 +373,6 @@ class _QuizScreenState extends State<QuizScreen> {
         ),
       body: Column(
         children: [
-          // Progress header
           Container(
             padding: const EdgeInsets.all(16),
             decoration: const BoxDecoration(
@@ -441,14 +430,12 @@ class _QuizScreenState extends State<QuizScreen> {
             ),
           ),
 
-          // Question content
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Question text
                   Text(
                     _currentQuestion.question,
                     style: const TextStyle(
@@ -458,7 +445,6 @@ class _QuizScreenState extends State<QuizScreen> {
                     ),
                   ),
 
-                  // Question type indicator
                   if (_currentQuestion.isMultipleChoice) ...[
                     const SizedBox(height: 8),
                     Container(
@@ -480,7 +466,6 @@ class _QuizScreenState extends State<QuizScreen> {
 
                   const SizedBox(height: 16),
 
-                  // Code block (if present)
                   if (_currentQuestion.code != null) ...[
                     CodeBlock(
                       code: _currentQuestion.code!,
@@ -489,13 +474,11 @@ class _QuizScreenState extends State<QuizScreen> {
                     const SizedBox(height: 24),
                   ],
 
-                  // Answer options (displayed in shuffled order)
                   ..._buildShuffledAnswerOptions(
                     userAnswer: userAnswer,
                     userMultipleAnswers: userMultipleAnswers,
                   ),
 
-                  // Explanation (Practice mode only)
                   if (_showFeedback && _currentQuestion.explanation != null) ...[
                     const SizedBox(height: 16),
                     Container(
@@ -548,7 +531,6 @@ class _QuizScreenState extends State<QuizScreen> {
             ),
           ),
 
-          // Navigation buttons
           Container(
             padding: const EdgeInsets.all(16),
             decoration: const BoxDecoration(
@@ -559,7 +541,6 @@ class _QuizScreenState extends State<QuizScreen> {
             ),
             child: Column(
               children: [
-                // Check answers button for multiple choice (practice mode only)
                 if (_currentQuestion.isMultipleChoice &&
                     widget.quiz.isPracticeMode &&
                     _hasAnsweredCurrent &&
@@ -588,7 +569,6 @@ class _QuizScreenState extends State<QuizScreen> {
                   ),
                   const SizedBox(height: 12),
                 ],
-                // Navigation buttons
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [

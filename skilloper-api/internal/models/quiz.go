@@ -4,13 +4,10 @@ import (
 	"time"
 )
 
-// Database Models - Question types
 const (
 	QuestionTypeSingleChoice   = "single_choice"
 	QuestionTypeMultipleChoice = "multiple_choice"
 )
-
-// Note: Limit constants (MinOptionsLimit, MaxOptionsLimit, etc.) are in limits.go
 
 type Quiz struct {
 	ID          uint       `json:"id" gorm:"primaryKey"`
@@ -41,7 +38,6 @@ type Question struct {
 	UpdatedAt            time.Time `json:"updated_at"`
 }
 
-// Request DTOs
 type CreateQuizRequest struct {
 	Title       string            `json:"title"`
 	Description string            `json:"description"`
@@ -64,7 +60,6 @@ type QuestionRequest struct {
 	Explanation          string   `json:"explanation,omitempty"`
 }
 
-// Response DTOs
 type QuizSummary struct {
 	ID            uint      `json:"id"`
 	Title         string    `json:"title"`

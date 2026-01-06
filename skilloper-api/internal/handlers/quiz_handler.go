@@ -50,7 +50,6 @@ func (h *QuizHandler) handleError(c *gin.Context, err error, operation string) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 		}
 	} else {
-		// Handle non-application errors
 		h.logger.Error("Unexpected error", zap.String("operation", operation), zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 	}
@@ -60,7 +59,6 @@ func (h *QuizHandler) handleError(c *gin.Context, err error, operation string) {
 func (h *QuizHandler) GetQuizSummaries(c *gin.Context) {
 	h.logger.Info("Fetching quiz summaries")
 
-	// Parse pagination params
 	var params models.PaginationParams
 	if err := c.ShouldBindQuery(&params); err != nil {
 		h.handleError(c, apperrors.ErrInvalidPaginationParams, "parse_pagination_params")
@@ -98,7 +96,6 @@ func (h *QuizHandler) GetQuiz(c *gin.Context) {
 		return
 	}
 
-	// Check for edit mode query param (?view=edit)
 	includeAnswers := c.Query("view") == ViewModeEdit
 
 	if includeAnswers {
@@ -204,7 +201,6 @@ func (h *QuizHandler) DeleteQuiz(c *gin.Context) {
 func (h *QuizHandler) ImportQuiz(c *gin.Context) {
 	h.logger.Info("Importing quiz from file")
 
-	// Parse multipart form
 	file, err := c.FormFile("file")
 	if err != nil {
 		h.handleError(c, apperrors.ErrFileRequired, "parse_import_file")
@@ -213,11 +209,9 @@ func (h *QuizHandler) ImportQuiz(c *gin.Context) {
 
 	h.logger.Info("Processing uploaded file", zap.String("filename", file.Filename), zap.Int64("size", file.Size))
 
-	// Parse CSV metadata from query params (used for CSV imports)
 	title := c.Query("title")
 	description := c.Query("description")
 
-	// Validate length limits (using centralized constants from models)
 	if len(title) > models.MaxTitleLength {
 		h.handleError(c, apperrors.NewValidationError("TITLE_TOO_LONG",
 			fmt.Sprintf("title exceeds %d character limit", models.MaxTitleLength)), "parse_csv_metadata")
@@ -235,7 +229,6 @@ func (h *QuizHandler) ImportQuiz(c *gin.Context) {
 		Type:        c.Query("type"),
 	}
 
-	// Validate max_options (using centralized constants)
 	if maxOpts := c.Query("max_options"); maxOpts != "" {
 		n, err := strconv.Atoi(maxOpts)
 		if err != nil || n < models.MinOptionsLimit || n > models.MaxOptionsLimit {
@@ -246,7 +239,6 @@ func (h *QuizHandler) ImportQuiz(c *gin.Context) {
 		csvMeta.MaxOptions = n
 	}
 
-	// Import quiz from file
 	quiz, err := h.service.ImportFromFile(file, csvMeta)
 	if err != nil {
 		h.handleError(c, err, "import_quiz")

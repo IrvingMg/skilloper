@@ -4,15 +4,20 @@ Base URL: `http://localhost:8080/api/v1`
 
 ## Endpoints
 
-### Quizzes
+### System
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/health` | Health check |
+
+### Quizzes
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
 | `GET` | `/quizzes/summaries` | Get paginated quiz summaries |
 | `POST` | `/quizzes` | Create a new quiz |
 | `POST` | `/quizzes/import` | Import quiz from file (JSON/CSV) |
-| `GET` | `/quizzes/{id}` | Get specific quiz (shuffled questions) |
+| `GET` | `/quizzes/{id}` | Get specific quiz with alternative text selection |
 | `PUT` | `/quizzes/{id}` | Update quiz |
 | `DELETE` | `/quizzes/{id}` | Delete quiz |
 
@@ -22,6 +27,7 @@ Base URL: `http://localhost:8080/api/v1`
 |--------|----------|-------------|
 | `POST` | `/attempts/start` | Start a quiz attempt (creates in_progress record) |
 | `POST` | `/attempts/{id}/complete` | Complete a quiz attempt (server validates answers) |
+| `POST` | `/attempts/{id}/abandon` | Abandon an in-progress attempt (marks as completed with 0 score) |
 | `GET` | `/attempts` | Get paginated attempt history for a device |
 | `GET` | `/attempts/{id}` | Get specific attempt with answers |
 
@@ -72,10 +78,10 @@ The app handles attempts differently based on quiz mode:
 | Mode | On Quiz Start | On Quiz Exit | On Quiz Complete |
 |------|---------------|--------------|------------------|
 | **Practice** | No attempt created | Nothing recorded | Start + Complete attempt |
-| **Exam** | Attempt created (in_progress) | Stays as "abandoned" | Complete attempt |
+| **Exam** | Attempt created (in_progress) | Calls `/abandon` (marks completed with 0 score) | Complete attempt |
 
 - **Practice mode**: Attempts are only recorded when completed. Users can exit freely without affecting their history.
-- **Exam mode**: Attempts are tracked from the start. Abandoning an exam leaves an "in_progress" record visible in history.
+- **Exam mode**: Attempts are tracked from the start. Abandoning an exam marks it as completed with 0 score.
 
 ## Usage Examples
 
@@ -319,8 +325,7 @@ The API returns structured error responses:
 | `INVALID_CORRECT_ANSWER` | Answer index is out of range |
 | `ATTEMPT_NOT_FOUND` | Attempt with given ID doesn't exist |
 | `DEVICE_ID_REQUIRED` | Device ID query parameter is missing |
-| `ATTEMPT_ALREADY_COMPLETED` | Cannot complete an already completed attempt |
-| `INVALID_ATTEMPT_DATA` | Invalid data in attempt request |
+| `INVALID_ATTEMPT_DATA` | Invalid data in attempt request (e.g., already completed) |
 | `INVALID_PAGINATION_PARAMS` | Invalid pagination parameters (e.g., invalid type filter) |
 | `QUESTION_NOT_FOUND` | Question with given ID doesn't exist |
 | `INVALID_QUESTION_ID` | Invalid question ID format |

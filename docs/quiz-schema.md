@@ -104,9 +104,9 @@ curl -X POST "http://localhost:8080/api/v1/quizzes/import?title=My%20Quiz&type=p
 
 The internal API format with 0-based indexing. Used by the UI wizard and API consumers.
 
-To use this format, include `"format": "internal"` at the root level.
+**Important:** Include `"format": "internal"` at the root level to use 0-based indexing. Without this field, the parser assumes Simple JSON format with 1-based indexing.
 
-## Complete Schema
+### Schema
 
 ```json
 {
@@ -179,7 +179,7 @@ To use this format, include `"format": "internal"` at the root level.
 
 ## Key Behaviors
 
-- **0-based Indexing**: All answer indices use 0-based counting (0, 1, 2...) following programming conventions
+- **Answer Indexing**: Simple JSON and CSV use 1-based indices (user-friendly). Internal JSON uses 0-based indices (programmatic). The server converts automatically on import
 - **Hybrid Shuffling for Variety**:
   - **Backend**: Randomly selects from `alternative_questions` and `alternative_answers` for text variety
   - **Frontend**: Shuffles option display order while mapping selections back to original indices
@@ -202,6 +202,7 @@ See [api-endpoints.md](api-endpoints.md) for details on the secure answer valida
 ### Single Choice Question with Code
 ```json
 {
+  "format": "internal",
   "title": "JavaScript Fundamentals",
   "description": "Test your JavaScript knowledge",
   "type": "practice",
@@ -238,6 +239,7 @@ See [api-endpoints.md](api-endpoints.md) for details on the secure answer valida
 ### Question with Option Limits
 ```json
 {
+  "format": "internal",
   "title": "Quick Quiz",
   "description": "Short questions with limited options",
   "type": "practice",

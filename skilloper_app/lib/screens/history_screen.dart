@@ -19,8 +19,6 @@ class HistoryScreen extends StatefulWidget {
 class HistoryScreenState extends State<HistoryScreen> {
   final ApiService _apiService = ApiService();
 
-  /// Public method to refresh the history list.
-  /// Called by parent when tab becomes active.
   void refresh() {
     _loadHistory(refresh: true);
   }
@@ -28,21 +26,18 @@ class HistoryScreenState extends State<HistoryScreen> {
   final ScrollController _scrollController = ScrollController();
   final Debouncer _searchDebouncer = Debouncer(delay: const Duration(milliseconds: 300));
 
-  // Data state
   List<AttemptSummary> _attempts = [];
   PaginationMeta _pagination = PaginationMeta.initial();
   String? _deviceId;
 
-  // Loading states
   bool _isInitialLoading = false;
   bool _isLoadingMore = false;
   String? _error;
 
-  // Search, filter, and sort
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _typeFilter = '';
-  String _sortBy = 'date_desc'; // Default sort
+  String _sortBy = 'date_desc';
 
   @override
   void initState() {
@@ -72,7 +67,6 @@ class HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
-  /// Handle scroll to trigger load more
   void _onScroll() {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
@@ -80,7 +74,6 @@ class HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
-  /// Load history (initial or refresh)
   Future<void> _loadHistory({bool refresh = false}) async {
     if (_isInitialLoading || _deviceId == null) return;
 
@@ -93,7 +86,6 @@ class HistoryScreenState extends State<HistoryScreen> {
       }
     });
 
-    // Capture current search/filter/sort state for race condition detection
     final requestSearch = _searchQuery;
     final requestType = _typeFilter;
     final requestSort = _sortBy;
@@ -109,9 +101,7 @@ class HistoryScreenState extends State<HistoryScreen> {
       );
 
       if (!mounted) return;
-      // Check if search/filter/sort changed while request was in flight
       if (requestSearch != _searchQuery || requestType != _typeFilter || requestSort != _sortBy) {
-        // Query changed - clear loading flag and retry with current query
         setState(() {
           _isInitialLoading = false;
         });
@@ -133,7 +123,6 @@ class HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
-  /// Load more history (infinite scroll)
   Future<void> _loadMore() async {
     if (_isLoadingMore || !_pagination.hasMore || _isInitialLoading || _deviceId == null) return;
 
@@ -141,7 +130,6 @@ class HistoryScreenState extends State<HistoryScreen> {
       _isLoadingMore = true;
     });
 
-    // Capture current state for race condition detection
     final requestSearch = _searchQuery;
     final requestType = _typeFilter;
     final requestSort = _sortBy;
@@ -158,9 +146,7 @@ class HistoryScreenState extends State<HistoryScreen> {
       );
 
       if (!mounted) return;
-      // Check if search/filter/sort changed while request was in flight
       if (requestSearch != _searchQuery || requestType != _typeFilter || requestSort != _sortBy) {
-        // Query changed - discard stale results; a fresh load should already be in progress
         setState(() {
           _isLoadingMore = false;
         });
@@ -183,7 +169,6 @@ class HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
-  /// Handle search text change with debounce
   void _onSearchChanged(String query) {
     _searchDebouncer.run(() {
       setState(() {
@@ -193,7 +178,6 @@ class HistoryScreenState extends State<HistoryScreen> {
     });
   }
 
-  /// Handle filter change (immediate, no debounce)
   void _onFilterChanged(String filter) {
     setState(() {
       _typeFilter = filter;
@@ -201,7 +185,6 @@ class HistoryScreenState extends State<HistoryScreen> {
     _loadHistory(refresh: true);
   }
 
-  /// Handle sort change (immediate, no debounce)
   void _onSortChanged(String sort) {
     setState(() {
       _sortBy = sort;
@@ -268,7 +251,6 @@ class HistoryScreenState extends State<HistoryScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Search and filter bar
               SearchFilterBar(
                 searchHint: 'Search history...',
                 searchController: _searchController,
@@ -393,7 +375,6 @@ class HistoryScreenState extends State<HistoryScreen> {
                     itemCount: _attempts.length + (_isLoadingMore ? 1 : 0),
                     separatorBuilder: (context, index) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
-                      // Show loading indicator at the bottom
                       if (index == _attempts.length) {
                         return const Padding(
                           padding: EdgeInsets.symmetric(vertical: 16),
@@ -451,7 +432,6 @@ class _AttemptListItem extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              // Score circle or abandoned indicator
               Container(
                 width: 56,
                 height: 56,
@@ -483,12 +463,10 @@ class _AttemptListItem extends StatelessWidget {
 
               const SizedBox(width: 16),
 
-              // Content
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Title, attempt number badge, and type badge
                     Row(
                       children: [
                         Expanded(
@@ -550,7 +528,6 @@ class _AttemptListItem extends StatelessWidget {
 
                     const SizedBox(height: 8),
 
-                    // Stats row
                     Row(
                       children: [
                         Icon(
@@ -591,7 +568,6 @@ class _AttemptListItem extends StatelessWidget {
 
               const SizedBox(width: 8),
 
-              // Arrow (only for completed attempts)
               if (!isAbandoned)
                 const Icon(
                   Icons.arrow_forward_ios,

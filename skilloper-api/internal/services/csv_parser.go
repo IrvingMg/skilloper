@@ -12,17 +12,13 @@ import (
 	"github.com/irvingmg/skilloper/skilloper-api/internal/models"
 )
 
-// Note: Limits are centralized in models/limits.go
-// Use models.MaxQuestionsPerQuiz, models.MaxTitleLength, etc.
-
 // sanitizeCSVValue removes potential CSV formula injection prefixes
-// Excel/Sheets can execute formulas starting with =, +, -, @, or tab
 func sanitizeCSVValue(s string) string {
 	s = strings.TrimSpace(s)
 	if len(s) == 0 {
 		return s
 	}
-	// Prefix dangerous characters with a single quote to prevent formula execution
+	// Prefix dangerous characters with quote to prevent formula execution in Excel/Sheets
 	switch s[0] {
 	case '=', '+', '-', '@', '\t', '\r':
 		return "'" + s
@@ -115,22 +111,19 @@ func (p *CSVParser) ParseCSV(reader io.Reader, metadata CSVMetadata) (*models.Cr
 	}
 
 	csvReader := csv.NewReader(reader)
-	csvReader.FieldsPerRecord = -1 // Allow variable number of fields
+	csvReader.FieldsPerRecord = -1
 	csvReader.TrimLeadingSpace = true
 
-	// Read header
 	header, err := csvReader.Read()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read CSV header - ensure file is valid CSV format")
 	}
 
-	// Parse header to find column indices
 	cols, err := p.parseHeader(header)
 	if err != nil {
 		return nil, err
 	}
 
-	// Read all rows
 	questions := []models.QuestionRequest{}
 	rowNum := 1 // Start at 1 (after header)
 
@@ -144,7 +137,6 @@ func (p *CSVParser) ParseCSV(reader io.Reader, metadata CSVMetadata) (*models.Cr
 			return nil, fmt.Errorf("row %d: failed to read - check for unquoted commas or special characters", rowNum)
 		}
 
-		// Skip empty rows
 		if p.isEmptyRow(record) {
 			continue
 		}
@@ -165,7 +157,6 @@ func (p *CSVParser) ParseCSV(reader io.Reader, metadata CSVMetadata) (*models.Cr
 		return nil, fmt.Errorf("CSV contains no valid questions")
 	}
 
-	// Set defaults and validate type
 	quizType := metadata.Type
 	if quizType == "" {
 		quizType = "practice"
@@ -230,7 +221,6 @@ func (p *CSVParser) parseHeader(header []string) (*columnIndices, error) {
 		}
 	}
 
-	// Validate required columns
 	if cols.question == -1 {
 		return nil, fmt.Errorf("CSV header must include 'question' column")
 	}
@@ -244,9 +234,7 @@ func (p *CSVParser) parseHeader(header []string) (*columnIndices, error) {
 	return cols, nil
 }
 
-// parseRow converts a CSV row to QuestionRequest
 func (p *CSVParser) parseRow(record []string, cols *columnIndices, _ int) (*models.QuestionRequest, error) {
-	// Get question text
 	if cols.question >= len(record) {
 		return nil, fmt.Errorf("missing question column")
 	}
@@ -255,7 +243,7 @@ func (p *CSVParser) parseRow(record []string, cols *columnIndices, _ int) (*mode
 		return nil, fmt.Errorf("question text is empty")
 	}
 
-	// Get options - must be contiguous (no gaps allowed to prevent index confusion)
+	// Options must be contiguous (no gaps) to prevent index confusion
 	options := []string{}
 	firstEmptyIdx := -1 // Track which option column was first empty (1-based for user display)
 	for i, optIdx := range cols.options {
@@ -278,7 +266,6 @@ func (p *CSVParser) parseRow(record []string, cols *columnIndices, _ int) (*mode
 		return nil, fmt.Errorf("at least 2 options required, got %d", len(options))
 	}
 
-	// Get answer (1-based, can be "4" or "1,2,4")
 	if cols.answer >= len(record) {
 		return nil, fmt.Errorf("missing answer column")
 	}
@@ -287,43 +274,37 @@ func (p *CSVParser) parseRow(record []string, cols *columnIndices, _ int) (*mode
 		return nil, fmt.Errorf("answer is empty")
 	}
 
-	// Parse answer - determine if single or multiple choice
 	question := &models.QuestionRequest{
 		Question: questionText,
 		Options:  options,
 	}
 
 	if strings.Contains(answerStr, ",") {
-		// Multiple choice
 		answers, err := p.parseMultipleAnswers(answerStr, len(options))
 		if err != nil {
 			return nil, fmt.Errorf("invalid answer: %w", err)
 		}
 		question.QuestionType = models.QuestionTypeMultipleChoice
-		question.CorrectAnswers = answers // 0-based for internal API
+		question.CorrectAnswers = answers
 	} else {
-		// Single choice
 		answer, err := p.parseSingleAnswer(answerStr, len(options))
 		if err != nil {
 			return nil, fmt.Errorf("invalid answer: %w", err)
 		}
 		question.QuestionType = models.QuestionTypeSingleChoice
-		question.CorrectAnswer = answer // 0-based for internal API
+		question.CorrectAnswer = answer
 	}
 
-	// Get optional fields (sanitize for CSV injection)
 	if cols.explanation >= 0 && cols.explanation < len(record) {
 		question.Explanation = sanitizeCSVValue(record[cols.explanation])
 	}
 	if cols.code >= 0 && cols.code < len(record) {
-		// Don't sanitize code - it legitimately may start with special chars
-		question.Code = strings.TrimSpace(record[cols.code])
+		question.Code = strings.TrimSpace(record[cols.code]) // Don't sanitize - may start with special chars
 	}
 	if cols.language >= 0 && cols.language < len(record) {
 		question.Language = strings.TrimSpace(record[cols.language])
 	}
 
-	// Get alternative questions (with limit)
 	for i, idx := range cols.alternativeQuestions {
 		if i >= models.MaxAlternativeQuestions {
 			break
@@ -336,7 +317,6 @@ func (p *CSVParser) parseRow(record []string, cols *columnIndices, _ int) (*mode
 		}
 	}
 
-	// Get alternative options (with limit)
 	for i, idx := range cols.alternativeOptions {
 		if i >= models.MaxAlternativeOptions {
 			break

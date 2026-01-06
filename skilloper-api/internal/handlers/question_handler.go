@@ -58,7 +58,6 @@ func (h *QuestionHandler) ValidateAnswer(c *gin.Context) {
 		return
 	}
 
-	// Reject id == 0 as invalid (0 is not a valid database ID)
 	if id == 0 {
 		h.handleError(c, apperrors.ErrInvalidQuestionID, "invalid_question_id_zero")
 		return

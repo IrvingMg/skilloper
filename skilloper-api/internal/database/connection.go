@@ -20,7 +20,6 @@ func New(cfg *config.Config, logger *zap.Logger) (*gorm.DB, error) {
 	}
 
 	logger.Info("Running database migrations")
-	// Auto-migrate models
 	err = db.AutoMigrate(
 		&models.Quiz{},
 		&models.Question{},
@@ -32,7 +31,6 @@ func New(cfg *config.Config, logger *zap.Logger) (*gorm.DB, error) {
 		return nil, err
 	}
 
-	// Seed sample data if database is empty
 	var count int64
 	db.Model(&models.Quiz{}).Count(&count)
 	if count == 0 {

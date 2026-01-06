@@ -46,10 +46,8 @@ class _ResultsScreenState extends State<ResultsScreen> {
     });
 
     try {
-      // Use widget's attemptId, or locally created one, or create new
       int? attemptId = widget.attemptId ?? _createdAttemptId;
 
-      // Create attempt if we don't have one (practice mode always, exam mode if it failed earlier)
       if (attemptId == null) {
         final deviceId = await _deviceService.getDeviceId();
         final startRequest = StartAttemptRequest(
@@ -63,9 +61,8 @@ class _ResultsScreenState extends State<ResultsScreen> {
         try {
           final attempt = await _apiService.startAttempt(startRequest);
           attemptId = attempt.id;
-          _createdAttemptId = attemptId; // Store for retry
+          _createdAttemptId = attemptId;
         } catch (e) {
-          // If attempt creation fails, show error
           if (mounted) {
             setState(() {
               _isLoading = false;
@@ -76,7 +73,6 @@ class _ResultsScreenState extends State<ResultsScreen> {
         }
       }
 
-      // Complete the attempt - server validates answers and calculates score
       final completeRequest = CompleteAttemptRequest(
         answers: widget.userAnswers,
       );
@@ -174,7 +170,6 @@ class _ResultsScreenState extends State<ResultsScreen> {
     return SingleChildScrollView(
       child: Column(
         children: [
-          // Score header
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(32),
@@ -234,7 +229,6 @@ class _ResultsScreenState extends State<ResultsScreen> {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                // Summary cards
                 Row(
                   children: [
                     Expanded(
@@ -273,7 +267,6 @@ class _ResultsScreenState extends State<ResultsScreen> {
 
                 const SizedBox(height: 24),
 
-                // Section title
                 const Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -287,12 +280,10 @@ class _ResultsScreenState extends State<ResultsScreen> {
 
                 const SizedBox(height: 16),
 
-                // Question review from server-validated answers
                 ...List.generate(
                   attempt.answers.length,
                   (index) {
                     final answer = attempt.answers[index];
-                    // Find matching question by ID, or null if not found
                     final question = widget.quiz.questions
                         .where((q) => q.id == answer.questionId)
                         .firstOrNull;
@@ -310,7 +301,6 @@ class _ResultsScreenState extends State<ResultsScreen> {
 
                 const SizedBox(height: 32),
 
-                // Action buttons
                 Row(
                   children: [
                     Expanded(
@@ -363,7 +353,6 @@ class _AnswerReviewCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -408,13 +397,11 @@ class _AnswerReviewCard extends StatelessWidget {
             ),
           ),
 
-          // Content
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Question text
                 Text(
                   answer.questionText,
                   style: const TextStyle(
@@ -425,7 +412,6 @@ class _AnswerReviewCard extends StatelessWidget {
 
                 const SizedBox(height: 12),
 
-                // Code block (if present and question found)
                 if (question?.code != null) ...[
                   CodeBlock(
                     code: question!.code!,
@@ -434,21 +420,17 @@ class _AnswerReviewCard extends StatelessWidget {
                   const SizedBox(height: 16),
                 ],
 
-                // Answers - Compact layout
                 if (answer.isMultipleChoice) ...[
-                  // Multiple choice answers
                   if (!answer.isCorrect &&
                       answer.userAnswers != null &&
                       answer.userAnswers!.isNotEmpty &&
                       answer.correctAnswers != null) ...[
-                    // Show both user and correct answers side by side when incorrect
                     _CompactMultipleAnswerComparison(
                       userAnswers: answer.userAnswers!,
                       correctAnswers: answer.correctAnswers!,
                       options: answer.options,
                     ),
                   ] else if (answer.userAnswers != null && answer.userAnswers!.isNotEmpty) ...[
-                    // Show only user answer when correct
                     _MultipleAnswerDisplay(
                       label: answer.isCorrect ? 'Your answers (Correct)' : 'Your answers',
                       userAnswers: answer.userAnswers!,
@@ -458,11 +440,9 @@ class _AnswerReviewCard extends StatelessWidget {
                     ),
                   ],
                 ] else ...[
-                  // Single choice answers
                   if (!answer.isCorrect &&
                       answer.userAnswer != null &&
                       answer.correctAnswer != null) ...[
-                    // Show both user and correct answers side by side when incorrect
                     _CompactAnswerComparison(
                       userAnswer: answer.userAnswer!,
                       correctAnswer: answer.correctAnswer!,
@@ -471,7 +451,6 @@ class _AnswerReviewCard extends StatelessWidget {
                   ] else if (answer.userAnswer != null &&
                       answer.userAnswer! >= 0 &&
                       answer.userAnswer! < answer.options.length) ...[
-                    // Show only user answer when correct
                     _AnswerDisplay(
                       label: answer.isCorrect ? 'Your answer (Correct)' : 'Your answer',
                       option: String.fromCharCode(65 + answer.userAnswer!),
@@ -483,7 +462,6 @@ class _AnswerReviewCard extends StatelessWidget {
                 ],
                 const SizedBox(height: 8),
 
-                // Explanation (if question found and has explanation)
                 if (question?.explanation != null) ...[
                   const SizedBox(height: 8),
                   Container(
@@ -689,14 +667,12 @@ class _CompactAnswerComparison extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Bounds check for safety
     final userAnswerValid = userAnswer >= 0 && userAnswer < options.length;
     final correctAnswerValid = correctAnswer >= 0 && correctAnswer < options.length;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // User answer (incorrect)
         if (userAnswerValid)
           Expanded(
             child: _AnswerDisplay(
@@ -708,7 +684,6 @@ class _CompactAnswerComparison extends StatelessWidget {
             ),
           ),
         if (userAnswerValid && correctAnswerValid) const SizedBox(width: 8),
-        // Correct answer
         if (correctAnswerValid)
           Expanded(
             child: _AnswerDisplay(
@@ -740,7 +715,6 @@ class _CompactMultipleAnswerComparison extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // User answers (incorrect)
         Expanded(
           child: _MultipleAnswerDisplay(
             label: 'Your answers',
@@ -751,7 +725,6 @@ class _CompactMultipleAnswerComparison extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        // Correct answers
         Expanded(
           child: _MultipleAnswerDisplay(
             label: 'Correct answers',

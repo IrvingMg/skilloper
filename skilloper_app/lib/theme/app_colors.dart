@@ -55,23 +55,14 @@ class AppColors {
   static const Color outlineVariant = Color(0xFFE5E7EB); // Gray 200
 
   // MARK: - Special Purpose Colors
-  // Quiz types - Distinct from main app/semantic colors
-  static const Color typePractice = Color(0xFFEC4899); // Pink 500
-  static const Color typePracticeContainer = Color(0xFFFCE7F3); // Pink 100
-  static const Color onTypePracticeContainer = Color(0xFF831843); // Pink 900
+  // Quiz mode colors
+  static const Color practiceMode = Color(0xFFEC4899); // Pink 500
+  static const Color practiceModeContainer = Color(0xFFFCE7F3); // Pink 100
+  static const Color onPracticeModeContainer = Color(0xFF831843); // Pink 900
 
-  static const Color typeExam = Color(0xFFF97316); // Orange 500 (different from warning 600)
-  static const Color typeExamContainer = Color(0xFFFEEBDC); // Light orange
-  static const Color onTypeExamContainer = Color(0xFF7C2D12); // Orange 900
-
-  // Back-compat: temporary mapping while migrating usages
-  static const Color practiceMode = typePractice;
-  static const Color practiceModeContainer = typePracticeContainer;
-  static const Color onPracticeModeContainer = onTypePracticeContainer;
-
-  static const Color examMode = typeExam;
-  static const Color examModeContainer = typeExamContainer;
-  static const Color onExamModeContainer = onTypeExamContainer;
+  static const Color examMode = Color(0xFFF97316); // Orange 500
+  static const Color examModeContainer = Color(0xFFFEEBDC); // Light orange
+  static const Color onExamModeContainer = Color(0xFF7C2D12); // Orange 900
 
   // Code block colors - Enhanced for learning
   static const Color codeBackground = Color(0xFFF1F5F9); // Slate 100 - better contrast

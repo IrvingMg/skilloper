@@ -20,7 +20,6 @@ func ParseJSONError(err error, content []byte, filename string) *JSONErrorInfo {
 		Message: fmt.Sprintf("JSON parsing failed in file '%s': %s", filename, err.Error()),
 	}
 
-	// Try to extract line and column information from JSON syntax errors
 	if syntaxErr, ok := err.(*json.SyntaxError); ok {
 		lines := strings.Split(string(content), "\n")
 		lineNum := 1

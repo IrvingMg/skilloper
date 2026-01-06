@@ -4,8 +4,6 @@ import (
 	"time"
 )
 
-// Database Models
-
 // AttemptStatus represents the status of a quiz attempt
 type AttemptStatus string
 
@@ -44,8 +42,6 @@ type AttemptAnswer struct {
 	IsCorrect      bool   `json:"is_correct" gorm:"not null"`
 }
 
-// Request DTOs
-
 type StartAttemptRequest struct {
 	DeviceID   string `json:"device_id"`
 	QuizID     uint   `json:"quiz_id"`
@@ -64,8 +60,6 @@ type UserAnswerRequest struct {
 	UserAnswer  *int  `json:"user_answer,omitempty"`  // For single_choice
 	UserAnswers []int `json:"user_answers,omitempty"` // For multiple_choice
 }
-
-// Response DTOs
 
 type AttemptSummaryResponse struct {
 	ID            uint          `json:"id"`
