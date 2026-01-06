@@ -15,19 +15,19 @@ const (
 )
 
 type QuizAttempt struct {
-	ID                 uint            `json:"id" gorm:"primaryKey"`
-	DeviceID           string          `json:"device_id" gorm:"not null;index"`
-	QuestionnaireID    uint            `json:"questionnaire_id" gorm:"not null"`
-	QuestionnaireTitle string          `json:"questionnaire_title" gorm:"not null"`
-	QuestionnaireType  string          `json:"questionnaire_type" gorm:"not null"`
-	AttemptNumber      int             `json:"attempt_number" gorm:"not null"`
-	Status             AttemptStatus   `json:"status" gorm:"not null;default:'in_progress'"`
-	Score              int             `json:"score" gorm:"not null;default:0"`
-	CorrectCount       int             `json:"correct_count" gorm:"not null;default:0"`
-	TotalCount         int             `json:"total_count" gorm:"not null;default:0"`
-	CreatedAt          time.Time       `json:"created_at"`
-	CompletedAt        *time.Time      `json:"completed_at"`
-	Answers            []AttemptAnswer `json:"answers" gorm:"foreignKey:AttemptID"`
+	ID            uint            `json:"id" gorm:"primaryKey"`
+	DeviceID      string          `json:"device_id" gorm:"not null;index"`
+	QuizID        uint            `json:"quiz_id" gorm:"not null"`
+	QuizTitle     string          `json:"quiz_title" gorm:"not null"`
+	QuizType      string          `json:"quiz_type" gorm:"not null"`
+	AttemptNumber int             `json:"attempt_number" gorm:"not null"`
+	Status        AttemptStatus   `json:"status" gorm:"not null;default:'in_progress'"`
+	Score         int             `json:"score" gorm:"not null;default:0"`
+	CorrectCount  int             `json:"correct_count" gorm:"not null;default:0"`
+	TotalCount    int             `json:"total_count" gorm:"not null;default:0"`
+	CreatedAt     time.Time       `json:"created_at"`
+	CompletedAt   *time.Time      `json:"completed_at"`
+	Answers       []AttemptAnswer `json:"answers" gorm:"foreignKey:AttemptID"`
 }
 
 type AttemptAnswer struct {
@@ -47,11 +47,11 @@ type AttemptAnswer struct {
 // Request DTOs
 
 type StartAttemptRequest struct {
-	DeviceID           string `json:"device_id"`
-	QuestionnaireID    uint   `json:"questionnaire_id"`
-	QuestionnaireTitle string `json:"questionnaire_title"`
-	QuestionnaireType  string `json:"questionnaire_type"`
-	TotalCount         int    `json:"total_count"`
+	DeviceID   string `json:"device_id"`
+	QuizID     uint   `json:"quiz_id"`
+	QuizTitle  string `json:"quiz_title"`
+	QuizType   string `json:"quiz_type"`
+	TotalCount int    `json:"total_count"`
 }
 
 type CompleteAttemptRequest struct {
@@ -68,34 +68,34 @@ type UserAnswerRequest struct {
 // Response DTOs
 
 type AttemptSummaryResponse struct {
-	ID                 uint          `json:"id"`
-	DeviceID           string        `json:"device_id"`
-	QuestionnaireID    uint          `json:"questionnaire_id"`
-	QuestionnaireTitle string        `json:"questionnaire_title"`
-	QuestionnaireType  string        `json:"questionnaire_type"`
-	AttemptNumber      int           `json:"attempt_number"`
-	Status             AttemptStatus `json:"status"`
-	Score              int           `json:"score"`
-	CorrectCount       int           `json:"correct_count"`
-	TotalCount         int           `json:"total_count"`
-	CreatedAt          time.Time     `json:"created_at"`
-	CompletedAt        *time.Time    `json:"completed_at,omitempty"`
+	ID            uint          `json:"id"`
+	DeviceID      string        `json:"device_id"`
+	QuizID        uint          `json:"quiz_id"`
+	QuizTitle     string        `json:"quiz_title"`
+	QuizType      string        `json:"quiz_type"`
+	AttemptNumber int           `json:"attempt_number"`
+	Status        AttemptStatus `json:"status"`
+	Score         int           `json:"score"`
+	CorrectCount  int           `json:"correct_count"`
+	TotalCount    int           `json:"total_count"`
+	CreatedAt     time.Time     `json:"created_at"`
+	CompletedAt   *time.Time    `json:"completed_at,omitempty"`
 }
 
 type AttemptResponse struct {
-	ID                 uint                    `json:"id"`
-	DeviceID           string                  `json:"device_id"`
-	QuestionnaireID    uint                    `json:"questionnaire_id"`
-	QuestionnaireTitle string                  `json:"questionnaire_title"`
-	QuestionnaireType  string                  `json:"questionnaire_type"`
-	AttemptNumber      int                     `json:"attempt_number"`
-	Status             AttemptStatus           `json:"status"`
-	Score              int                     `json:"score"`
-	CorrectCount       int                     `json:"correct_count"`
-	TotalCount         int                     `json:"total_count"`
-	CreatedAt          time.Time               `json:"created_at"`
-	CompletedAt        *time.Time              `json:"completed_at,omitempty"`
-	Answers            []AttemptAnswerResponse `json:"answers"`
+	ID            uint                    `json:"id"`
+	DeviceID      string                  `json:"device_id"`
+	QuizID        uint                    `json:"quiz_id"`
+	QuizTitle     string                  `json:"quiz_title"`
+	QuizType      string                  `json:"quiz_type"`
+	AttemptNumber int                     `json:"attempt_number"`
+	Status        AttemptStatus           `json:"status"`
+	Score         int                     `json:"score"`
+	CorrectCount  int                     `json:"correct_count"`
+	TotalCount    int                     `json:"total_count"`
+	CreatedAt     time.Time               `json:"created_at"`
+	CompletedAt   *time.Time              `json:"completed_at,omitempty"`
+	Answers       []AttemptAnswerResponse `json:"answers"`
 }
 
 type AttemptAnswerResponse struct {

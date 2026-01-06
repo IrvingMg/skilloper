@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
-import '../models/questionnaire.dart';
+import '../models/quiz.dart';
 import '../theme/app_colors.dart';
 
-class QuestionnaireCard extends StatelessWidget {
-  final QuestionnaireSummary questionnaire;
+class QuizCard extends StatelessWidget {
+  final QuizSummary quiz;
   final VoidCallback onTap;
 
-  const QuestionnaireCard({
+  const QuizCard({
     super.key,
-    required this.questionnaire,
+    required this.quiz,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isPractice = questionnaire.isPracticeMode;
-    
+    final isPractice = quiz.isPracticeMode;
+
     return Card(
       child: InkWell(
         onTap: onTap,
@@ -31,7 +31,7 @@ class QuestionnaireCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      questionnaire.title,
+                      quiz.title,
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -48,7 +48,7 @@ class QuestionnaireCard extends StatelessWidget {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: isPractice 
+                      color: isPractice
                           ? AppColors.practiceModeContainer
                           : AppColors.examModeContainer,
                       borderRadius: BorderRadius.circular(16),
@@ -59,17 +59,17 @@ class QuestionnaireCard extends StatelessWidget {
                         Icon(
                           isPractice ? Icons.lightbulb : Icons.quiz,
                           size: 12,
-                          color: isPractice 
+                          color: isPractice
                               ? AppColors.onPracticeModeContainer
                               : AppColors.onExamModeContainer,
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          questionnaire.type.toUpperCase(),
+                          quiz.type.toUpperCase(),
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
-                            color: isPractice 
+                            color: isPractice
                                 ? AppColors.onPracticeModeContainer
                                 : AppColors.onExamModeContainer,
                             letterSpacing: 0.5,
@@ -80,12 +80,12 @@ class QuestionnaireCard extends StatelessWidget {
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 12),
-              
+
               // Description
               Text(
-                questionnaire.description,
+                quiz.description,
                 style: const TextStyle(
                   color: Color(0xFF6B7280),
                   fontSize: 14,
@@ -94,9 +94,9 @@ class QuestionnaireCard extends StatelessWidget {
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
               ),
-              
+
               const Spacer(),
-              
+
               // Metadata
               Wrap(
                 spacing: 12,
@@ -112,7 +112,7 @@ class QuestionnaireCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '${questionnaire.questionCount} questions',
+                        '${quiz.questionCount} questions',
                         style: const TextStyle(
                           fontSize: 11,
                           color: Color(0xFF9CA3AF),
@@ -130,7 +130,7 @@ class QuestionnaireCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '${questionnaire.estimatedMinutes} min',
+                        '${quiz.estimatedMinutes} min',
                         style: const TextStyle(
                           fontSize: 11,
                           color: Color(0xFF9CA3AF),

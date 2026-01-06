@@ -16,10 +16,10 @@ type ParserMetadata struct {
 	Filename    string
 }
 
-// QuestionnaireParser defines the interface for parsing different quiz formats
-type QuestionnaireParser interface {
-	// Parse converts raw data to internal CreateQuestionnaireRequest format
-	Parse(data []byte, metadata ParserMetadata) (*models.CreateQuestionnaireRequest, error)
+// QuizParser defines the interface for parsing different quiz formats
+type QuizParser interface {
+	// Parse converts raw data to internal CreateQuizRequest format
+	Parse(data []byte, metadata ParserMetadata) (*models.CreateQuizRequest, error)
 
 	// CanParse checks if this parser can handle the given data/filename
 	CanParse(data []byte, filename string) bool
@@ -30,7 +30,7 @@ type QuestionnaireParser interface {
 
 // ParserRegistry holds registered parsers and selects appropriate one
 type ParserRegistry struct {
-	parsers []QuestionnaireParser
+	parsers []QuizParser
 }
 
 // Singleton instance for parser registry
@@ -44,7 +44,7 @@ var (
 func NewParserRegistry() *ParserRegistry {
 	defaultRegistryOnce.Do(func() {
 		defaultRegistry = &ParserRegistry{
-			parsers: []QuestionnaireParser{
+			parsers: []QuizParser{
 				NewCSVParserAdapter(), // Check CSV by file extension first
 				NewJSONParser(),       // User-friendly JSON format (1-based, answer array)
 			},
@@ -54,7 +54,7 @@ func NewParserRegistry() *ParserRegistry {
 }
 
 // Parse attempts to parse data using registered parsers
-func (r *ParserRegistry) Parse(data []byte, metadata ParserMetadata) (*models.CreateQuestionnaireRequest, string, error) {
+func (r *ParserRegistry) Parse(data []byte, metadata ParserMetadata) (*models.CreateQuizRequest, string, error) {
 	for _, parser := range r.parsers {
 		if parser.CanParse(data, metadata.Filename) {
 			req, err := parser.Parse(data, metadata)

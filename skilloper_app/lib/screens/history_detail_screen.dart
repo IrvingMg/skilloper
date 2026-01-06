@@ -148,7 +148,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _attempt!.questionnaireTitle,
+                  _attempt!.quizTitle,
                   style: const TextStyle(
                     fontSize: 20,
                     color: Colors.white,

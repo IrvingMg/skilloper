@@ -22,7 +22,7 @@ func New(cfg *config.Config, logger *zap.Logger) (*gorm.DB, error) {
 	logger.Info("Running database migrations")
 	// Auto-migrate models
 	err = db.AutoMigrate(
-		&models.Questionnaire{},
+		&models.Quiz{},
 		&models.Question{},
 		&models.QuizAttempt{},
 		&models.AttemptAnswer{},
@@ -34,7 +34,7 @@ func New(cfg *config.Config, logger *zap.Logger) (*gorm.DB, error) {
 
 	// Seed sample data if database is empty
 	var count int64
-	db.Model(&models.Questionnaire{}).Count(&count)
+	db.Model(&models.Quiz{}).Count(&count)
 	if count == 0 {
 		logger.Info("Database is empty, seeding sample data")
 		if err := seedSampleData(db, logger); err != nil {
@@ -42,7 +42,7 @@ func New(cfg *config.Config, logger *zap.Logger) (*gorm.DB, error) {
 			return nil, err
 		}
 	} else {
-		logger.Info("Database already contains data, skipping seed", zap.Int64("questionnaire_count", count))
+		logger.Info("Database already contains data, skipping seed", zap.Int64("quiz_count", count))
 	}
 
 	logger.Info("Database initialized successfully")

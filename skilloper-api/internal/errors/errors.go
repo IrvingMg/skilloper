@@ -45,16 +45,16 @@ func (e *AppError) Is(target error) bool {
 
 // Predefined error variables for common cases
 var (
-	// Questionnaire errors
-	ErrQuestionnaireNotFound = &AppError{
+	// Quiz errors
+	ErrQuizNotFound = &AppError{
 		Type:    ErrTypeNotFound,
-		Code:    "QUESTIONNAIRE_NOT_FOUND",
-		Message: "questionnaire not found",
+		Code:    "QUIZ_NOT_FOUND",
+		Message: "quiz not found",
 	}
 
-	ErrQuestionnaireTitleRequired = &AppError{
+	ErrQuizTitleRequired = &AppError{
 		Type:    ErrTypeValidation,
-		Code:    "QUESTIONNAIRE_TITLE_REQUIRED",
+		Code:    "QUIZ_TITLE_REQUIRED",
 		Message: "title is required",
 	}
 
@@ -64,10 +64,10 @@ var (
 		Message: "invalid options format",
 	}
 
-	ErrInvalidQuestionnaireID = &AppError{
+	ErrInvalidQuizID = &AppError{
 		Type:    ErrTypeValidation,
-		Code:    "INVALID_QUESTIONNAIRE_ID",
-		Message: "invalid questionnaire ID",
+		Code:    "INVALID_QUIZ_ID",
+		Message: "invalid quiz ID",
 	}
 
 	ErrInvalidJSONFormat = &AppError{
@@ -132,22 +132,22 @@ var (
 	}
 
 	// Database operation errors
-	ErrFetchQuestionnairesFailed = &AppError{
+	ErrFetchQuizzesFailed = &AppError{
 		Type:    ErrTypeDatabase,
-		Code:    "FETCH_QUESTIONNAIRES_FAILED",
-		Message: "failed to fetch questionnaires",
+		Code:    "FETCH_QUIZZES_FAILED",
+		Message: "failed to fetch quizzes",
 	}
 
-	ErrFetchQuestionnaireFailed = &AppError{
+	ErrFetchQuizFailed = &AppError{
 		Type:    ErrTypeDatabase,
-		Code:    "FETCH_QUESTIONNAIRE_FAILED",
-		Message: "failed to fetch questionnaire",
+		Code:    "FETCH_QUIZ_FAILED",
+		Message: "failed to fetch quiz",
 	}
 
-	ErrCreateQuestionnaireFailed = &AppError{
+	ErrCreateQuizFailed = &AppError{
 		Type:    ErrTypeDatabase,
-		Code:    "CREATE_QUESTIONNAIRE_FAILED",
-		Message: "failed to create questionnaire",
+		Code:    "CREATE_QUIZ_FAILED",
+		Message: "failed to create quiz",
 	}
 
 	ErrCreateQuestionFailed = &AppError{
@@ -156,10 +156,10 @@ var (
 		Message: "failed to create question",
 	}
 
-	ErrUpdateQuestionnaireFailed = &AppError{
+	ErrUpdateQuizFailed = &AppError{
 		Type:    ErrTypeDatabase,
-		Code:    "UPDATE_QUESTIONNAIRE_FAILED",
-		Message: "failed to update questionnaire",
+		Code:    "UPDATE_QUIZ_FAILED",
+		Message: "failed to update quiz",
 	}
 
 	ErrDeleteQuestionsFailed = &AppError{
@@ -168,10 +168,10 @@ var (
 		Message: "failed to delete questions",
 	}
 
-	ErrDeleteQuestionnaireFailed = &AppError{
+	ErrDeleteQuizFailed = &AppError{
 		Type:    ErrTypeDatabase,
-		Code:    "DELETE_QUESTIONNAIRE_FAILED",
-		Message: "failed to delete questionnaire",
+		Code:    "DELETE_QUIZ_FAILED",
+		Message: "failed to delete quiz",
 	}
 
 	// Attempt errors

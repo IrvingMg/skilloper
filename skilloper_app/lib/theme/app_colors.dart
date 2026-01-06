@@ -55,7 +55,7 @@ class AppColors {
   static const Color outlineVariant = Color(0xFFE5E7EB); // Gray 200
 
   // MARK: - Special Purpose Colors
-  // Questionnaire types - Distinct from main app/semantic colors
+  // Quiz types - Distinct from main app/semantic colors
   static const Color typePractice = Color(0xFFEC4899); // Pink 500
   static const Color typePracticeContainer = Color(0xFFFCE7F3); // Pink 100
   static const Color onTypePracticeContainer = Color(0xFF831843); // Pink 900

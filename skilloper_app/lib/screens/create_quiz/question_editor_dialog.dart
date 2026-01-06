@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../constants/limits.dart';
-import '../../models/draft_questionnaire.dart';
+import '../../models/draft_quiz.dart';
 import '../../theme/app_colors.dart';
 
 class QuestionEditorDialog extends StatefulWidget {

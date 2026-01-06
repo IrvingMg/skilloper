@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
-import '../models/questionnaire.dart';
+import '../models/quiz.dart';
 import 'import_help_screen.dart';
 
 class ImportScreen extends StatefulWidget {
@@ -232,7 +232,7 @@ class _ImportScreenState extends State<ImportScreen> {
     });
 
     try {
-      final importResponse = await _apiService.importQuestionnaire(
+      final importResponse = await _apiService.importQuiz(
         fileBytes,
         fileName,
         title: metadata?['title'],
@@ -251,7 +251,7 @@ class _ImportScreenState extends State<ImportScreen> {
 
       if (importResponse != null) {
         _showSuccessDialog(importResponse);
-        _showSnackBar('Questionnaire imported successfully!', true);
+        _showSnackBar('Quiz imported successfully!', true);
       }
     } catch (e) {
       if (!mounted) return;
@@ -346,7 +346,7 @@ class _ImportScreenState extends State<ImportScreen> {
       case 'validation':
         return {
           'title': 'Validation Error',
-          'subtitle': 'Your questionnaire is missing required information',
+          'subtitle': 'Your quiz is missing required information',
         };
       case 'file_size':
         return {
@@ -356,7 +356,7 @@ class _ImportScreenState extends State<ImportScreen> {
       default:
         return {
           'title': 'Import Failed',
-          'subtitle': 'Unable to process your questionnaire file',
+          'subtitle': 'Unable to process your quiz file',
         };
     }
   }
@@ -482,7 +482,7 @@ class _ImportScreenState extends State<ImportScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Successfully imported questionnaire:',
+                'Successfully imported quiz:',
                 style: TextStyle(
                   fontSize: 14,
                   color: AppColors.textSecondary,
@@ -500,16 +500,16 @@ class _ImportScreenState extends State<ImportScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      response.questionnaire.title,
+                      response.quiz.title,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    if (response.questionnaire.description.isNotEmpty) ...[
+                    if (response.quiz.description.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
-                        response.questionnaire.description,
+                        response.quiz.description,
                         style: TextStyle(
                           fontSize: 14,
                           color: AppColors.textSecondary,
@@ -526,7 +526,7 @@ class _ImportScreenState extends State<ImportScreen> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          '${response.questionnaire.questionCount} questions',
+                          '${response.quiz.questionCount} questions',
                           style: TextStyle(
                             fontSize: 14,
                             color: AppColors.textTertiary,
@@ -534,7 +534,7 @@ class _ImportScreenState extends State<ImportScreen> {
                         ),
                         const SizedBox(width: 16),
                         Icon(
-                          response.questionnaire.isPracticeMode
+                          response.quiz.isPracticeMode
                               ? Icons.school
                               : Icons.assignment,
                           size: 16,
@@ -542,7 +542,7 @@ class _ImportScreenState extends State<ImportScreen> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          response.questionnaire.type.toUpperCase(),
+                          response.quiz.type.toUpperCase(),
                           style: TextStyle(
                             fontSize: 14,
                             color: AppColors.textTertiary,
@@ -571,7 +571,7 @@ class _ImportScreenState extends State<ImportScreen> {
                   (route) => false,
                 );
               },
-              child: const Text('View Questionnaires'),
+              child: const Text('View Quizzes'),
             ),
           ],
         );
@@ -631,7 +631,7 @@ class _ImportScreenState extends State<ImportScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Upload JSON or CSV files to add new questionnaires',
+              'Upload JSON or CSV files to add new quizzes',
               style: TextStyle(
                 fontSize: 16,
                 color: AppColors.textTertiary,
@@ -686,7 +686,7 @@ class _ImportScreenState extends State<ImportScreen> {
                             Column(
                               children: [
                                 const Text(
-                                  'Upload questionnaire file',
+                                  'Upload quiz file',
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w500,

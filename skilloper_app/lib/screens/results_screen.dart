@@ -1,6 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import '../models/questionnaire.dart';
+import '../models/quiz.dart';
 import '../models/attempt.dart';
 import '../services/api_service.dart';
 import '../services/device_service.dart';
@@ -9,13 +9,13 @@ import '../widgets/code_block.dart';
 import '../widgets/summary_card.dart';
 
 class ResultsScreen extends StatefulWidget {
-  final Questionnaire questionnaire;
+  final Quiz quiz;
   final List<UserAnswerRequest> userAnswers;
   final int? attemptId;
 
   const ResultsScreen({
     super.key,
-    required this.questionnaire,
+    required this.quiz,
     required this.userAnswers,
     this.attemptId,
   });
@@ -54,10 +54,10 @@ class _ResultsScreenState extends State<ResultsScreen> {
         final deviceId = await _deviceService.getDeviceId();
         final startRequest = StartAttemptRequest(
           deviceId: deviceId,
-          questionnaireId: widget.questionnaire.id,
-          questionnaireTitle: widget.questionnaire.title,
-          questionnaireType: widget.questionnaire.type,
-          totalCount: widget.questionnaire.questions.length,
+          quizId: widget.quiz.id,
+          quizTitle: widget.quiz.title,
+          quizType: widget.quiz.type,
+          totalCount: widget.quiz.questions.length,
         );
         if (!mounted) return;
         try {
@@ -293,7 +293,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                   (index) {
                     final answer = attempt.answers[index];
                     // Find matching question by ID, or null if not found
-                    final question = widget.questionnaire.questions
+                    final question = widget.quiz.questions
                         .where((q) => q.id == answer.questionId)
                         .firstOrNull;
 

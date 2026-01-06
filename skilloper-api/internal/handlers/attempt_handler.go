@@ -68,7 +68,7 @@ func (h *AttemptHandler) StartAttempt(c *gin.Context) {
 
 	h.logger.Info("Starting attempt",
 		zap.String("device_id", req.DeviceID),
-		zap.Uint("questionnaire_id", req.QuestionnaireID))
+		zap.Uint("quiz_id", req.QuizID))
 
 	attempt, err := h.service.Start(req)
 	if err != nil {
@@ -191,6 +191,6 @@ func (h *AttemptHandler) GetAttempt(c *gin.Context) {
 
 	h.logger.Info("Successfully fetched attempt",
 		zap.Int("id", id),
-		zap.String("questionnaire_title", attempt.QuestionnaireTitle))
+		zap.String("quiz_title", attempt.QuizTitle))
 	c.JSON(http.StatusOK, attempt)
 }

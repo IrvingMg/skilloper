@@ -10,7 +10,7 @@ import (
 	"github.com/irvingmg/skilloper/skilloper-api/internal/models"
 )
 
-// JSONParser implements QuestionnaireParser for user-friendly JSON format
+// JSONParser implements QuizParser for user-friendly JSON format
 // Features: 1-based indexing, answer as string array, auto-detects question type
 type JSONParser struct{}
 
@@ -42,9 +42,9 @@ func (p *JSONParser) CanParse(data []byte, filename string) bool {
 
 // Parse converts JSON to internal format
 // Checks the "format" field to determine parsing strategy:
-// - "internal": parse directly as CreateQuestionnaireRequest (0-based, correctAnswer)
+// - "internal": parse directly as CreateQuizRequest (0-based, correctAnswer)
 // - "simple" or omitted: parse as user-friendly format (1-based, answer array)
-func (p *JSONParser) Parse(data []byte, _ ParserMetadata) (*models.CreateQuestionnaireRequest, error) {
+func (p *JSONParser) Parse(data []byte, _ ParserMetadata) (*models.CreateQuizRequest, error) {
 	// Probe for format field
 	var probe struct {
 		Format string `json:"format"`
@@ -53,9 +53,9 @@ func (p *JSONParser) Parse(data []byte, _ ParserMetadata) (*models.CreateQuestio
 		return nil, fmt.Errorf("invalid JSON: %w", err)
 	}
 
-	// If internal format, parse directly to CreateQuestionnaireRequest
+	// If internal format, parse directly to CreateQuizRequest
 	if probe.Format == models.FormatInternal {
-		var req models.CreateQuestionnaireRequest
+		var req models.CreateQuizRequest
 		if err := json.Unmarshal(data, &req); err != nil {
 			return nil, fmt.Errorf("invalid internal format JSON: %w", err)
 		}
@@ -63,7 +63,7 @@ func (p *JSONParser) Parse(data []byte, _ ParserMetadata) (*models.CreateQuestio
 	}
 
 	// Default: parse as user-friendly simplified format
-	var simplified models.SimplifiedQuestionnaire
+	var simplified models.SimplifiedQuiz
 	if err := json.Unmarshal(data, &simplified); err != nil {
 		return nil, fmt.Errorf("invalid JSON: %w", err)
 	}
@@ -71,10 +71,10 @@ func (p *JSONParser) Parse(data []byte, _ ParserMetadata) (*models.CreateQuestio
 	return p.convertToInternal(&simplified)
 }
 
-// convertToInternal converts SimplifiedQuestionnaire to CreateQuestionnaireRequest
-func (p *JSONParser) convertToInternal(simplified *models.SimplifiedQuestionnaire) (*models.CreateQuestionnaireRequest, error) {
+// convertToInternal converts SimplifiedQuiz to CreateQuizRequest
+func (p *JSONParser) convertToInternal(simplified *models.SimplifiedQuiz) (*models.CreateQuizRequest, error) {
 	if simplified == nil {
-		return nil, fmt.Errorf("questionnaire is nil")
+		return nil, fmt.Errorf("quiz is nil")
 	}
 
 	if simplified.Title == "" {
@@ -104,7 +104,7 @@ func (p *JSONParser) convertToInternal(simplified *models.SimplifiedQuestionnair
 		questions = append(questions, *question)
 	}
 
-	return &models.CreateQuestionnaireRequest{
+	return &models.CreateQuizRequest{
 		Title:       simplified.Title,
 		Description: simplified.Description,
 		Type:        quizType,
@@ -173,7 +173,7 @@ func NewFormatConverter() *FormatConverter {
 
 // ParseAndConvertJSON detects format and converts to internal request
 // Deprecated: Use ParserRegistry.Parse instead
-func (fc *FormatConverter) ParseAndConvertJSON(data []byte) (*models.CreateQuestionnaireRequest, string, error) {
+func (fc *FormatConverter) ParseAndConvertJSON(data []byte) (*models.CreateQuizRequest, string, error) {
 	registry := NewParserRegistry()
 	return registry.Parse(data, ParserMetadata{Filename: "file.json"})
 }

@@ -4,16 +4,17 @@ Base URL: `http://localhost:8080/api/v1`
 
 ## Endpoints
 
-### Questionnaires
+### Quizzes
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/health` | Health check |
-| `GET` | `/questionnaires/summaries` | Get paginated questionnaire summaries |
-| `POST` | `/questionnaires/import` | Import questionnaire from file (JSON/CSV) |
-| `GET` | `/questionnaires/{id}` | Get specific questionnaire (shuffled questions) |
-| `PUT` | `/questionnaires/{id}` | Update questionnaire |
-| `DELETE` | `/questionnaires/{id}` | Delete questionnaire |
+| `GET` | `/quizzes/summaries` | Get paginated quiz summaries |
+| `POST` | `/quizzes` | Create a new quiz |
+| `POST` | `/quizzes/import` | Import quiz from file (JSON/CSV) |
+| `GET` | `/quizzes/{id}` | Get specific quiz (shuffled questions) |
+| `PUT` | `/quizzes/{id}` | Update quiz |
+| `DELETE` | `/quizzes/{id}` | Delete quiz |
 
 ### Quiz Attempts
 
@@ -32,7 +33,7 @@ Base URL: `http://localhost:8080/api/v1`
 
 ### Pagination Parameters
 
-Both `/questionnaires/summaries` and `/attempts` support pagination, filtering, and sorting:
+Both `/quizzes/summaries` and `/attempts` support pagination, filtering, and sorting:
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -46,7 +47,7 @@ Both `/questionnaires/summaries` and `/attempts` support pagination, filtering, 
 
 #### Sort Options
 
-**For questionnaires (`/questionnaires/summaries`):**
+**For quizzes (`/quizzes/summaries`):**
 | Value | Description |
 |-------|-------------|
 | `date_desc` | Newest first (default) |
@@ -83,13 +84,13 @@ The app handles attempts differently based on quiz mode:
 curl http://localhost:8080/api/v1/health
 ```
 
-### Get Questionnaire Summaries
+### Get Quiz Summaries
 ```bash
 # Basic request (returns first 20 items)
-curl http://localhost:8080/api/v1/questionnaires/summaries
+curl http://localhost:8080/api/v1/quizzes/summaries
 
 # With pagination and filters
-curl "http://localhost:8080/api/v1/questionnaires/summaries?limit=10&offset=0&search=javascript&type=practice"
+curl "http://localhost:8080/api/v1/quizzes/summaries?limit=10&offset=0&search=javascript&type=practice"
 ```
 
 Response:
@@ -116,37 +117,37 @@ Response:
 }
 ```
 
-### Import Questionnaire from File
+### Import Quiz from File
 
 Supports JSON and CSV formats. Maximum file size: **10 MB**.
 
 ```bash
 # JSON file (simple or internal format)
-curl -X POST http://localhost:8080/api/v1/questionnaires/import \
-  -F "file=@questionnaire.json"
+curl -X POST http://localhost:8080/api/v1/quizzes/import \
+  -F "file=@quiz.json"
 
 # CSV file with metadata via query params
-curl -X POST "http://localhost:8080/api/v1/questionnaires/import?title=My%20Quiz&type=practice" \
+curl -X POST "http://localhost:8080/api/v1/quizzes/import?title=My%20Quiz&type=practice" \
   -F "file=@questions.csv"
 ```
 
-See [questionnaire-schema.md](questionnaire-schema.md) for all supported formats and limits.
+See [quiz-schema.md](quiz-schema.md) for all supported formats and limits.
 
-### Get Specific Questionnaire
+### Get Specific Quiz
 ```bash
-curl http://localhost:8080/api/v1/questionnaires/1
+curl http://localhost:8080/api/v1/quizzes/1
 ```
 
-### Update Questionnaire
+### Update Quiz
 ```bash
-curl -X PUT http://localhost:8080/api/v1/questionnaires/1 \
+curl -X PUT http://localhost:8080/api/v1/quizzes/1 \
   -H "Content-Type: application/json" \
-  -d @updated-questionnaire.json
+  -d @updated-quiz.json
 ```
 
-### Delete Questionnaire
+### Delete Quiz
 ```bash
-curl -X DELETE http://localhost:8080/api/v1/questionnaires/1
+curl -X DELETE http://localhost:8080/api/v1/quizzes/1
 ```
 
 ### Start Quiz Attempt
@@ -155,9 +156,9 @@ curl -X POST http://localhost:8080/api/v1/attempts/start \
   -H "Content-Type: application/json" \
   -d '{
     "device_id": "550e8400-e29b-41d4-a716-446655440000",
-    "questionnaire_id": 1,
-    "questionnaire_title": "JavaScript Basics",
-    "questionnaire_type": "practice",
+    "quiz_id": 1,
+    "quiz_title": "JavaScript Basics",
+    "quiz_type": "practice",
     "total_count": 10
   }'
 ```
@@ -167,9 +168,9 @@ Response:
 {
   "id": 1,
   "device_id": "550e8400-e29b-41d4-a716-446655440000",
-  "questionnaire_id": 1,
-  "questionnaire_title": "JavaScript Basics",
-  "questionnaire_type": "practice",
+  "quiz_id": 1,
+  "quiz_title": "JavaScript Basics",
+  "quiz_type": "practice",
   "attempt_number": 1,
   "status": "in_progress",
   "score": 0,
@@ -227,9 +228,9 @@ Response:
     {
       "id": 1,
       "device_id": "550e8400-e29b-41d4-a716-446655440000",
-      "questionnaire_id": 1,
-      "questionnaire_title": "JavaScript Basics",
-      "questionnaire_type": "practice",
+      "quiz_id": 1,
+      "quiz_title": "JavaScript Basics",
+      "quiz_type": "practice",
       "attempt_number": 1,
       "status": "completed",
       "score": 80,
@@ -289,7 +290,7 @@ Or for multiple choice:
 
 **Important:** Correct answers are never sent to the client during quizzes.
 
-- `GET /questionnaires/{id}` returns questions **without** `correct_answer` or `correct_answers` fields
+- `GET /quizzes/{id}` returns questions **without** `correct_answer` or `correct_answers` fields
 - The client collects user answers only
 - `POST /attempts/{id}/complete` receives user answers, the **server** validates and calculates the score
 - `POST /questions/{id}/validate` is only used in practice mode for immediate feedback
@@ -311,7 +312,7 @@ The API returns structured error responses:
 
 | Code | Description |
 |------|-------------|
-| `QUESTIONNAIRE_NOT_FOUND` | Questionnaire with given ID doesn't exist |
+| `QUIZ_NOT_FOUND` | Quiz with given ID doesn't exist |
 | `INVALID_JSON_FORMAT` | Malformed JSON in request body |
 | `FILE_REQUIRED` | No file provided for import |
 | `QUESTION_TEXT_REQUIRED` | Question text is missing |

@@ -33,20 +33,20 @@ func (s *AttemptService) Start(req models.StartAttemptRequest) (*models.AttemptR
 		return nil, apperrors.ErrDeviceIDRequired
 	}
 
-	if req.QuestionnaireID == 0 {
+	if req.QuizID == 0 {
 		return nil, apperrors.NewValidationError(apperrors.ErrInvalidAttemptData.Code,
-			"questionnaire ID is required")
+			"quiz ID is required")
 	}
 
 	var attempt models.QuizAttempt
 
 	// Use transaction to ensure atomic attempt number calculation
 	err := s.db.Transaction(func(tx *gorm.DB) error {
-		// Verify questionnaire exists and get metadata (without preloading questions)
-		var questionnaire models.Questionnaire
-		if err := tx.First(&questionnaire, req.QuestionnaireID).Error; err != nil {
+		// Verify quiz exists and get metadata (without preloading questions)
+		var quiz models.Quiz
+		if err := tx.First(&quiz, req.QuizID).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return apperrors.ErrQuestionnaireNotFound
+				return apperrors.ErrQuizNotFound
 			}
 			return err
 		}
@@ -54,7 +54,7 @@ func (s *AttemptService) Start(req models.StartAttemptRequest) (*models.AttemptR
 		// Get question count separately (more efficient than preloading all questions)
 		var questionCount int64
 		if err := tx.Model(&models.Question{}).
-			Where("questionnaire_id = ?", req.QuestionnaireID).
+			Where("quiz_id = ?", req.QuizID).
 			Count(&questionCount).Error; err != nil {
 			return err
 		}
@@ -63,8 +63,8 @@ func (s *AttemptService) Start(req models.StartAttemptRequest) (*models.AttemptR
 		// This prevents users from being permanently locked out after abandoning attempts
 		staleThreshold := time.Now().Add(-time.Duration(models.StaleAttemptHours) * time.Hour)
 		if err := tx.Model(&models.QuizAttempt{}).
-			Where("device_id = ? AND questionnaire_id = ? AND status = ? AND created_at < ?",
-				req.DeviceID, req.QuestionnaireID, models.AttemptStatusInProgress, staleThreshold).
+			Where("device_id = ? AND quiz_id = ? AND status = ? AND created_at < ?",
+				req.DeviceID, req.QuizID, models.AttemptStatusInProgress, staleThreshold).
 			Updates(map[string]interface{}{
 				"status":       models.AttemptStatusCompleted,
 				"completed_at": time.Now(),
@@ -76,8 +76,8 @@ func (s *AttemptService) Start(req models.StartAttemptRequest) (*models.AttemptR
 		// Check for too many in-progress attempts (prevents abuse)
 		var inProgressCount int64
 		if err := tx.Model(&models.QuizAttempt{}).
-			Where("device_id = ? AND questionnaire_id = ? AND status = ?",
-				req.DeviceID, req.QuestionnaireID, models.AttemptStatusInProgress).
+			Where("device_id = ? AND quiz_id = ? AND status = ?",
+				req.DeviceID, req.QuizID, models.AttemptStatusInProgress).
 			Count(&inProgressCount).Error; err != nil {
 			return err
 		}
@@ -89,7 +89,7 @@ func (s *AttemptService) Start(req models.StartAttemptRequest) (*models.AttemptR
 		// Calculate attempt number within transaction (count of existing attempts + 1)
 		var existingCount int64
 		if err := tx.Model(&models.QuizAttempt{}).
-			Where("device_id = ? AND questionnaire_id = ?", req.DeviceID, req.QuestionnaireID).
+			Where("device_id = ? AND quiz_id = ?", req.DeviceID, req.QuizID).
 			Count(&existingCount).Error; err != nil {
 			return err
 		}
@@ -97,13 +97,13 @@ func (s *AttemptService) Start(req models.StartAttemptRequest) (*models.AttemptR
 
 		// Create attempt with in_progress status using server-side data
 		attempt = models.QuizAttempt{
-			DeviceID:           req.DeviceID,
-			QuestionnaireID:    req.QuestionnaireID,
-			QuestionnaireTitle: questionnaire.Title, // Use server data, not client
-			QuestionnaireType:  questionnaire.Type,  // Use server data, not client
-			AttemptNumber:      attemptNumber,
-			Status:             models.AttemptStatusInProgress,
-			TotalCount:         int(questionCount), // Use count query, not preloaded data
+			DeviceID:      req.DeviceID,
+			QuizID:        req.QuizID,
+			QuizTitle:     quiz.Title, // Use server data, not client
+			QuizType:      quiz.Type,  // Use server data, not client
+			AttemptNumber: attemptNumber,
+			Status:        models.AttemptStatusInProgress,
+			TotalCount:    int(questionCount), // Use count query, not preloaded data
 		}
 
 		// Save to database within transaction
@@ -171,18 +171,18 @@ func (s *AttemptService) Complete(attemptID uint, req models.CompleteAttemptRequ
 				"attempt is already completed")
 		}
 
-		// Fetch questionnaire with questions for validation
-		var questionnaire models.Questionnaire
-		if err := tx.Preload("Questions").First(&questionnaire, attempt.QuestionnaireID).Error; err != nil {
+		// Fetch quiz with questions for validation
+		var quiz models.Quiz
+		if err := tx.Preload("Questions").First(&quiz, attempt.QuizID).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return apperrors.ErrQuestionnaireNotFound
+				return apperrors.ErrQuizNotFound
 			}
 			return err
 		}
 
 		// Build question lookup map
 		questionMap := make(map[uint]models.Question)
-		for _, q := range questionnaire.Questions {
+		for _, q := range quiz.Questions {
 			questionMap[q.ID] = q
 		}
 
@@ -202,9 +202,9 @@ func (s *AttemptService) Complete(attemptID uint, req models.CompleteAttemptRequ
 
 			question, found := questionMap[answerReq.QuestionID]
 			if !found {
-				s.logger.Warn("Question not found in questionnaire",
+				s.logger.Warn("Question not found in quiz",
 					zap.Uint("question_id", answerReq.QuestionID),
-					zap.Uint("questionnaire_id", attempt.QuestionnaireID))
+					zap.Uint("quiz_id", attempt.QuizID))
 				continue
 			}
 
@@ -295,9 +295,9 @@ func (s *AttemptService) Complete(attemptID uint, req models.CompleteAttemptRequ
 			attempt.Answers = append(attempt.Answers, answer)
 		}
 
-		// Calculate score using questionnaire's total question count
+		// Calculate score using quiz's total question count
 		// This ensures accurate scoring even if user skips questions
-		totalCount := len(questionnaire.Questions)
+		totalCount := len(quiz.Questions)
 		var score int
 		if totalCount > 0 {
 			score = (correctCount * 100) / totalCount
@@ -349,17 +349,17 @@ func (s *AttemptService) GetPaginatedByDeviceID(deviceID string, params models.P
 	// Build query with filters
 	query := s.db.Model(&models.QuizAttempt{}).Where("device_id = ?", deviceID)
 
-	// Apply search filter (case-insensitive on questionnaire_title, escape LIKE wildcards)
+	// Apply search filter (case-insensitive on quiz_title, escape LIKE wildcards)
 	if params.Search != "" {
 		escaped := strings.ReplaceAll(params.Search, "%", "\\%")
 		escaped = strings.ReplaceAll(escaped, "_", "\\_")
 		searchPattern := "%" + strings.ToLower(escaped) + "%"
-		query = query.Where("LOWER(questionnaire_title) LIKE ? ESCAPE '\\'", searchPattern)
+		query = query.Where("LOWER(quiz_title) LIKE ? ESCAPE '\\'", searchPattern)
 	}
 
 	// Apply type filter (already validated by handler)
 	if params.Type != "" {
-		query = query.Where("questionnaire_type = ?", params.Type)
+		query = query.Where("quiz_type = ?", params.Type)
 	}
 
 	// Get total count
@@ -383,18 +383,18 @@ func (s *AttemptService) GetPaginatedByDeviceID(deviceID string, params models.P
 	summaries := make([]models.AttemptSummaryResponse, 0, len(attempts))
 	for _, attempt := range attempts {
 		summaries = append(summaries, models.AttemptSummaryResponse{
-			ID:                 attempt.ID,
-			DeviceID:           attempt.DeviceID,
-			QuestionnaireID:    attempt.QuestionnaireID,
-			QuestionnaireTitle: attempt.QuestionnaireTitle,
-			QuestionnaireType:  attempt.QuestionnaireType,
-			AttemptNumber:      attempt.AttemptNumber,
-			Status:             attempt.Status,
-			Score:              attempt.Score,
-			CorrectCount:       attempt.CorrectCount,
-			TotalCount:         attempt.TotalCount,
-			CreatedAt:          attempt.CreatedAt,
-			CompletedAt:        attempt.CompletedAt,
+			ID:            attempt.ID,
+			DeviceID:      attempt.DeviceID,
+			QuizID:        attempt.QuizID,
+			QuizTitle:     attempt.QuizTitle,
+			QuizType:      attempt.QuizType,
+			AttemptNumber: attempt.AttemptNumber,
+			Status:        attempt.Status,
+			Score:         attempt.Score,
+			CorrectCount:  attempt.CorrectCount,
+			TotalCount:    attempt.TotalCount,
+			CreatedAt:     attempt.CreatedAt,
+			CompletedAt:   attempt.CompletedAt,
 		})
 	}
 
@@ -466,18 +466,18 @@ func (s *AttemptService) convertToResponse(attempt models.QuizAttempt) models.At
 	}
 
 	return models.AttemptResponse{
-		ID:                 attempt.ID,
-		DeviceID:           attempt.DeviceID,
-		QuestionnaireID:    attempt.QuestionnaireID,
-		QuestionnaireTitle: attempt.QuestionnaireTitle,
-		QuestionnaireType:  attempt.QuestionnaireType,
-		AttemptNumber:      attempt.AttemptNumber,
-		Status:             attempt.Status,
-		Score:              attempt.Score,
-		CorrectCount:       attempt.CorrectCount,
-		TotalCount:         attempt.TotalCount,
-		CreatedAt:          attempt.CreatedAt,
-		CompletedAt:        attempt.CompletedAt,
-		Answers:            answers,
+		ID:            attempt.ID,
+		DeviceID:      attempt.DeviceID,
+		QuizID:        attempt.QuizID,
+		QuizTitle:     attempt.QuizTitle,
+		QuizType:      attempt.QuizType,
+		AttemptNumber: attempt.AttemptNumber,
+		Status:        attempt.Status,
+		Score:         attempt.Score,
+		CorrectCount:  attempt.CorrectCount,
+		TotalCount:    attempt.TotalCount,
+		CreatedAt:     attempt.CreatedAt,
+		CompletedAt:   attempt.CompletedAt,
+		Answers:       answers,
 	}
 }

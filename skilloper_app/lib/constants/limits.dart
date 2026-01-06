@@ -1,4 +1,4 @@
-// Centralized limits for questionnaire validation
+// Centralized limits for quiz validation
 // Keep in sync with Go API limits in internal/models/limits.go
 
 class QuizLimits {
@@ -9,7 +9,7 @@ class QuizLimits {
   static const int maxOptions = 8;
   static const int defaultMaxOptions = 4;
 
-  // Questions per questionnaire
+  // Questions per quiz
   static const int maxQuestionsPerQuiz = 500;
 
   // Field lengths
@@ -22,7 +22,7 @@ class QuizLimits {
 }
 
 // Question type constants
-// Keep in sync with Go API constants in internal/models/questionnaire.go
+// Keep in sync with Go API constants in internal/models/quiz.go
 class QuestionTypes {
   QuestionTypes._(); // Prevent instantiation
 

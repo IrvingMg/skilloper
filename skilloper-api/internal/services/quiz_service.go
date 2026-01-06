@@ -36,19 +36,19 @@ func randomIntn(n int) int {
 	return globalRng.Intn(n)
 }
 
-type QuestionnaireService struct {
+type QuizService struct {
 	db *gorm.DB
 }
 
-func NewQuestionnaireService(db *gorm.DB) *QuestionnaireService {
-	return &QuestionnaireService{
+func NewQuizService(db *gorm.DB) *QuizService {
+	return &QuizService{
 		db: db,
 	}
 }
 
-// QuestionnaireSummaryRow represents a questionnaire with question count from a single query
-type QuestionnaireSummaryRow struct {
-	models.Questionnaire
+// QuizSummaryRow represents a quiz with question count from a single query
+type QuizSummaryRow struct {
+	models.Quiz
 	QuestionCount int64 `gorm:"column:question_count"`
 }
 
@@ -59,10 +59,10 @@ func escapeLikePattern(s string) string {
 	return s
 }
 
-// GetPaginatedSummaries returns paginated questionnaire summaries with search and filter
-func (s *QuestionnaireService) GetPaginatedSummaries(params models.PaginationParams) (models.PaginatedQuestionnaireSummaries, error) {
+// GetPaginatedSummaries returns paginated quiz summaries with search and filter
+func (s *QuizService) GetPaginatedSummaries(params models.PaginationParams) (models.PaginatedQuizSummaries, error) {
 	// Build base query with filters
-	baseQuery := s.db.Model(&models.Questionnaire{})
+	baseQuery := s.db.Model(&models.Quiz{})
 
 	// Apply search filter (case-insensitive, escape LIKE wildcards)
 	if params.Search != "" {
@@ -78,42 +78,42 @@ func (s *QuestionnaireService) GetPaginatedSummaries(params models.PaginationPar
 	// Get total count (before pagination)
 	var totalCount int64
 	if err := baseQuery.Count(&totalCount).Error; err != nil {
-		return models.PaginatedQuestionnaireSummaries{}, apperrors.ErrFetchQuestionnairesFailed
+		return models.PaginatedQuizSummaries{}, apperrors.ErrFetchQuizzesFailed
 	}
 
-	// Fetch questionnaires with question counts in a single query using subquery
-	var rows []QuestionnaireSummaryRow
+	// Fetch quizzes with question counts in a single query using subquery
+	var rows []QuizSummaryRow
 	subquery := s.db.Model(&models.Question{}).
-		Select("questionnaire_id, COUNT(*) as cnt").
-		Group("questionnaire_id")
+		Select("quiz_id, COUNT(*) as cnt").
+		Group("quiz_id")
 
-	result := s.db.Table("questionnaires").
-		Select("questionnaires.*, COALESCE(q.cnt, 0) as question_count").
-		Joins("LEFT JOIN (?) as q ON questionnaires.id = q.questionnaire_id", subquery)
+	result := s.db.Table("quizzes").
+		Select("quizzes.*, COALESCE(q.cnt, 0) as question_count").
+		Joins("LEFT JOIN (?) as q ON quizzes.id = q.quiz_id", subquery)
 
 	// Re-apply filters to the joined query
 	if params.Search != "" {
 		searchPattern := "%" + escapeLikePattern(strings.ToLower(params.Search)) + "%"
-		result = result.Where("LOWER(questionnaires.title) LIKE ? ESCAPE '\\'", searchPattern)
+		result = result.Where("LOWER(quizzes.title) LIKE ? ESCAPE '\\'", searchPattern)
 	}
 	if params.Type != "" {
-		result = result.Where("questionnaires.type = ?", params.Type)
+		result = result.Where("quizzes.type = ?", params.Type)
 	}
 
 	// Apply pagination and order (dynamic sort from params)
-	result = result.Order(params.GetQuestionnaireOrderBy()).
+	result = result.Order(params.GetQuizOrderBy()).
 		Limit(params.Limit).
 		Offset(params.Offset).
 		Find(&rows)
 
 	if result.Error != nil {
-		return models.PaginatedQuestionnaireSummaries{}, apperrors.ErrFetchQuestionnairesFailed
+		return models.PaginatedQuizSummaries{}, apperrors.ErrFetchQuizzesFailed
 	}
 
 	// Convert to summaries
-	summaries := make([]models.QuestionnaireSummary, 0, len(rows))
+	summaries := make([]models.QuizSummary, 0, len(rows))
 	for _, row := range rows {
-		summaries = append(summaries, models.QuestionnaireSummary{
+		summaries = append(summaries, models.QuizSummary{
 			ID:            row.ID,
 			Title:         row.Title,
 			Description:   row.Description,
@@ -125,44 +125,44 @@ func (s *QuestionnaireService) GetPaginatedSummaries(params models.PaginationPar
 		})
 	}
 
-	return models.NewPaginatedQuestionnaireSummaries(summaries, params.Limit, params.Offset, int(totalCount)), nil
+	return models.NewPaginatedQuizSummaries(summaries, params.Limit, params.Offset, int(totalCount)), nil
 }
 
-// GetByID retrieves a questionnaire by ID
-func (s *QuestionnaireService) GetByID(id uint) (*models.QuestionnaireResponse, error) {
-	var questionnaire models.Questionnaire
-	result := s.db.Preload("Questions").First(&questionnaire, id)
+// GetByID retrieves a quiz by ID
+func (s *QuizService) GetByID(id uint) (*models.QuizResponse, error) {
+	var quiz models.Quiz
+	result := s.db.Preload("Questions").First(&quiz, id)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, apperrors.ErrQuestionnaireNotFound
+			return nil, apperrors.ErrQuizNotFound
 		}
-		return nil, apperrors.ErrFetchQuestionnaireFailed
+		return nil, apperrors.ErrFetchQuizFailed
 	}
 
-	response := s.convertToResponse(questionnaire)
+	response := s.convertToResponse(quiz)
 	return &response, nil
 }
 
-// GetByIDWithAnswers retrieves a questionnaire by ID including correct answers (for edit mode)
-func (s *QuestionnaireService) GetByIDWithAnswers(id uint) (*models.QuestionnaireResponseWithAnswers, error) {
-	var questionnaire models.Questionnaire
-	result := s.db.Preload("Questions").First(&questionnaire, id)
+// GetByIDWithAnswers retrieves a quiz by ID including correct answers (for edit mode)
+func (s *QuizService) GetByIDWithAnswers(id uint) (*models.QuizResponseWithAnswers, error) {
+	var quiz models.Quiz
+	result := s.db.Preload("Questions").First(&quiz, id)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, apperrors.ErrQuestionnaireNotFound
+			return nil, apperrors.ErrQuizNotFound
 		}
-		return nil, apperrors.ErrFetchQuestionnaireFailed
+		return nil, apperrors.ErrFetchQuizFailed
 	}
 
-	response := s.convertToResponseWithAnswers(questionnaire)
+	response := s.convertToResponseWithAnswers(quiz)
 	return &response, nil
 }
 
-// Create creates a new questionnaire
-func (s *QuestionnaireService) Create(req models.CreateQuestionnaireRequest) (*models.QuestionnaireResponse, error) {
+// Create creates a new quiz
+func (s *QuizService) Create(req models.CreateQuizRequest) (*models.QuizResponse, error) {
 	// Validate required fields
 	if req.Title == "" {
-		return nil, apperrors.ErrQuestionnaireTitleRequired
+		return nil, apperrors.ErrQuizTitleRequired
 	}
 
 	// Validate field lengths (centralized validation for all import paths)
@@ -176,7 +176,7 @@ func (s *QuestionnaireService) Create(req models.CreateQuestionnaireRequest) (*m
 			fmt.Sprintf("description exceeds %d character limit", models.MaxDescriptionLength))
 	}
 
-	// Validate questionnaire type
+	// Validate quiz type
 	if req.Type != "practice" && req.Type != "exam" {
 		req.Type = "practice" // Default to practice mode
 	}
@@ -196,11 +196,11 @@ func (s *QuestionnaireService) Create(req models.CreateQuestionnaireRequest) (*m
 	// Validate at least one question
 	if len(req.Questions) == 0 {
 		return nil, apperrors.NewValidationError("NO_QUESTIONS",
-			"questionnaire must have at least one question")
+			"quiz must have at least one question")
 	}
 
-	// Create questionnaire
-	questionnaire := models.Questionnaire{
+	// Create quiz
+	quiz := models.Quiz{
 		Title:       req.Title,
 		Description: req.Description,
 		Type:        req.Type,
@@ -232,10 +232,10 @@ func (s *QuestionnaireService) Create(req models.CreateQuestionnaireRequest) (*m
 				fmt.Sprintf("Question %d requires at least %d options", i+1, models.MinOptionsLimit))
 		}
 
-		// Validate options don't exceed questionnaire's maxOptions limit
+		// Validate options don't exceed quiz's maxOptions limit
 		if len(qReq.Options) > maxOptions {
 			return nil, apperrors.NewValidationError(apperrors.ErrTooManyOptions.Code,
-				fmt.Sprintf("Question has %d options but questionnaire max_options is %d", len(qReq.Options), maxOptions))
+				fmt.Sprintf("Question has %d options but quiz max_options is %d", len(qReq.Options), maxOptions))
 		}
 
 		optionBytes, err := json.Marshal(qReq.Options)
@@ -324,27 +324,27 @@ func (s *QuestionnaireService) Create(req models.CreateQuestionnaireRequest) (*m
 			AlternativeAnswers:   alternativeAnswersJSON,
 			Explanation:          qReq.Explanation,
 		}
-		questionnaire.Questions = append(questionnaire.Questions, question)
+		quiz.Questions = append(quiz.Questions, question)
 	}
 
 	// Save to database
-	result := s.db.Create(&questionnaire)
+	result := s.db.Create(&quiz)
 	if result.Error != nil {
-		return nil, apperrors.ErrCreateQuestionnaireFailed
+		return nil, apperrors.ErrCreateQuizFailed
 	}
 
-	response := s.convertToResponse(questionnaire)
+	response := s.convertToResponse(quiz)
 	return &response, nil
 }
 
-// Update updates an existing questionnaire
-func (s *QuestionnaireService) Update(id uint, req models.CreateQuestionnaireRequest) (*models.QuestionnaireResponse, error) {
+// Update updates an existing quiz
+func (s *QuizService) Update(id uint, req models.CreateQuizRequest) (*models.QuizResponse, error) {
 	// Validate required fields
 	if req.Title == "" {
-		return nil, apperrors.ErrQuestionnaireTitleRequired
+		return nil, apperrors.ErrQuizTitleRequired
 	}
 
-	// Validate questionnaire type
+	// Validate quiz type
 	if req.Type != "practice" && req.Type != "exam" {
 		req.Type = "practice" // Default to practice mode
 	}
@@ -364,7 +364,7 @@ func (s *QuestionnaireService) Update(id uint, req models.CreateQuestionnaireReq
 	// Validate at least one question
 	if len(req.Questions) == 0 {
 		return nil, apperrors.NewValidationError("NO_QUESTIONS",
-			"questionnaire must have at least one question")
+			"quiz must have at least one question")
 	}
 
 	// Pre-validate all questions and build validated data before transaction
@@ -403,7 +403,7 @@ func (s *QuestionnaireService) Update(id uint, req models.CreateQuestionnaireReq
 
 		if len(qReq.Options) > maxOptions {
 			return nil, apperrors.NewValidationError(apperrors.ErrTooManyOptions.Code,
-				fmt.Sprintf("Question has %d options but questionnaire max_options is %d", len(qReq.Options), maxOptions))
+				fmt.Sprintf("Question has %d options but quiz max_options is %d", len(qReq.Options), maxOptions))
 		}
 
 		optionBytes, err := json.Marshal(qReq.Options)
@@ -486,31 +486,31 @@ func (s *QuestionnaireService) Update(id uint, req models.CreateQuestionnaireReq
 	}
 
 	// Use transaction to ensure atomicity - either all changes succeed or none
-	var questionnaire models.Questionnaire
+	var quiz models.Quiz
 	err := s.db.Transaction(func(tx *gorm.DB) error {
-		// Find existing questionnaire
-		if err := tx.First(&questionnaire, id).Error; err != nil {
+		// Find existing quiz
+		if err := tx.First(&quiz, id).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return apperrors.ErrQuestionnaireNotFound
+				return apperrors.ErrQuizNotFound
 			}
-			return apperrors.ErrFetchQuestionnaireFailed
+			return apperrors.ErrFetchQuizFailed
 		}
 
-		// Update questionnaire fields
-		questionnaire.Title = req.Title
-		questionnaire.Description = req.Description
-		questionnaire.Type = req.Type
-		questionnaire.MaxOptions = maxOptions
+		// Update quiz fields
+		quiz.Title = req.Title
+		quiz.Description = req.Description
+		quiz.Type = req.Type
+		quiz.MaxOptions = maxOptions
 
 		// Delete existing questions
-		if err := tx.Where("questionnaire_id = ?", questionnaire.ID).Delete(&models.Question{}).Error; err != nil {
+		if err := tx.Where("quiz_id = ?", quiz.ID).Delete(&models.Question{}).Error; err != nil {
 			return apperrors.ErrDeleteQuestionsFailed
 		}
 
 		// Create new questions
 		for _, vq := range validatedQuestions {
 			question := models.Question{
-				QuestionnaireID:      questionnaire.ID,
+				QuizID:               quiz.ID,
 				QuestionType:         vq.questionType,
 				QuestionText:         vq.qReq.Question,
 				AlternativeQuestions: vq.alternativeQuestionsJSON,
@@ -528,14 +528,14 @@ func (s *QuestionnaireService) Update(id uint, req models.CreateQuestionnaireReq
 			}
 		}
 
-		// Save questionnaire changes
-		if err := tx.Save(&questionnaire).Error; err != nil {
-			return apperrors.ErrUpdateQuestionnaireFailed
+		// Save quiz changes
+		if err := tx.Save(&quiz).Error; err != nil {
+			return apperrors.ErrUpdateQuizFailed
 		}
 
-		// Reload questionnaire with questions
-		if err := tx.Preload("Questions").First(&questionnaire, id).Error; err != nil {
-			return apperrors.ErrFetchQuestionnaireFailed
+		// Reload quiz with questions
+		if err := tx.Preload("Questions").First(&quiz, id).Error; err != nil {
+			return apperrors.ErrFetchQuizFailed
 		}
 
 		return nil
@@ -546,29 +546,29 @@ func (s *QuestionnaireService) Update(id uint, req models.CreateQuestionnaireReq
 		if errors.As(err, &appErr) {
 			return nil, appErr
 		}
-		return nil, apperrors.ErrUpdateQuestionnaireFailed
+		return nil, apperrors.ErrUpdateQuizFailed
 	}
 
-	response := s.convertToResponse(questionnaire)
+	response := s.convertToResponse(quiz)
 	return &response, nil
 }
 
-// Delete deletes a questionnaire by ID
-func (s *QuestionnaireService) Delete(id uint) error {
+// Delete deletes a quiz by ID
+func (s *QuizService) Delete(id uint) error {
 	// Delete questions first (foreign key constraint)
-	result := s.db.Where("questionnaire_id = ?", id).Delete(&models.Question{})
+	result := s.db.Where("quiz_id = ?", id).Delete(&models.Question{})
 	if result.Error != nil {
 		return apperrors.ErrDeleteQuestionsFailed
 	}
 
-	// Delete questionnaire
-	result = s.db.Delete(&models.Questionnaire{}, id)
+	// Delete quiz
+	result = s.db.Delete(&models.Quiz{}, id)
 	if result.Error != nil {
-		return apperrors.ErrDeleteQuestionnaireFailed
+		return apperrors.ErrDeleteQuizFailed
 	}
 
 	if result.RowsAffected == 0 {
-		return apperrors.ErrQuestionnaireNotFound
+		return apperrors.ErrQuizNotFound
 	}
 
 	return nil
@@ -577,9 +577,9 @@ func (s *QuestionnaireService) Delete(id uint) error {
 // MaxImportFileSize is the maximum allowed file size for imports (10MB)
 const MaxImportFileSize = 10 * 1024 * 1024
 
-// ImportFromFile imports questionnaires from an uploaded file (JSON or CSV)
+// ImportFromFile imports quizzes from an uploaded file (JSON or CSV)
 // Uses the parser registry to auto-detect format and parse
-func (s *QuestionnaireService) ImportFromFile(file *multipart.FileHeader, csvMeta ...CSVMetadata) (*models.QuestionnaireSummary, error) {
+func (s *QuizService) ImportFromFile(file *multipart.FileHeader, csvMeta ...CSVMetadata) (*models.QuizSummary, error) {
 	// Check file size before reading
 	if file.Size > MaxImportFileSize {
 		return nil, apperrors.NewValidationError("FILE_TOO_LARGE", "file exceeds 10MB limit")
@@ -630,22 +630,22 @@ func (s *QuestionnaireService) ImportFromFile(file *multipart.FileHeader, csvMet
 		}
 	}
 
-	// Use existing Create method to validate and create questionnaire
-	questionnaireResponse, err := s.Create(*req)
+	// Use existing Create method to validate and create quiz
+	quizResponse, err := s.Create(*req)
 	if err != nil {
 		return nil, err
 	}
 
 	// Convert to summary
-	summary := &models.QuestionnaireSummary{
-		ID:            questionnaireResponse.ID,
-		Title:         questionnaireResponse.Title,
-		Description:   questionnaireResponse.Description,
-		Type:          questionnaireResponse.Type,
-		MaxOptions:    questionnaireResponse.MaxOptions,
-		CreatedAt:     questionnaireResponse.CreatedAt,
-		UpdatedAt:     questionnaireResponse.UpdatedAt,
-		QuestionCount: len(questionnaireResponse.Questions),
+	summary := &models.QuizSummary{
+		ID:            quizResponse.ID,
+		Title:         quizResponse.Title,
+		Description:   quizResponse.Description,
+		Type:          quizResponse.Type,
+		MaxOptions:    quizResponse.MaxOptions,
+		CreatedAt:     quizResponse.CreatedAt,
+		UpdatedAt:     quizResponse.UpdatedAt,
+		QuestionCount: len(quizResponse.Questions),
 	}
 
 	return summary, nil
@@ -690,7 +690,7 @@ func parseStringArrayJSON(jsonStr string) []string {
 // Helper method to convert database model to response
 // Applies alternative text selection for variety, but keeps options in original order
 // (frontend handles display shuffling to maintain server-side validation compatibility)
-func (s *QuestionnaireService) convertToResponse(q models.Questionnaire) models.QuestionnaireResponse {
+func (s *QuizService) convertToResponse(q models.Quiz) models.QuizResponse {
 	var questions []models.QuestionResponse
 
 	for _, question := range q.Questions {
@@ -731,7 +731,7 @@ func (s *QuestionnaireService) convertToResponse(q models.Questionnaire) models.
 		questions = append(questions, qr)
 	}
 
-	resp := models.QuestionnaireResponse{}
+	resp := models.QuizResponse{}
 	resp.ID = q.ID
 	resp.Title = q.Title
 	resp.Description = q.Description
@@ -745,7 +745,7 @@ func (s *QuestionnaireService) convertToResponse(q models.Questionnaire) models.
 
 // convertToResponseWithAnswers converts database model to response including correct answers
 // Used for edit mode - does NOT apply alternative text selection to preserve original data
-func (s *QuestionnaireService) convertToResponseWithAnswers(q models.Questionnaire) models.QuestionnaireResponseWithAnswers {
+func (s *QuizService) convertToResponseWithAnswers(q models.Quiz) models.QuizResponseWithAnswers {
 	var questions []models.QuestionResponseWithAnswers
 
 	for _, question := range q.Questions {
@@ -770,7 +770,7 @@ func (s *QuestionnaireService) convertToResponseWithAnswers(q models.Questionnai
 		questions = append(questions, qr)
 	}
 
-	resp := models.QuestionnaireResponseWithAnswers{}
+	resp := models.QuizResponseWithAnswers{}
 	resp.ID = q.ID
 	resp.Title = q.Title
 	resp.Description = q.Description

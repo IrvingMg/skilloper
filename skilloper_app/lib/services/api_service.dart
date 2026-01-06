@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../models/questionnaire.dart';
+import '../models/quiz.dart';
 import '../models/attempt.dart';
 import '../models/pagination.dart';
 
@@ -95,8 +95,8 @@ class ApiService {
     return ApiException('Failed to $operation: $e');
   }
 
-  /// Get paginated questionnaire summaries with search and filter
-  Future<PaginatedResponse<QuestionnaireSummary>> getQuestionnaireSummaries({
+  /// Get paginated quiz summaries with search and filter
+  Future<PaginatedResponse<QuizSummary>> getQuizSummaries({
     int limit = 20,
     int offset = 0,
     String search = '',
@@ -118,12 +118,12 @@ class ApiService {
         queryParams['sort'] = sort;
       }
 
-      final uri = Uri.parse('$baseUrl/questionnaires/summaries')
+      final uri = Uri.parse('$baseUrl/quizzes/summaries')
           .replace(queryParameters: queryParams);
 
       final response = await http.get(uri).timeout(timeout);
 
-      _handleHttpResponse(response, 'load questionnaire summaries');
+      _handleHttpResponse(response, 'load quiz summaries');
 
       final Map<String, dynamic> body = json.decode(response.body);
       final dynamic rawData = body['data'];
@@ -135,62 +135,62 @@ class ApiService {
 
       return PaginatedResponse(
         data: dataList
-            .map((json) => QuestionnaireSummary.fromJson(json as Map<String, dynamic>))
+            .map((json) => QuizSummary.fromJson(json as Map<String, dynamic>))
             .toList(),
         pagination: PaginationMeta.fromJson(paginationJson),
       );
     } on ApiException {
       rethrow;
     } catch (e) {
-      throw _handleException(e, 'load questionnaire summaries');
+      throw _handleException(e, 'load quiz summaries');
     }
   }
 
 
-  Future<Questionnaire> getQuestionnaire(int id) async {
+  Future<Quiz> getQuiz(int id) async {
     if (id <= 0) {
-      throw ApiException('Invalid questionnaire ID: $id');
+      throw ApiException('Invalid quiz ID: $id');
     }
 
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/questionnaires/$id'),
+        Uri.parse('$baseUrl/quizzes/$id'),
       ).timeout(timeout);
 
-      _handleHttpResponse(response, 'load questionnaire');
+      _handleHttpResponse(response, 'load quiz');
 
       final Map<String, dynamic> data = json.decode(response.body);
-      return Questionnaire.fromJson(data);
+      return Quiz.fromJson(data);
     } on ApiException {
       rethrow;
     } catch (e) {
-      throw _handleException(e, 'load questionnaire');
+      throw _handleException(e, 'load quiz');
     }
   }
 
-  /// Get questionnaire with correct answers included (for edit mode)
-  Future<Questionnaire> getQuestionnaireForEdit(int id) async {
+  /// Get quiz with correct answers included (for edit mode)
+  Future<Quiz> getQuizForEdit(int id) async {
     if (id <= 0) {
-      throw ApiException('Invalid questionnaire ID: $id');
+      throw ApiException('Invalid quiz ID: $id');
     }
 
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/questionnaires/$id?view=$_viewModeEdit'),
+        Uri.parse('$baseUrl/quizzes/$id?view=$_viewModeEdit'),
       ).timeout(timeout);
 
-      _handleHttpResponse(response, 'load questionnaire for edit');
+      _handleHttpResponse(response, 'load quiz for edit');
 
       final Map<String, dynamic> data = json.decode(response.body);
-      return Questionnaire.fromJson(data);
+      return Quiz.fromJson(data);
     } on ApiException {
       rethrow;
     } catch (e) {
-      throw _handleException(e, 'load questionnaire for edit');
+      throw _handleException(e, 'load quiz for edit');
     }
   }
 
-  Future<ImportResponse?> importQuestionnaire(
+  Future<ImportResponse?> importQuiz(
     List<int> fileBytes,
     String fileName, {
     String? title,
@@ -208,7 +208,7 @@ class ApiService {
 
     try {
       // Build URL with optional query params for CSV metadata
-      final uri = Uri.parse('$baseUrl/questionnaires/import').replace(
+      final uri = Uri.parse('$baseUrl/quizzes/import').replace(
         queryParameters: {
           if (title != null && title.isNotEmpty) 'title': title,
           if (description != null && description.isNotEmpty) 'description': description,
@@ -409,64 +409,64 @@ class ApiService {
     }
   }
 
-  /// Create a new questionnaire using simplified JSON format
-  Future<Map<String, dynamic>> createQuestionnaire(Map<String, dynamic> data) async {
+  /// Create a new quiz using simplified JSON format
+  Future<Map<String, dynamic>> createQuiz(Map<String, dynamic> data) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/questionnaires'),
+        Uri.parse('$baseUrl/quizzes'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(data),
       ).timeout(timeout);
 
-      _handleHttpResponse(response, 'create questionnaire');
+      _handleHttpResponse(response, 'create quiz');
 
       return json.decode(response.body) as Map<String, dynamic>;
     } on ApiException {
       rethrow;
     } catch (e) {
-      throw _handleException(e, 'create questionnaire');
+      throw _handleException(e, 'create quiz');
     }
   }
 
-  /// Update an existing questionnaire
-  Future<Map<String, dynamic>> updateQuestionnaire(int id, Map<String, dynamic> data) async {
+  /// Update an existing quiz
+  Future<Map<String, dynamic>> updateQuiz(int id, Map<String, dynamic> data) async {
     if (id <= 0) {
-      throw ApiException('Invalid questionnaire ID: $id');
+      throw ApiException('Invalid quiz ID: $id');
     }
 
     try {
       final response = await http.put(
-        Uri.parse('$baseUrl/questionnaires/$id'),
+        Uri.parse('$baseUrl/quizzes/$id'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(data),
       ).timeout(timeout);
 
-      _handleHttpResponse(response, 'update questionnaire');
+      _handleHttpResponse(response, 'update quiz');
 
       return json.decode(response.body) as Map<String, dynamic>;
     } on ApiException {
       rethrow;
     } catch (e) {
-      throw _handleException(e, 'update questionnaire');
+      throw _handleException(e, 'update quiz');
     }
   }
 
-  /// Delete a questionnaire
-  Future<void> deleteQuestionnaire(int id) async {
+  /// Delete a quiz
+  Future<void> deleteQuiz(int id) async {
     if (id <= 0) {
-      throw ApiException('Invalid questionnaire ID: $id');
+      throw ApiException('Invalid quiz ID: $id');
     }
 
     try {
       final response = await http.delete(
-        Uri.parse('$baseUrl/questionnaires/$id'),
+        Uri.parse('$baseUrl/quizzes/$id'),
       ).timeout(timeout);
 
-      _handleHttpResponse(response, 'delete questionnaire');
+      _handleHttpResponse(response, 'delete quiz');
     } on ApiException {
       rethrow;
     } catch (e) {
-      throw _handleException(e, 'delete questionnaire');
+      throw _handleException(e, 'delete quiz');
     }
   }
 

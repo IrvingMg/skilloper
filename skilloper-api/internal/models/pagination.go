@@ -7,13 +7,13 @@ var validTypes = map[string]bool{
 	"exam":     true,
 }
 
-// Valid sort options for questionnaires
-var validQuestionnaireSorts = map[string]string{
-	"":           "questionnaires.created_at DESC", // default
-	"date_desc":  "questionnaires.created_at DESC",
-	"date_asc":   "questionnaires.created_at ASC",
-	"title_asc":  "questionnaires.title ASC",
-	"title_desc": "questionnaires.title DESC",
+// Valid sort options for quizzes
+var validQuizSorts = map[string]string{
+	"":           "quizzes.created_at DESC", // default
+	"date_desc":  "quizzes.created_at DESC",
+	"date_asc":   "quizzes.created_at ASC",
+	"title_asc":  "quizzes.title ASC",
+	"title_desc": "quizzes.title DESC",
 }
 
 // Valid sort options for attempts
@@ -23,8 +23,8 @@ var validAttemptSorts = map[string]string{
 	"date_asc":   "created_at ASC",
 	"score_desc": "score DESC",
 	"score_asc":  "score ASC",
-	"title_asc":  "questionnaire_title ASC",
-	"title_desc": "questionnaire_title DESC",
+	"title_asc":  "quiz_title ASC",
+	"title_desc": "quiz_title DESC",
 }
 
 // PaginationParams holds common pagination and filter parameters
@@ -51,13 +51,13 @@ func (p *PaginationParams) Validate() bool {
 	return validTypes[p.Type]
 }
 
-// GetQuestionnaireOrderBy returns the SQL ORDER BY clause for questionnaires
+// GetQuizOrderBy returns the SQL ORDER BY clause for quizzes
 // Falls back to default (date_desc) if sort value is invalid
-func (p *PaginationParams) GetQuestionnaireOrderBy() string {
-	if orderBy, ok := validQuestionnaireSorts[p.Sort]; ok {
+func (p *PaginationParams) GetQuizOrderBy() string {
+	if orderBy, ok := validQuizSorts[p.Sort]; ok {
 		return orderBy
 	}
-	return validQuestionnaireSorts[""]
+	return validQuizSorts[""]
 }
 
 // GetAttemptOrderBy returns the SQL ORDER BY clause for attempts
@@ -77,16 +77,16 @@ type PaginationMeta struct {
 	HasMore    bool `json:"has_more"`
 }
 
-// PaginatedQuestionnaireSummaries wraps questionnaire summaries with pagination
-type PaginatedQuestionnaireSummaries struct {
-	Data       []QuestionnaireSummary `json:"data"`
-	Pagination PaginationMeta         `json:"pagination"`
+// PaginatedQuizSummaries wraps quiz summaries with pagination
+type PaginatedQuizSummaries struct {
+	Data       []QuizSummary  `json:"data"`
+	Pagination PaginationMeta `json:"pagination"`
 }
 
-// NewPaginatedQuestionnaireSummaries creates a paginated response for questionnaire summaries
-func NewPaginatedQuestionnaireSummaries(data []QuestionnaireSummary, limit, offset, totalCount int) PaginatedQuestionnaireSummaries {
+// NewPaginatedQuizSummaries creates a paginated response for quiz summaries
+func NewPaginatedQuizSummaries(data []QuizSummary, limit, offset, totalCount int) PaginatedQuizSummaries {
 	hasMore := offset+len(data) < totalCount
-	return PaginatedQuestionnaireSummaries{
+	return PaginatedQuizSummaries{
 		Data: data,
 		Pagination: PaginationMeta{
 			Limit:      limit,

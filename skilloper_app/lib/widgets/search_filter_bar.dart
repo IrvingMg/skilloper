@@ -21,8 +21,8 @@ const kQuizTypeFilterOptions = [
   FilterOption(value: 'exam', label: 'Exam'),
 ];
 
-/// Sort options for questionnaires (home screen)
-const kQuestionnaireSortOptions = [
+/// Sort options for quizzes (home screen)
+const kQuizSortOptions = [
   SortOption(value: 'date_desc', label: 'Newest first'),
   SortOption(value: 'date_asc', label: 'Oldest first'),
   SortOption(value: 'title_asc', label: 'Title A-Z'),

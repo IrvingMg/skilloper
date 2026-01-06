@@ -11,9 +11,9 @@ const (
 	FormatInternal = "internal" // API format: 0-based indexing, correctAnswer/correct_answers
 )
 
-// SimplifiedQuestionnaire represents the user-friendly JSON format
+// SimplifiedQuiz represents the user-friendly JSON format
 // with 1-based indexing and simplified answer field
-type SimplifiedQuestionnaire struct {
+type SimplifiedQuiz struct {
 	Format      string               `json:"format,omitempty"` // "simple" (default) or "internal"
 	Title       string               `json:"title"`
 	Description string               `json:"description,omitempty"`
@@ -22,8 +22,8 @@ type SimplifiedQuestionnaire struct {
 	Questions   []SimplifiedQuestion `json:"questions"`
 }
 
-// IsInternalFormat returns true if this questionnaire uses internal API format
-func (sq *SimplifiedQuestionnaire) IsInternalFormat() bool {
+// IsInternalFormat returns true if this quiz uses internal API format
+func (sq *SimplifiedQuiz) IsInternalFormat() bool {
 	return sq.Format == FormatInternal
 }
 

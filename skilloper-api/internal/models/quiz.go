@@ -12,7 +12,7 @@ const (
 
 // Note: Limit constants (MinOptionsLimit, MaxOptionsLimit, etc.) are in limits.go
 
-type Questionnaire struct {
+type Quiz struct {
 	ID          uint       `json:"id" gorm:"primaryKey"`
 	Title       string     `json:"title" gorm:"not null"`
 	Description string     `json:"description"`
@@ -20,12 +20,12 @@ type Questionnaire struct {
 	MaxOptions  int        `json:"max_options" gorm:"not null;default:4"`    // Maximum options per question
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
-	Questions   []Question `json:"questions" gorm:"foreignKey:QuestionnaireID"`
+	Questions   []Question `json:"questions" gorm:"foreignKey:QuizID"`
 }
 
 type Question struct {
 	ID                   uint      `json:"id" gorm:"primaryKey"`
-	QuestionnaireID      uint      `json:"questionnaire_id"`
+	QuizID               uint      `json:"quiz_id"`
 	QuestionType         string    `json:"question_type" gorm:"not null;default:'single_choice'"` // "single_choice", "multiple_choice"
 	QuestionText         string    `json:"question" gorm:"not null"`
 	AlternativeQuestions string    `json:"alternative_questions"` // JSON array of alternative question texts
@@ -42,7 +42,7 @@ type Question struct {
 }
 
 // Request DTOs
-type CreateQuestionnaireRequest struct {
+type CreateQuizRequest struct {
 	Title       string            `json:"title"`
 	Description string            `json:"description"`
 	Type        string            `json:"type"` // "practice" or "exam"
@@ -65,7 +65,7 @@ type QuestionRequest struct {
 }
 
 // Response DTOs
-type QuestionnaireSummary struct {
+type QuizSummary struct {
 	ID            uint      `json:"id"`
 	Title         string    `json:"title"`
 	Description   string    `json:"description"`
@@ -101,8 +101,8 @@ type QuestionResponseWithAnswers struct {
 	CorrectAnswers []int `json:"correct_answers,omitempty"` // 0-indexed
 }
 
-// questionnaireResponseBase contains shared fields for questionnaire responses (unexported, for embedding only)
-type questionnaireResponseBase struct {
+// quizResponseBase contains shared fields for quiz responses (unexported, for embedding only)
+type quizResponseBase struct {
 	ID          uint      `json:"id"`
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
@@ -112,15 +112,15 @@ type questionnaireResponseBase struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 }
 
-// QuestionnaireResponse is the response DTO for questionnaires (answers hidden)
-type QuestionnaireResponse struct {
-	questionnaireResponseBase
+// QuizResponse is the response DTO for quizzes (answers hidden)
+type QuizResponse struct {
+	quizResponseBase
 	Questions []QuestionResponse `json:"questions"`
 }
 
-// QuestionnaireResponseWithAnswers includes correct answers (for edit mode)
-type QuestionnaireResponseWithAnswers struct {
-	questionnaireResponseBase
+// QuizResponseWithAnswers includes correct answers (for edit mode)
+type QuizResponseWithAnswers struct {
+	quizResponseBase
 	Questions []QuestionResponseWithAnswers `json:"questions"`
 }
 

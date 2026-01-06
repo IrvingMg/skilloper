@@ -1,6 +1,6 @@
-# Questionnaire Import Formats
+# Quiz Import Formats
 
-This document defines the supported formats for importing questionnaires into Skilloper.
+This document defines the supported formats for importing quizzes into Skilloper.
 
 ## Supported Formats
 
@@ -87,7 +87,7 @@ question,option1,option2,option3,option4,answer,explanation,code,language,alt_qu
 **Via API:** Quiz-level metadata is passed via query parameters:
 
 ```bash
-curl -X POST "http://localhost:8080/api/v1/questionnaires/import?title=My%20Quiz&type=practice&max_options=4" \
+curl -X POST "http://localhost:8080/api/v1/quizzes/import?title=My%20Quiz&type=practice&max_options=4" \
   -F "file=@questions.csv"
 ```
 
@@ -135,12 +135,12 @@ To use this format, include `"format": "internal"` at the root level.
 
 ## Field Reference
 
-### Questionnaire Level
+### Quiz Level
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `title` | string | Yes | Name of the questionnaire |
-| `description` | string | No | Brief description of the questionnaire content |
+| `title` | string | Yes | Name of the quiz |
+| `description` | string | No | Brief description of the quiz content |
 | `type` | string | No | Assessment mode: `"practice"` (immediate feedback) or `"exam"` (delayed feedback). Defaults to `"practice"` |
 | `max_options` | integer | No | Maximum answer options per question (2-8 range). Defaults to 4. Validates that no question exceeds this limit |
 
@@ -167,7 +167,7 @@ To use this format, include `"format": "internal"` at the root level.
 | Limit | Value | Description |
 |-------|-------|-------------|
 | Max file size | 10 MB | Maximum upload size for import |
-| Max questions | 500 | Maximum questions per questionnaire |
+| Max questions | 500 | Maximum questions per quiz |
 | Max options | 8 | Maximum answer options per question |
 | Min options | 2 | Minimum answer options per question |
 | Max title length | 255 | Maximum characters for title |
@@ -191,8 +191,8 @@ To use this format, include `"format": "internal"` at the root level.
 ## Security Note
 
 **Import vs API Response:**
-- When **importing** a questionnaire, `correctAnswer`/`correct_answers` are **required** and stored securely
-- When **fetching** a questionnaire via `GET /questionnaires/{id}`, these fields are **hidden** from the response
+- When **importing** a quiz, `correctAnswer`/`correct_answers` are **required** and stored securely
+- When **fetching** a quiz via `GET /quizzes/{id}`, these fields are **hidden** from the response
 - Answer validation happens **server-side** to prevent submitting fake scores
 
 See [api-endpoints.md](api-endpoints.md) for details on the secure answer validation flow.

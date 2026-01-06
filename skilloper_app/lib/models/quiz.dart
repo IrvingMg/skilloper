@@ -44,7 +44,7 @@ class Question {
   bool get isSingleChoice => questionType == 'single_choice';
 }
 
-class QuestionnaireSummary {
+class QuizSummary {
   final int id;
   final String title;
   final String description;
@@ -54,7 +54,7 @@ class QuestionnaireSummary {
   final DateTime updatedAt;
   final int questionCount;
 
-  const QuestionnaireSummary({
+  const QuizSummary({
     required this.id,
     required this.title,
     required this.description,
@@ -65,8 +65,8 @@ class QuestionnaireSummary {
     required this.questionCount,
   });
 
-  factory QuestionnaireSummary.fromJson(Map<String, dynamic> json) {
-    return QuestionnaireSummary(
+  factory QuizSummary.fromJson(Map<String, dynamic> json) {
+    return QuizSummary(
       id: json['id'] as int,
       title: json['title'] as String,
       description: json['description'] as String,
@@ -83,7 +83,7 @@ class QuestionnaireSummary {
   int get estimatedMinutes => (questionCount * 1.5).ceil();
 }
 
-class Questionnaire {
+class Quiz {
   final int id;
   final String title;
   final String description;
@@ -93,7 +93,7 @@ class Questionnaire {
   final DateTime updatedAt;
   final List<Question> questions;
 
-  const Questionnaire({
+  const Quiz({
     required this.id,
     required this.title,
     required this.description,
@@ -104,8 +104,8 @@ class Questionnaire {
     required this.questions,
   });
 
-  factory Questionnaire.fromJson(Map<String, dynamic> json) {
-    return Questionnaire(
+  factory Quiz.fromJson(Map<String, dynamic> json) {
+    return Quiz(
       id: json['id'] as int,
       title: json['title'] as String,
       description: json['description'] as String,
@@ -126,17 +126,17 @@ class Questionnaire {
 
 class ImportResponse {
   final String message;
-  final QuestionnaireSummary questionnaire;
+  final QuizSummary quiz;
 
   const ImportResponse({
     required this.message,
-    required this.questionnaire,
+    required this.quiz,
   });
 
   factory ImportResponse.fromJson(Map<String, dynamic> json) {
     return ImportResponse(
       message: json['message'] as String,
-      questionnaire: QuestionnaireSummary.fromJson(json['questionnaire'] as Map<String, dynamic>),
+      quiz: QuizSummary.fromJson(json['quiz'] as Map<String, dynamic>),
     );
   }
 }

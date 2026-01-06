@@ -8,8 +8,8 @@ import (
 )
 
 func seedSampleData(db *gorm.DB, logger *zap.Logger) error {
-	// Practice mode questionnaire with immediate feedback
-	practiceQuestionnaire := models.Questionnaire{
+	// Practice mode quiz with immediate feedback
+	practiceQuiz := models.Quiz{
 		Title:       "Go Fundamentals - Practice",
 		Description: "Practice Go concepts with immediate feedback",
 		Type:        "practice",
@@ -49,8 +49,8 @@ func seedSampleData(db *gorm.DB, logger *zap.Logger) error {
 		},
 	}
 
-	// Exam mode questionnaire - Python
-	examQuestionnaire := models.Questionnaire{
+	// Exam mode quiz - Python
+	examQuiz := models.Quiz{
 		Title:       "Python Assessment - Exam",
 		Description: "Test your Python knowledge in exam mode",
 		Type:        "exam",
@@ -84,8 +84,8 @@ func seedSampleData(db *gorm.DB, logger *zap.Logger) error {
 		},
 	}
 
-	// Mixed question types questionnaire - JavaScript
-	mixedQuestionnaire := models.Questionnaire{
+	// Mixed question types quiz - JavaScript
+	mixedQuiz := models.Quiz{
 		Title:       "JavaScript Mixed Types - Practice",
 		Description: "Practice JavaScript with both single-choice and multiple-choice questions",
 		Type:        "practice",
@@ -135,24 +135,24 @@ func seedSampleData(db *gorm.DB, logger *zap.Logger) error {
 		},
 	}
 
-	if err := db.Create(&practiceQuestionnaire).Error; err != nil {
-		logger.Error("Failed to create practice questionnaire", zap.Error(err))
+	if err := db.Create(&practiceQuiz).Error; err != nil {
+		logger.Error("Failed to create practice quiz", zap.Error(err))
 		return err
 	}
 
-	if err := db.Create(&examQuestionnaire).Error; err != nil {
-		logger.Error("Failed to create exam questionnaire", zap.Error(err))
+	if err := db.Create(&examQuiz).Error; err != nil {
+		logger.Error("Failed to create exam quiz", zap.Error(err))
 		return err
 	}
 
-	if err := db.Create(&mixedQuestionnaire).Error; err != nil {
-		logger.Error("Failed to create mixed question types questionnaire", zap.Error(err))
+	if err := db.Create(&mixedQuiz).Error; err != nil {
+		logger.Error("Failed to create mixed question types quiz", zap.Error(err))
 		return err
 	}
 
 	logger.Info("Sample data seeded successfully",
-		zap.String("practice_questionnaire", "Go Fundamentals - Practice"),
-		zap.String("exam_questionnaire", "Python Assessment - Exam"),
+		zap.String("practice_quiz", "Go Fundamentals - Practice"),
+		zap.String("exam_quiz", "Python Assessment - Exam"),
 	)
 	return nil
 }

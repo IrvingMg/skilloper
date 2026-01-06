@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/questionnaire.dart';
+import '../models/quiz.dart';
 import '../models/pagination.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
@@ -20,16 +20,16 @@ class HomeScreen extends StatefulWidget {
 class HomeScreenState extends State<HomeScreen> {
   final ApiService _apiService = ApiService();
 
-  /// Public method to refresh the questionnaire list.
+  /// Public method to refresh the quiz list.
   /// Called by parent when tab becomes active.
   void refresh() {
-    _loadQuestionnaires(refresh: true);
+    _loadQuizzes(refresh: true);
   }
   final ScrollController _scrollController = ScrollController();
   final Debouncer _searchDebouncer = Debouncer(delay: const Duration(milliseconds: 300));
 
   // Data state
-  List<QuestionnaireSummary> _questionnaires = [];
+  List<QuizSummary> _quizzes = [];
   PaginationMeta _pagination = PaginationMeta.initial();
 
   // Loading states
@@ -49,7 +49,7 @@ class HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _loadQuestionnaires(refresh: true);
+    _loadQuizzes(refresh: true);
   }
 
   @override
@@ -69,8 +69,8 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// Load questionnaires (initial or refresh)
-  Future<void> _loadQuestionnaires({bool refresh = false}) async {
+  /// Load quizzes (initial or refresh)
+  Future<void> _loadQuizzes({bool refresh = false}) async {
     // If already loading, mark that a refresh is pending
     if (_isInitialLoading) {
       _pendingRefresh = true;
@@ -82,7 +82,7 @@ class HomeScreenState extends State<HomeScreen> {
       _isInitialLoading = true;
       _error = null;
       if (refresh) {
-        _questionnaires = [];
+        _quizzes = [];
         _pagination = PaginationMeta.initial();
       }
     });
@@ -93,7 +93,7 @@ class HomeScreenState extends State<HomeScreen> {
     final requestSort = _sortBy;
 
     try {
-      final result = await _apiService.getQuestionnaireSummaries(
+      final result = await _apiService.getQuizSummaries(
         limit: 20,
         offset: 0,
         search: _searchQuery,
@@ -108,12 +108,12 @@ class HomeScreenState extends State<HomeScreen> {
         setState(() {
           _isInitialLoading = false;
         });
-        _loadQuestionnaires(refresh: true);
+        _loadQuizzes(refresh: true);
         return;
       }
 
       setState(() {
-        _questionnaires = result.data;
+        _quizzes = result.data;
         _pagination = result.pagination;
         _isInitialLoading = false;
       });
@@ -125,12 +125,12 @@ class HomeScreenState extends State<HomeScreen> {
       });
       // Check for pending refresh even on error
       if (_pendingRefresh) {
-        _loadQuestionnaires(refresh: true);
+        _loadQuizzes(refresh: true);
       }
     }
   }
 
-  /// Load more questionnaires (infinite scroll)
+  /// Load more quizzes (infinite scroll)
   Future<void> _loadMore() async {
     if (_isLoadingMore || !_pagination.hasMore || _isInitialLoading) return;
 
@@ -145,7 +145,7 @@ class HomeScreenState extends State<HomeScreen> {
     final requestOffset = _pagination.nextOffset;
 
     try {
-      final result = await _apiService.getQuestionnaireSummaries(
+      final result = await _apiService.getQuizSummaries(
         limit: _pagination.limit,
         offset: requestOffset,
         search: _searchQuery,
@@ -164,7 +164,7 @@ class HomeScreenState extends State<HomeScreen> {
       }
 
       setState(() {
-        _questionnaires.addAll(result.data);
+        _quizzes.addAll(result.data);
         _pagination = result.pagination;
         _isLoadingMore = false;
       });
@@ -175,7 +175,7 @@ class HomeScreenState extends State<HomeScreen> {
       });
       // Check for pending refresh even on error
       if (_pendingRefresh) {
-        _loadQuestionnaires(refresh: true);
+        _loadQuizzes(refresh: true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to load more: $e')),
@@ -190,7 +190,7 @@ class HomeScreenState extends State<HomeScreen> {
       setState(() {
         _searchQuery = query;
       });
-      _loadQuestionnaires(refresh: true);
+      _loadQuizzes(refresh: true);
     });
   }
 
@@ -199,7 +199,7 @@ class HomeScreenState extends State<HomeScreen> {
     setState(() {
       _typeFilter = filter;
     });
-    _loadQuestionnaires(refresh: true);
+    _loadQuizzes(refresh: true);
   }
 
   /// Handle sort change (immediate, no debounce)
@@ -207,10 +207,10 @@ class HomeScreenState extends State<HomeScreen> {
     setState(() {
       _sortBy = sort;
     });
-    _loadQuestionnaires(refresh: true);
+    _loadQuizzes(refresh: true);
   }
 
-  Future<void> _startQuiz(QuestionnaireSummary summary) async {
+  Future<void> _startQuiz(QuizSummary summary) async {
     // Prevent double-tap
     if (_isStartingQuiz) return;
     _isStartingQuiz = true;
@@ -225,8 +225,8 @@ class HomeScreenState extends State<HomeScreen> {
     );
 
     try {
-      // Fetch full questionnaire with questions (fresh shuffled data)
-      final questionnaire = await _apiService.getQuestionnaire(summary.id);
+      // Fetch full quiz with questions (fresh shuffled data)
+      final quiz = await _apiService.getQuiz(summary.id);
 
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
@@ -235,7 +235,7 @@ class HomeScreenState extends State<HomeScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => QuizScreen(questionnaire: questionnaire),
+          builder: (context) => QuizScreen(quiz: quiz),
         ),
       );
     } catch (e) {
@@ -243,12 +243,12 @@ class HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading questionnaire: $e')),
+        SnackBar(content: Text('Error loading quiz: $e')),
       );
     }
   }
 
-  Future<void> _editQuestionnaire(QuestionnaireSummary summary) async {
+  Future<void> _editQuiz(QuizSummary summary) async {
     // Show loading indicator
     showDialog(
       context: context,
@@ -259,8 +259,8 @@ class HomeScreenState extends State<HomeScreen> {
     );
 
     try {
-      // Fetch full questionnaire with answers included for edit mode
-      final questionnaire = await _apiService.getQuestionnaireForEdit(summary.id);
+      // Fetch full quiz with answers included for edit mode
+      final quiz = await _apiService.getQuizForEdit(summary.id);
 
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
@@ -268,28 +268,28 @@ class HomeScreenState extends State<HomeScreen> {
       await Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => CreateQuizScreen(questionnaire: questionnaire),
+          builder: (context) => CreateQuizScreen(quiz: quiz),
         ),
       );
 
       // Refresh list after returning
       if (mounted) {
-        _loadQuestionnaires(refresh: true);
+        _loadQuizzes(refresh: true);
       }
     } catch (e) {
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading questionnaire: $e')),
+        SnackBar(content: Text('Error loading quiz: $e')),
       );
     }
   }
 
-  Future<void> _deleteQuestionnaire(QuestionnaireSummary summary) async {
+  Future<void> _deleteQuiz(QuizSummary summary) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Questionnaire?'),
+        title: const Text('Delete Quiz?'),
         content: Text(
           'Are you sure you want to delete "${summary.title}"? This cannot be undone.',
         ),
@@ -310,7 +310,7 @@ class HomeScreenState extends State<HomeScreen> {
     if (confirmed != true || !mounted) return;
 
     try {
-      await _apiService.deleteQuestionnaire(summary.id);
+      await _apiService.deleteQuiz(summary.id);
 
       if (!mounted) return;
 
@@ -320,7 +320,7 @@ class HomeScreenState extends State<HomeScreen> {
             children: [
               const Icon(Icons.check_circle, color: Colors.white, size: 20),
               const SizedBox(width: 8),
-              const Text('Questionnaire deleted'),
+              const Text('Quiz deleted'),
             ],
           ),
           backgroundColor: AppColors.success,
@@ -329,12 +329,12 @@ class HomeScreenState extends State<HomeScreen> {
         ),
       );
 
-      _loadQuestionnaires(refresh: true);
+      _loadQuizzes(refresh: true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error deleting questionnaire: $e'),
+          content: Text('Error deleting quiz: $e'),
           backgroundColor: AppColors.error,
         ),
       );
@@ -345,14 +345,14 @@ class HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: RefreshIndicator(
-        onRefresh: () => _loadQuestionnaires(refresh: true),
+        onRefresh: () => _loadQuizzes(refresh: true),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Available Questionnaires',
+                'Available Quizzes',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w700,
@@ -362,7 +362,7 @@ class HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Choose a questionnaire to test your skills',
+                'Choose a quiz to test your skills',
                 style: TextStyle(
                   fontSize: 16,
                   color: AppColors.textTertiary,
@@ -379,14 +379,14 @@ class HomeScreenState extends State<HomeScreen> {
                 filterOptions: kQuizTypeFilterOptions,
                 selectedFilter: _typeFilter,
                 onFilterChanged: _onFilterChanged,
-                sortOptions: kQuestionnaireSortOptions,
+                sortOptions: kQuizSortOptions,
                 selectedSort: _sortBy,
                 onSortChanged: _onSortChanged,
               ),
 
               const SizedBox(height: 16),
 
-              if (_isInitialLoading && _questionnaires.isEmpty)
+              if (_isInitialLoading && _quizzes.isEmpty)
                 const Expanded(
                   child: Center(
                     child: Column(
@@ -395,14 +395,14 @@ class HomeScreenState extends State<HomeScreen> {
                         CircularProgressIndicator(),
                         SizedBox(height: 16),
                         Text(
-                          'Loading questionnaires...',
+                          'Loading quizzes...',
                           style: TextStyle(color: Color(0xFF6B7280)),
                         ),
                       ],
                     ),
                   ),
                 )
-              else if (_error != null && _questionnaires.isEmpty)
+              else if (_error != null && _quizzes.isEmpty)
                 Expanded(
                   child: Center(
                     child: Column(
@@ -415,7 +415,7 @@ class HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(height: 16),
                         const Text(
-                          'Failed to load questionnaires',
+                          'Failed to load quizzes',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w500,
@@ -431,14 +431,14 @@ class HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(height: 16),
                         ElevatedButton(
-                          onPressed: () => _loadQuestionnaires(refresh: true),
+                          onPressed: () => _loadQuizzes(refresh: true),
                           child: const Text('Retry'),
                         ),
                       ],
                     ),
                   ),
                 )
-              else if (_questionnaires.isEmpty)
+              else if (_quizzes.isEmpty)
                 Expanded(
                   child: Center(
                     child: Column(
@@ -455,7 +455,7 @@ class HomeScreenState extends State<HomeScreen> {
                         Text(
                           _searchQuery.isNotEmpty || _typeFilter.isNotEmpty
                               ? 'No matches found'
-                              : 'No questionnaires available',
+                              : 'No quizzes available',
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w500,
@@ -465,7 +465,7 @@ class HomeScreenState extends State<HomeScreen> {
                         Text(
                           _searchQuery.isNotEmpty || _typeFilter.isNotEmpty
                               ? 'Try a different search or filter'
-                              : 'Upload some questionnaires using the Add tab',
+                              : 'Upload some quizzes using the Add tab',
                           style: const TextStyle(
                             color: AppColors.textTertiary,
                           ),
@@ -480,7 +480,7 @@ class HomeScreenState extends State<HomeScreen> {
                                 _searchQuery = '';
                                 _typeFilter = '';
                               });
-                              _loadQuestionnaires(refresh: true);
+                              _loadQuizzes(refresh: true);
                             },
                             child: const Text('Clear filters'),
                           ),
@@ -493,22 +493,22 @@ class HomeScreenState extends State<HomeScreen> {
                 Expanded(
                   child: ListView.separated(
                     controller: _scrollController,
-                    itemCount: _questionnaires.length + (_isLoadingMore ? 1 : 0),
+                    itemCount: _quizzes.length + (_isLoadingMore ? 1 : 0),
                     separatorBuilder: (context, index) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
                       // Show loading indicator at the bottom
-                      if (index == _questionnaires.length) {
+                      if (index == _quizzes.length) {
                         return const Padding(
                           padding: EdgeInsets.symmetric(vertical: 16),
                           child: Center(child: CircularProgressIndicator()),
                         );
                       }
-                      final questionnaire = _questionnaires[index];
-                      return _QuestionnaireListItem(
-                        questionnaire: questionnaire,
-                        onTap: () => _startQuiz(questionnaire),
-                        onEdit: () => _editQuestionnaire(questionnaire),
-                        onDelete: () => _deleteQuestionnaire(questionnaire),
+                      final quiz = _quizzes[index];
+                      return _QuizListItem(
+                        quiz: quiz,
+                        onTap: () => _startQuiz(quiz),
+                        onEdit: () => _editQuiz(quiz),
+                        onDelete: () => _deleteQuiz(quiz),
                       );
                     },
                   ),
@@ -521,14 +521,14 @@ class HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class _QuestionnaireListItem extends StatelessWidget {
-  final QuestionnaireSummary questionnaire;
+class _QuizListItem extends StatelessWidget {
+  final QuizSummary quiz;
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
-  const _QuestionnaireListItem({
-    required this.questionnaire,
+  const _QuizListItem({
+    required this.quiz,
     required this.onTap,
     required this.onEdit,
     required this.onDelete,
@@ -558,14 +558,14 @@ class _QuestionnaireListItem extends StatelessWidget {
                     width: isNarrowScreen ? 44 : 56,
                     height: isNarrowScreen ? 44 : 56,
                     decoration: BoxDecoration(
-                      color: questionnaire.type == 'exam'
+                      color: quiz.type == 'exam'
                           ? AppColors.examModeContainer
                           : AppColors.practiceModeContainer,
                       borderRadius: BorderRadius.circular(isNarrowScreen ? 10 : 12),
                     ),
                     child: Icon(
-                      questionnaire.type == 'exam' ? AppIcons.examMode : AppIcons.practiceMode,
-                      color: questionnaire.type == 'exam'
+                      quiz.type == 'exam' ? AppIcons.examMode : AppIcons.practiceMode,
+                      color: quiz.type == 'exam'
                           ? AppColors.examMode
                           : AppColors.practiceMode,
                       size: isNarrowScreen ? 22 : 28,
@@ -584,7 +584,7 @@ class _QuestionnaireListItem extends StatelessWidget {
                           children: [
                             Expanded(
                               child: Text(
-                                questionnaire.title,
+                                quiz.title,
                                 style: TextStyle(
                                   fontSize: isNarrowScreen ? 16 : 18,
                                   fontWeight: FontWeight.w600,
@@ -601,17 +601,17 @@ class _QuestionnaireListItem extends StatelessWidget {
                                 vertical: 3,
                               ),
                               decoration: BoxDecoration(
-                                color: questionnaire.type == 'exam'
+                                color: quiz.type == 'exam'
                                     ? AppColors.examModeContainer
                                     : AppColors.practiceModeContainer,
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
-                                questionnaire.type.toUpperCase(),
+                                quiz.type.toUpperCase(),
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
-                                  color: questionnaire.type == 'exam'
+                                  color: quiz.type == 'exam'
                                       ? AppColors.onExamModeContainer
                                       : AppColors.onPracticeModeContainer,
                                 ),
@@ -623,9 +623,9 @@ class _QuestionnaireListItem extends StatelessWidget {
                         if (!isNarrowScreen) const SizedBox(height: 6),
 
                         // Description - only show on wider screens
-                        if (!isNarrowScreen && questionnaire.description.isNotEmpty) ...[
+                        if (!isNarrowScreen && quiz.description.isNotEmpty) ...[
                           Text(
-                            questionnaire.description,
+                            quiz.description,
                             style: TextStyle(
                               fontSize: 14,
                               color: AppColors.textTertiary,
@@ -650,7 +650,7 @@ class _QuestionnaireListItem extends StatelessWidget {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                '${questionnaire.questionCount} questions',
+                                '${quiz.questionCount} questions',
                                 style: const TextStyle(
                                   fontSize: 12,
                                   color: AppColors.textTertiary,
@@ -665,7 +665,7 @@ class _QuestionnaireListItem extends StatelessWidget {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                formatRelativeDate(questionnaire.createdAt),
+                                formatRelativeDate(quiz.createdAt),
                                 style: const TextStyle(
                                   fontSize: 12,
                                   color: AppColors.textTertiary,
@@ -684,7 +684,7 @@ class _QuestionnaireListItem extends StatelessWidget {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                '${questionnaire.questionCount} questions',
+                                '${quiz.questionCount} questions',
                                 style: const TextStyle(
                                   fontSize: 13,
                                   color: AppColors.textTertiary,
@@ -699,7 +699,7 @@ class _QuestionnaireListItem extends StatelessWidget {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                formatRelativeDate(questionnaire.createdAt),
+                                formatRelativeDate(quiz.createdAt),
                                 style: const TextStyle(
                                   fontSize: 13,
                                   color: AppColors.textTertiary,

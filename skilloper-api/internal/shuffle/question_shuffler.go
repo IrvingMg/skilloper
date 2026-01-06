@@ -100,7 +100,7 @@ func (qs *QuestionShuffler) shuffleSingleChoiceQuestion(question models.Question
 		finalOptions[question.CorrectAnswer] = correctAnswerText
 	}
 
-	// Shuffler only shuffles - option limiting is handled during questionnaire creation
+	// Shuffler only shuffles - option limiting is handled during quiz creation
 
 	newCorrectIndex := qs.shuffleOptionsWithCorrectTracking(finalOptions, correctAnswerText)
 

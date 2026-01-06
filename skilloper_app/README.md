@@ -55,8 +55,8 @@ flutter build web --release
 ## How to Use
 
 ### Taking Assessments
-1. **Browse** available questionnaires on the home screen
-2. **Select** a questionnaire to start (content is shuffled fresh each time)
+1. **Browse** available quizzes on the home screen
+2. **Select** a quiz to start (content is shuffled fresh each time)
 3. **Answer questions:**
    - **Single-choice**: Select one correct answer with radio buttons
    - **Multiple-choice**: Select multiple correct answers with checkboxes
@@ -65,10 +65,10 @@ flutter build web --release
    - **Exam mode**: Review all answers at the end
 5. **Review results** with detailed explanations and correct answer highlights
 
-### Importing Questionnaires
+### Importing Quizzes
 1. **Navigate** to Import tab
 2. **Upload** JSON or CSV files
-3. **Files are processed** and added to available questionnaires
+3. **Files are processed** and added to available quizzes
 
 ## Development Examples
 
@@ -102,7 +102,7 @@ flutter format lib/
 flutter pub run flutter_launcher_icons:main
 ```
 
-### Simple Questionnaire Example
+### Simple Quiz Example
 
 ```json
 {
@@ -120,12 +120,12 @@ flutter pub run flutter_launcher_icons:main
 }
 ```
 
-For complete schema documentation with all features, see [Questionnaire Schema](../docs/questionnaire-schema.md).
+For complete schema documentation with all features, see [Quiz Schema](../docs/quiz-schema.md).
 
 
-## Questionnaire Format
+## Quiz Format
 
-For complete documentation on creating questionnaires, see [Questionnaire Schema](../docs/questionnaire-schema.md).
+For complete documentation on creating quizzes, see [Quiz Schema](../docs/quiz-schema.md).
 
 ### Key Features for Users
 

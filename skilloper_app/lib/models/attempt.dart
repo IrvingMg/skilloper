@@ -28,9 +28,9 @@ enum AttemptStatus {
 class AttemptSummary {
   final int id;
   final String deviceId;
-  final int questionnaireId;
-  final String questionnaireTitle;
-  final String questionnaireType;
+  final int quizId;
+  final String quizTitle;
+  final String quizType;
   final int attemptNumber;
   final AttemptStatus status;
   final int score;
@@ -42,9 +42,9 @@ class AttemptSummary {
   const AttemptSummary({
     required this.id,
     required this.deviceId,
-    required this.questionnaireId,
-    required this.questionnaireTitle,
-    required this.questionnaireType,
+    required this.quizId,
+    required this.quizTitle,
+    required this.quizType,
     required this.attemptNumber,
     required this.status,
     required this.score,
@@ -58,9 +58,9 @@ class AttemptSummary {
     return AttemptSummary(
       id: json['id'] as int,
       deviceId: json['device_id'] as String,
-      questionnaireId: json['questionnaire_id'] as int,
-      questionnaireTitle: json['questionnaire_title'] as String,
-      questionnaireType: json['questionnaire_type'] as String,
+      quizId: json['quiz_id'] as int,
+      quizTitle: json['quiz_title'] as String,
+      quizType: json['quiz_type'] as String,
       attemptNumber: json['attempt_number'] as int,
       status: AttemptStatus.fromString(json['status'] as String),
       score: json['score'] as int,
@@ -73,7 +73,7 @@ class AttemptSummary {
     );
   }
 
-  bool get isPracticeMode => questionnaireType == 'practice';
+  bool get isPracticeMode => quizType == 'practice';
   bool get isCompleted => status == AttemptStatus.completed;
   bool get isInProgress => status == AttemptStatus.inProgress;
   int get incorrectCount => totalCount - correctCount;
@@ -134,9 +134,9 @@ class AttemptAnswer {
 class QuizAttempt {
   final int id;
   final String deviceId;
-  final int questionnaireId;
-  final String questionnaireTitle;
-  final String questionnaireType;
+  final int quizId;
+  final String quizTitle;
+  final String quizType;
   final int attemptNumber;
   final AttemptStatus status;
   final int score;
@@ -149,9 +149,9 @@ class QuizAttempt {
   const QuizAttempt({
     required this.id,
     required this.deviceId,
-    required this.questionnaireId,
-    required this.questionnaireTitle,
-    required this.questionnaireType,
+    required this.quizId,
+    required this.quizTitle,
+    required this.quizType,
     required this.attemptNumber,
     required this.status,
     required this.score,
@@ -166,9 +166,9 @@ class QuizAttempt {
     return QuizAttempt(
       id: json['id'] as int,
       deviceId: json['device_id'] as String,
-      questionnaireId: json['questionnaire_id'] as int,
-      questionnaireTitle: json['questionnaire_title'] as String,
-      questionnaireType: json['questionnaire_type'] as String,
+      quizId: json['quiz_id'] as int,
+      quizTitle: json['quiz_title'] as String,
+      quizType: json['quiz_type'] as String,
       attemptNumber: json['attempt_number'] as int,
       status: AttemptStatus.fromString(json['status'] as String),
       score: json['score'] as int,
@@ -185,7 +185,7 @@ class QuizAttempt {
     );
   }
 
-  bool get isPracticeMode => questionnaireType == 'practice';
+  bool get isPracticeMode => quizType == 'practice';
   bool get isCompleted => status == AttemptStatus.completed;
   bool get isInProgress => status == AttemptStatus.inProgress;
   int get incorrectCount => totalCount - correctCount;
@@ -194,25 +194,25 @@ class QuizAttempt {
 /// Request to start a new attempt
 class StartAttemptRequest {
   final String deviceId;
-  final int questionnaireId;
-  final String questionnaireTitle;
-  final String questionnaireType;
+  final int quizId;
+  final String quizTitle;
+  final String quizType;
   final int totalCount;
 
   const StartAttemptRequest({
     required this.deviceId,
-    required this.questionnaireId,
-    required this.questionnaireTitle,
-    required this.questionnaireType,
+    required this.quizId,
+    required this.quizTitle,
+    required this.quizType,
     required this.totalCount,
   });
 
   Map<String, dynamic> toJson() {
     return {
       'device_id': deviceId,
-      'questionnaire_id': questionnaireId,
-      'questionnaire_title': questionnaireTitle,
-      'questionnaire_type': questionnaireType,
+      'quiz_id': quizId,
+      'quiz_title': quizTitle,
+      'quiz_type': quizType,
       'total_count': totalCount,
     };
   }

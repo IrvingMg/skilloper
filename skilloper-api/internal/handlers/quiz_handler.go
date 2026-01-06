@@ -14,25 +14,25 @@ import (
 	"github.com/irvingmg/skilloper/skilloper-api/internal/services"
 )
 
-// View mode constants for GET /questionnaires/{id}
+// View mode constants for GET /quizzes/{id}
 const (
 	ViewModeEdit = "edit" // Returns correct answers for editing
 )
 
-type QuestionnaireHandler struct {
-	service *services.QuestionnaireService
+type QuizHandler struct {
+	service *services.QuizService
 	logger  *zap.Logger
 }
 
-func NewQuestionnaireHandler(service *services.QuestionnaireService, logger *zap.Logger) *QuestionnaireHandler {
-	return &QuestionnaireHandler{
+func NewQuizHandler(service *services.QuizService, logger *zap.Logger) *QuizHandler {
+	return &QuizHandler{
 		service: service,
 		logger:  logger,
 	}
 }
 
 // handleError processes application errors and returns appropriate HTTP responses
-func (h *QuestionnaireHandler) handleError(c *gin.Context, err error, operation string) {
+func (h *QuizHandler) handleError(c *gin.Context, err error, operation string) {
 	var appErr *apperrors.AppError
 	if errors.As(err, &appErr) {
 		switch appErr.Type {
@@ -56,9 +56,9 @@ func (h *QuestionnaireHandler) handleError(c *gin.Context, err error, operation 
 	}
 }
 
-// GetQuestionnaireSummaries handles GET /questionnaires/summaries
-func (h *QuestionnaireHandler) GetQuestionnaireSummaries(c *gin.Context) {
-	h.logger.Info("Fetching questionnaire summaries")
+// GetQuizSummaries handles GET /quizzes/summaries
+func (h *QuizHandler) GetQuizSummaries(c *gin.Context) {
+	h.logger.Info("Fetching quiz summaries")
 
 	// Parse pagination params
 	var params models.PaginationParams
@@ -79,22 +79,22 @@ func (h *QuestionnaireHandler) GetQuestionnaireSummaries(c *gin.Context) {
 
 	result, err := h.service.GetPaginatedSummaries(params)
 	if err != nil {
-		h.handleError(c, err, "fetch_questionnaire_summaries")
+		h.handleError(c, err, "fetch_quiz_summaries")
 		return
 	}
 
-	h.logger.Info("Successfully fetched questionnaire summaries",
+	h.logger.Info("Successfully fetched quiz summaries",
 		zap.Int("count", len(result.Data)),
 		zap.Int("total", result.Pagination.TotalCount))
 	c.JSON(http.StatusOK, result)
 }
 
-// GetQuestionnaire handles GET /questionnaires/{id}
+// GetQuiz handles GET /quizzes/{id}
 // Use ?view=edit query param to include correct answers (for edit mode)
-func (h *QuestionnaireHandler) GetQuestionnaire(c *gin.Context) {
+func (h *QuizHandler) GetQuiz(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		h.handleError(c, apperrors.ErrInvalidQuestionnaireID, "parse_questionnaire_id")
+		h.handleError(c, apperrors.ErrInvalidQuizID, "parse_quiz_id")
 		return
 	}
 
@@ -102,107 +102,107 @@ func (h *QuestionnaireHandler) GetQuestionnaire(c *gin.Context) {
 	includeAnswers := c.Query("view") == ViewModeEdit
 
 	if includeAnswers {
-		h.logger.Info("Fetching questionnaire with answers for edit mode", zap.Int("id", id))
+		h.logger.Info("Fetching quiz with answers for edit mode", zap.Int("id", id))
 
-		questionnaire, err := h.service.GetByIDWithAnswers(uint(id))
+		quiz, err := h.service.GetByIDWithAnswers(uint(id))
 		if err != nil {
-			h.handleError(c, err, "fetch_questionnaire")
+			h.handleError(c, err, "fetch_quiz")
 			return
 		}
 
-		h.logger.Info("Successfully fetched questionnaire with answers",
+		h.logger.Info("Successfully fetched quiz with answers",
 			zap.Int("id", id),
-			zap.String("title", questionnaire.Title))
-		c.JSON(http.StatusOK, questionnaire)
+			zap.String("title", quiz.Title))
+		c.JSON(http.StatusOK, quiz)
 		return
 	}
 
-	h.logger.Info("Fetching questionnaire with dynamic shuffling", zap.Int("id", id))
+	h.logger.Info("Fetching quiz with dynamic shuffling", zap.Int("id", id))
 
-	questionnaire, err := h.service.GetByID(uint(id))
+	quiz, err := h.service.GetByID(uint(id))
 	if err != nil {
-		h.handleError(c, err, "fetch_questionnaire")
+		h.handleError(c, err, "fetch_quiz")
 		return
 	}
 
-	h.logger.Info("Successfully fetched questionnaire with shuffling",
+	h.logger.Info("Successfully fetched quiz with shuffling",
 		zap.Int("id", id),
-		zap.String("title", questionnaire.Title))
-	c.JSON(http.StatusOK, questionnaire)
+		zap.String("title", quiz.Title))
+	c.JSON(http.StatusOK, quiz)
 }
 
-// CreateQuestionnaire handles POST /questionnaires
-func (h *QuestionnaireHandler) CreateQuestionnaire(c *gin.Context) {
-	h.logger.Info("Creating new questionnaire")
+// CreateQuiz handles POST /quizzes
+func (h *QuizHandler) CreateQuiz(c *gin.Context) {
+	h.logger.Info("Creating new quiz")
 
-	var req models.CreateQuestionnaireRequest
+	var req models.CreateQuizRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.handleError(c, apperrors.ErrInvalidJSONFormat, "parse_create_request")
 		return
 	}
 
-	h.logger.Info("Creating questionnaire", zap.String("title", req.Title), zap.String("type", req.Type))
+	h.logger.Info("Creating quiz", zap.String("title", req.Title), zap.String("type", req.Type))
 
-	questionnaire, err := h.service.Create(req)
+	quiz, err := h.service.Create(req)
 	if err != nil {
-		h.handleError(c, err, "create_questionnaire")
+		h.handleError(c, err, "create_quiz")
 		return
 	}
 
-	h.logger.Info("Successfully created questionnaire", zap.Uint("id", questionnaire.ID), zap.String("title", questionnaire.Title))
-	c.JSON(http.StatusCreated, questionnaire)
+	h.logger.Info("Successfully created quiz", zap.Uint("id", quiz.ID), zap.String("title", quiz.Title))
+	c.JSON(http.StatusCreated, quiz)
 }
 
-// UpdateQuestionnaire handles PUT /questionnaires/{id}
-func (h *QuestionnaireHandler) UpdateQuestionnaire(c *gin.Context) {
+// UpdateQuiz handles PUT /quizzes/{id}
+func (h *QuizHandler) UpdateQuiz(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		h.handleError(c, apperrors.ErrInvalidQuestionnaireID, "parse_questionnaire_id")
+		h.handleError(c, apperrors.ErrInvalidQuizID, "parse_quiz_id")
 		return
 	}
 
-	h.logger.Info("Updating questionnaire", zap.Int("id", id))
+	h.logger.Info("Updating quiz", zap.Int("id", id))
 
-	var req models.CreateQuestionnaireRequest
+	var req models.CreateQuizRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.handleError(c, apperrors.ErrInvalidJSONFormat, "parse_update_request")
 		return
 	}
 
-	questionnaire, err := h.service.Update(uint(id), req)
+	quiz, err := h.service.Update(uint(id), req)
 	if err != nil {
-		h.handleError(c, err, "update_questionnaire")
+		h.handleError(c, err, "update_quiz")
 		return
 	}
 
-	h.logger.Info("Successfully updated questionnaire", zap.Int("id", id), zap.String("title", questionnaire.Title))
-	c.JSON(http.StatusOK, questionnaire)
+	h.logger.Info("Successfully updated quiz", zap.Int("id", id), zap.String("title", quiz.Title))
+	c.JSON(http.StatusOK, quiz)
 }
 
-// DeleteQuestionnaire handles DELETE /questionnaires/{id}
-func (h *QuestionnaireHandler) DeleteQuestionnaire(c *gin.Context) {
+// DeleteQuiz handles DELETE /quizzes/{id}
+func (h *QuizHandler) DeleteQuiz(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		h.handleError(c, apperrors.ErrInvalidQuestionnaireID, "parse_questionnaire_id")
+		h.handleError(c, apperrors.ErrInvalidQuizID, "parse_quiz_id")
 		return
 	}
 
-	h.logger.Info("Deleting questionnaire", zap.Int("id", id))
+	h.logger.Info("Deleting quiz", zap.Int("id", id))
 
 	err = h.service.Delete(uint(id))
 	if err != nil {
-		h.handleError(c, err, "delete_questionnaire")
+		h.handleError(c, err, "delete_quiz")
 		return
 	}
 
-	h.logger.Info("Successfully deleted questionnaire", zap.Int("id", id))
+	h.logger.Info("Successfully deleted quiz", zap.Int("id", id))
 	c.Status(http.StatusNoContent)
 }
 
-// ImportQuestionnaire handles POST /questionnaires/import
+// ImportQuiz handles POST /quizzes/import
 // For CSV files, accepts optional query params: title, description, type, max_options
-func (h *QuestionnaireHandler) ImportQuestionnaire(c *gin.Context) {
-	h.logger.Info("Importing questionnaire from file")
+func (h *QuizHandler) ImportQuiz(c *gin.Context) {
+	h.logger.Info("Importing quiz from file")
 
 	// Parse multipart form
 	file, err := c.FormFile("file")
@@ -246,20 +246,20 @@ func (h *QuestionnaireHandler) ImportQuestionnaire(c *gin.Context) {
 		csvMeta.MaxOptions = n
 	}
 
-	// Import questionnaire from file
-	questionnaire, err := h.service.ImportFromFile(file, csvMeta)
+	// Import quiz from file
+	quiz, err := h.service.ImportFromFile(file, csvMeta)
 	if err != nil {
-		h.handleError(c, err, "import_questionnaire")
+		h.handleError(c, err, "import_quiz")
 		return
 	}
 
-	h.logger.Info("Successfully imported questionnaire",
+	h.logger.Info("Successfully imported quiz",
 		zap.String("filename", file.Filename),
-		zap.String("title", questionnaire.Title),
-		zap.Int("questions", questionnaire.QuestionCount))
+		zap.String("title", quiz.Title),
+		zap.Int("questions", quiz.QuestionCount))
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":       "Questionnaire imported successfully",
-		"questionnaire": questionnaire,
+		"message": "Quiz imported successfully",
+		"quiz":    quiz,
 	})
 }

@@ -9,7 +9,7 @@ Provides endpoints for managing programming skill assessments with support for p
 - **Question Shuffling**: Randomized answer options for each request
 - **Multiple Question Types**: Single-choice and multiple-choice questions
 - **Alternative Content**: Randomized question texts and answer options for variety
-- **Configurable Option Limits**: Questionnaire-level control over maximum options per question
+- **Configurable Option Limits**: Quiz-level control over maximum options per question
 - **Comprehensive Question Management**: Code syntax support with explanations
 - **Quiz History**: Track quiz attempts with detailed answer history per device
 
@@ -100,14 +100,14 @@ go run main.go
 
 For complete API documentation, see:
 - **[API Endpoints](../docs/api-endpoints.md)** - Complete endpoint reference with examples
-- **[Questionnaire Schema](../docs/questionnaire-schema.md)** - JSON schema for creating questionnaires
+- **[Quiz Schema](../docs/quiz-schema.md)** - JSON schema for creating quizzes
 
 ## Quick Start
 
-Create a simple questionnaire:
+Create a simple quiz:
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/questionnaires \
+curl -X POST http://localhost:8080/api/v1/quizzes \
   -H "Content-Type: application/json" \
   -d '{
     "title": "JavaScript Basics",
@@ -123,7 +123,7 @@ curl -X POST http://localhost:8080/api/v1/questionnaires \
   }'
 ```
 
-For complete schema documentation with all features, see [Questionnaire Schema](../docs/questionnaire-schema.md).
+For complete schema documentation with all features, see [Quiz Schema](../docs/quiz-schema.md).
 
 ## Database
 

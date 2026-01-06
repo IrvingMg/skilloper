@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
-import '../../models/draft_questionnaire.dart';
-import '../../models/questionnaire.dart';
+import '../../models/draft_quiz.dart';
+import '../../models/quiz.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_colors.dart';
 import 'question_editor_dialog.dart';
 
 class CreateQuizScreen extends StatefulWidget {
-  /// Optional questionnaire to edit. If null, creates a new quiz.
-  final Questionnaire? questionnaire;
+  /// Optional quiz to edit. If null, creates a new quiz.
+  final Quiz? quiz;
 
-  const CreateQuizScreen({super.key, this.questionnaire});
+  const CreateQuizScreen({super.key, this.quiz});
 
   @override
   State<CreateQuizScreen> createState() => _CreateQuizScreenState();
 }
 
 class _CreateQuizScreenState extends State<CreateQuizScreen> {
-  final DraftQuestionnaire _draft = DraftQuestionnaire();
+  final DraftQuiz _draft = DraftQuiz();
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
   final ApiService _apiService = ApiService();
@@ -29,8 +29,8 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.questionnaire != null) {
-      _draft.loadFromQuestionnaire(widget.questionnaire!);
+    if (widget.quiz != null) {
+      _draft.loadFromQuiz(widget.quiz!);
       _titleController.text = _draft.title;
       _descController.text = _draft.description;
     }
@@ -89,9 +89,9 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
     try {
       final Map<String, dynamic> response;
       if (_isEditMode) {
-        response = await _apiService.updateQuestionnaire(_draft.id!, _draft.toJson());
+        response = await _apiService.updateQuiz(_draft.id!, _draft.toJson());
       } else {
-        response = await _apiService.createQuestionnaire(_draft.toJson());
+        response = await _apiService.createQuiz(_draft.toJson());
       }
 
       if (mounted) {
@@ -142,7 +142,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                isEdit ? 'Successfully updated questionnaire:' : 'Successfully created questionnaire:',
+                isEdit ? 'Successfully updated quiz:' : 'Successfully created quiz:',
                 style: TextStyle(
                   fontSize: 14,
                   color: AppColors.textSecondary,
@@ -236,7 +236,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                 Navigator.of(context).pop();
                 Navigator.of(context).pushNamedAndRemoveUntil('/', (r) => false);
               },
-              child: const Text('View Questionnaires'),
+              child: const Text('View Quizzes'),
             ),
           ],
         );

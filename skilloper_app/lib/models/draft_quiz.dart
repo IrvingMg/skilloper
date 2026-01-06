@@ -1,9 +1,9 @@
-// Draft questionnaire model for the create quiz wizard
+// Draft quiz model for the create quiz wizard
 // Uses 1-based indexing for user-friendly display
 // Serializes to simplified JSON format for API submission
 
 import '../constants/limits.dart';
-import 'questionnaire.dart';
+import 'quiz.dart';
 
 class DraftQuestion {
   String question;
@@ -104,7 +104,7 @@ class DraftQuestion {
     }
   }
 
-  /// Convert to API JSON format for creating/updating questionnaires
+  /// Convert to API JSON format for creating/updating quizzes
   /// Uses 0-based indices for correctAnswer/correct_answers as required by backend
   Map<String, dynamic> toJson() {
     // Filter out empty options and build mapping
@@ -217,15 +217,15 @@ class DraftQuestion {
   }
 }
 
-class DraftQuestionnaire {
-  int? id; // Set when editing an existing questionnaire
+class DraftQuiz {
+  int? id; // Set when editing an existing quiz
   String title;
   String description;
   String type; // 'practice' or 'exam'
   int maxOptions; // Maximum options per question (2-8)
   List<DraftQuestion> questions;
 
-  DraftQuestionnaire({
+  DraftQuiz({
     this.id,
     this.title = '',
     this.description = '',
@@ -234,11 +234,11 @@ class DraftQuestionnaire {
     List<DraftQuestion>? questions,
   }) : questions = questions ?? [];
 
-  /// Whether this is an existing questionnaire being edited
+  /// Whether this is an existing quiz being edited
   bool get isEditMode => id != null;
 
-  /// Load data from an existing questionnaire for editing
-  void loadFromQuestionnaire(Questionnaire q) {
+  /// Load data from an existing quiz for editing
+  void loadFromQuiz(Quiz q) {
     id = q.id;
     title = q.title;
     description = q.description;
@@ -247,7 +247,7 @@ class DraftQuestionnaire {
     questions = q.questions.map((q) => DraftQuestion.fromQuestion(q)).toList();
   }
 
-  /// Check if questionnaire is valid for submission
+  /// Check if quiz is valid for submission
   bool get isValid {
     if (title.trim().isEmpty) return false;
     if (questions.isEmpty) return false;

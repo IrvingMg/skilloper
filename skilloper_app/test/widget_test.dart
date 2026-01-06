@@ -16,6 +16,6 @@ void main() {
 
     // Verify that our app starts with the correct title.
     expect(find.text('Skilloper'), findsOneWidget);
-    expect(find.text('Available Questionnaires'), findsOneWidget);
+    expect(find.text('Available Quizzes'), findsOneWidget);
   });
 }

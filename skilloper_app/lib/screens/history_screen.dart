@@ -493,7 +493,7 @@ class _AttemptListItem extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            attempt.questionnaireTitle,
+                            attempt.quizTitle,
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
@@ -529,17 +529,17 @@ class _AttemptListItem extends StatelessWidget {
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: attempt.questionnaireType == 'exam'
+                            color: attempt.quizType == 'exam'
                                 ? AppColors.examModeContainer
                                 : AppColors.practiceModeContainer,
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            attempt.questionnaireType.toUpperCase(),
+                            attempt.quizType.toUpperCase(),
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
-                              color: attempt.questionnaireType == 'exam'
+                              color: attempt.quizType == 'exam'
                                   ? AppColors.onExamModeContainer
                                   : AppColors.onPracticeModeContainer,
                             ),

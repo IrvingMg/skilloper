@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
-import '../models/questionnaire.dart';
+import '../models/quiz.dart';
 import '../models/attempt.dart';
 import '../services/api_service.dart';
 import '../services/device_service.dart';
@@ -10,11 +10,11 @@ import '../theme/app_colors.dart';
 import 'results_screen.dart';
 
 class QuizScreen extends StatefulWidget {
-  final Questionnaire questionnaire;
+  final Quiz quiz;
 
   const QuizScreen({
     super.key,
-    required this.questionnaire,
+    required this.quiz,
   });
 
   @override
@@ -48,7 +48,7 @@ class _QuizScreenState extends State<QuizScreen> {
 
   /// Initialize shuffle mappings for all questions
   void _initializeShuffleMappings() {
-    for (final question in widget.questionnaire.questions) {
+    for (final question in widget.quiz.questions) {
       final indices = List.generate(question.options.length, (i) => i);
       indices.shuffle();
       _shuffleMappings[question.id] = indices;
@@ -117,7 +117,7 @@ class _QuizScreenState extends State<QuizScreen> {
   Future<void> _startAttempt() async {
     // Only start tracking for exam mode (to track abandonments)
     // Practice attempts are created on completion in ResultsScreen
-    if (widget.questionnaire.isPracticeMode) {
+    if (widget.quiz.isPracticeMode) {
       return;
     }
 
@@ -125,10 +125,10 @@ class _QuizScreenState extends State<QuizScreen> {
       final deviceId = await _deviceService.getDeviceId();
       final request = StartAttemptRequest(
         deviceId: deviceId,
-        questionnaireId: widget.questionnaire.id,
-        questionnaireTitle: widget.questionnaire.title,
-        questionnaireType: widget.questionnaire.type,
-        totalCount: widget.questionnaire.questions.length,
+        quizId: widget.quiz.id,
+        quizTitle: widget.quiz.title,
+        quizType: widget.quiz.type,
+        totalCount: widget.quiz.questions.length,
       );
 
       final attempt = await _apiService.startAttempt(request);
@@ -175,7 +175,7 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   Future<bool> _confirmExit() async {
-    final isExam = !widget.questionnaire.isPracticeMode;
+    final isExam = !widget.quiz.isPracticeMode;
 
     final result = await showDialog<bool>(
       context: context,
@@ -208,7 +208,7 @@ class _QuizScreenState extends State<QuizScreen> {
   Future<void> _handleExit() async {
     if (await _confirmExit()) {
       // For exam mode, abandon the attempt so it doesn't block future attempts
-      if (!widget.questionnaire.isPracticeMode && _attemptId != null) {
+      if (!widget.quiz.isPracticeMode && _attemptId != null) {
         try {
           await _apiService.abandonAttempt(_attemptId!);
         } catch (e) {
@@ -223,10 +223,10 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   Question get _currentQuestion =>
-      widget.questionnaire.questions[_currentQuestionIndex];
+      widget.quiz.questions[_currentQuestionIndex];
 
   bool get _isLastQuestion =>
-      _currentQuestionIndex == widget.questionnaire.questions.length - 1;
+      _currentQuestionIndex == widget.quiz.questions.length - 1;
 
   bool get _hasAnsweredCurrent {
     if (_currentQuestion.isMultipleChoice) {
@@ -237,7 +237,7 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   bool get _showFeedback =>
-      widget.questionnaire.isPracticeMode &&
+      widget.quiz.isPracticeMode &&
       _validatedAnswers.containsKey(_currentQuestion.id);
 
   void _selectAnswer(int answerIndex) {
@@ -253,7 +253,7 @@ class _QuizScreenState extends State<QuizScreen> {
       } else {
         _userAnswers[_currentQuestion.id] = answerIndex;
         // For practice mode single choice, validate immediately
-        if (widget.questionnaire.isPracticeMode) {
+        if (widget.quiz.isPracticeMode) {
           _validateCurrentAnswer();
         }
       }
@@ -262,7 +262,7 @@ class _QuizScreenState extends State<QuizScreen> {
 
   void _checkAnswers() {
     // For practice mode multiple choice, validate when user clicks "Check"
-    if (widget.questionnaire.isPracticeMode) {
+    if (widget.quiz.isPracticeMode) {
       _validateCurrentAnswer();
     }
   }
@@ -331,7 +331,7 @@ class _QuizScreenState extends State<QuizScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => ResultsScreen(
-          questionnaire: widget.questionnaire,
+          quiz: widget.quiz,
           userAnswers: userAnswers,
           attemptId: _attemptId,
         ),
@@ -343,7 +343,7 @@ class _QuizScreenState extends State<QuizScreen> {
   List<UserAnswerRequest> _buildUserAnswers() {
     final answers = <UserAnswerRequest>[];
 
-    for (final question in widget.questionnaire.questions) {
+    for (final question in widget.quiz.questions) {
       if (question.isMultipleChoice) {
         answers.add(UserAnswerRequest(
           questionId: question.id,
@@ -362,7 +362,7 @@ class _QuizScreenState extends State<QuizScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final progress = (_currentQuestionIndex + 1) / widget.questionnaire.questions.length;
+    final progress = (_currentQuestionIndex + 1) / widget.quiz.questions.length;
     final userAnswer = _userAnswers[_currentQuestion.id];
     final userMultipleAnswers = _userMultipleAnswers[_currentQuestion.id] ?? <int>{};
 
@@ -375,7 +375,7 @@ class _QuizScreenState extends State<QuizScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(widget.questionnaire.title),
+          title: Text(widget.quiz.title),
           leading: IconButton(
             icon: const Icon(Icons.close),
             onPressed: _handleExit,
@@ -398,7 +398,7 @@ class _QuizScreenState extends State<QuizScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Question ${_currentQuestionIndex + 1} of ${widget.questionnaire.questions.length}',
+                      'Question ${_currentQuestionIndex + 1} of ${widget.quiz.questions.length}',
                       style: const TextStyle(
                         color: Color(0xFF6B7280),
                         fontSize: 14,
@@ -410,17 +410,17 @@ class _QuizScreenState extends State<QuizScreen> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: widget.questionnaire.isPracticeMode
+                        color: widget.quiz.isPracticeMode
                             ? AppColors.practiceModeContainer
                             : AppColors.examModeContainer,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        widget.questionnaire.type.toUpperCase(),
+                        widget.quiz.type.toUpperCase(),
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w500,
-                          color: widget.questionnaire.isPracticeMode
+                          color: widget.quiz.isPracticeMode
                               ? AppColors.onPracticeModeContainer
                               : AppColors.onExamModeContainer,
                         ),
@@ -561,7 +561,7 @@ class _QuizScreenState extends State<QuizScreen> {
               children: [
                 // Check answers button for multiple choice (practice mode only)
                 if (_currentQuestion.isMultipleChoice &&
-                    widget.questionnaire.isPracticeMode &&
+                    widget.quiz.isPracticeMode &&
                     _hasAnsweredCurrent &&
                     !_validatedAnswers.containsKey(_currentQuestion.id)) ...[
                   SizedBox(
@@ -600,7 +600,7 @@ class _QuizScreenState extends State<QuizScreen> {
                     ElevatedButton.icon(
                       onPressed: (_hasAnsweredCurrent &&
                                   (!_currentQuestion.isMultipleChoice ||
-                                   !widget.questionnaire.isPracticeMode ||
+                                   !widget.quiz.isPracticeMode ||
                                    _validatedAnswers.containsKey(_currentQuestion.id))) ? _nextQuestion : null,
                       icon: Icon(_isLastQuestion ? Icons.check : Icons.arrow_forward),
                       label: Text(_isLastQuestion ? 'Finish' : 'Next'),

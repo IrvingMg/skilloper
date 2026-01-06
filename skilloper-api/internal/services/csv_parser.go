@@ -30,7 +30,7 @@ func sanitizeCSVValue(s string) string {
 	return s
 }
 
-// CSVParserAdapter implements QuestionnaireParser for CSV format
+// CSVParserAdapter implements QuizParser for CSV format
 type CSVParserAdapter struct {
 	parser *CSVParser
 }
@@ -54,7 +54,7 @@ func (a *CSVParserAdapter) CanParse(_ []byte, filename string) bool {
 }
 
 // Parse converts CSV to internal format
-func (a *CSVParserAdapter) Parse(data []byte, metadata ParserMetadata) (*models.CreateQuestionnaireRequest, error) {
+func (a *CSVParserAdapter) Parse(data []byte, metadata ParserMetadata) (*models.CreateQuizRequest, error) {
 	csvMeta := CSVMetadata{
 		Title:       metadata.Title,
 		Description: metadata.Description,
@@ -76,7 +76,7 @@ func (a *CSVParserAdapter) Parse(data []byte, metadata ParserMetadata) (*models.
 	return a.parser.ParseCSV(bytes.NewReader(data), csvMeta)
 }
 
-// CSVParser handles parsing CSV files into questionnaire format
+// CSVParser handles parsing CSV files into quiz format
 type CSVParser struct{}
 
 // NewCSVParser creates a new CSV parser
@@ -92,7 +92,7 @@ type CSVMetadata struct {
 	MaxOptions  int
 }
 
-// ParseCSV converts CSV data to CreateQuestionnaireRequest
+// ParseCSV converts CSV data to CreateQuizRequest
 // Expected CSV format:
 // question,option1,option2,option3,option4,answer,explanation,code,language,alt_question1,alt_option1
 // "What is 2+2?","1","2","3","4",4,"Basic math","","","",""
@@ -109,7 +109,7 @@ type CSVMetadata struct {
 // - language: Programming language for syntax highlighting
 // - alt_question1, alt_question2, ...: Alternative question phrasings
 // - alt_option1, alt_option2, ...: Additional distractor options
-func (p *CSVParser) ParseCSV(reader io.Reader, metadata CSVMetadata) (*models.CreateQuestionnaireRequest, error) {
+func (p *CSVParser) ParseCSV(reader io.Reader, metadata CSVMetadata) (*models.CreateQuizRequest, error) {
 	if metadata.Title == "" {
 		return nil, fmt.Errorf("title is required for CSV import")
 	}
@@ -174,7 +174,7 @@ func (p *CSVParser) ParseCSV(reader io.Reader, metadata CSVMetadata) (*models.Cr
 		return nil, fmt.Errorf("type must be 'practice' or 'exam', got '%s'", quizType)
 	}
 
-	return &models.CreateQuestionnaireRequest{
+	return &models.CreateQuizRequest{
 		Title:       metadata.Title,
 		Description: metadata.Description,
 		Type:        quizType,
