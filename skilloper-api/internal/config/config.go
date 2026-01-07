@@ -19,7 +19,7 @@ func Load() *Config {
 		Port:           getEnv("PORT", "8080"),
 		DatabasePath:   getEnv("DATABASE_PATH", "skilloper.db"),
 		AllowedOrigins: parseAllowedOrigins(),
-		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders: []string{"Origin", "Content-Type", "Authorization"},
 	}
 }
