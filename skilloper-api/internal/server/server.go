@@ -17,10 +17,10 @@ type Server struct {
 	logger *zap.Logger
 	router *gin.Engine
 
-	quizHandler     *handlers.QuizHandler
-	attemptHandler  *handlers.AttemptHandler
-	questionHandler *handlers.QuestionHandler
-	healthHandler   *handlers.HealthHandler
+	quizHandler    *handlers.QuizHandler
+	attemptHandler *handlers.AttemptHandler
+	answerHandler  *handlers.AnswerHandler
+	healthHandler  *handlers.HealthHandler
 }
 
 func New(cfg *config.Config, db *gorm.DB, logger *zap.Logger) *Server {
@@ -61,12 +61,12 @@ func (s *Server) setupServices() {
 
 	quizService := services.NewQuizService(s.db)
 	attemptService := services.NewAttemptService(s.db, s.logger)
-	questionService := services.NewQuestionService(s.db, s.logger)
+	answerService := services.NewAnswerService(s.db, s.logger)
 	healthService := services.NewHealthService()
 
 	s.quizHandler = handlers.NewQuizHandler(quizService, s.logger)
 	s.attemptHandler = handlers.NewAttemptHandler(attemptService, s.logger)
-	s.questionHandler = handlers.NewQuestionHandler(questionService, s.logger)
+	s.answerHandler = handlers.NewAnswerHandler(answerService, s.logger)
 	s.healthHandler = handlers.NewHealthHandler(healthService, s.logger)
 }
 
@@ -75,25 +75,19 @@ func (s *Server) setupRoutes() {
 
 	api := s.router.Group("/api/v1")
 
-	// Quiz routes
 	api.GET("/quizzes/summaries", s.quizHandler.GetQuizSummaries)
 	api.POST("/quizzes", s.quizHandler.CreateQuiz)
-	api.POST("/quizzes/import", s.quizHandler.ImportQuiz)
 	api.GET("/quizzes/:id", s.quizHandler.GetQuiz)
 	api.PUT("/quizzes/:id", s.quizHandler.UpdateQuiz)
 	api.DELETE("/quizzes/:id", s.quizHandler.DeleteQuiz)
 
-	// Attempt routes (quiz history)
-	api.POST("/attempts/start", s.attemptHandler.StartAttempt)
-	api.POST("/attempts/:id/complete", s.attemptHandler.CompleteAttempt)
-	api.POST("/attempts/:id/abandon", s.attemptHandler.AbandonAttempt)
+	api.POST("/attempts", s.attemptHandler.CreateAttempt)
+	api.PATCH("/attempts/:id", s.attemptHandler.UpdateAttempt)
 	api.GET("/attempts", s.attemptHandler.GetAttempts)
 	api.GET("/attempts/:id", s.attemptHandler.GetAttempt)
 
-	// Question routes (practice mode validation)
-	api.POST("/questions/:id/validate", s.questionHandler.ValidateAnswer)
+	api.POST("/answers", s.answerHandler.CreateAnswer)
 
-	// Health check
 	api.GET("/health", s.healthHandler.HealthCheck)
 
 	s.logger.Info("Routes configured successfully")

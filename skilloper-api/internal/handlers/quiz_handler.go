@@ -14,9 +14,8 @@ import (
 	"github.com/irvingmg/skilloper/skilloper-api/internal/services"
 )
 
-// View mode constants for GET /quizzes/{id}
 const (
-	ViewModeEdit = "edit" // Returns correct answers for editing
+	ViewModeEdit = "edit"
 )
 
 type QuizHandler struct {
@@ -31,7 +30,6 @@ func NewQuizHandler(service *services.QuizService, logger *zap.Logger) *QuizHand
 	}
 }
 
-// handleError processes application errors and returns appropriate HTTP responses
 func (h *QuizHandler) handleError(c *gin.Context, err error, operation string) {
 	var appErr *apperrors.AppError
 	if errors.As(err, &appErr) {
@@ -87,8 +85,7 @@ func (h *QuizHandler) GetQuizSummaries(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-// GetQuiz handles GET /quizzes/{id}
-// Use ?view=edit query param to include correct answers (for edit mode)
+// GetQuiz handles GET /quizzes/:id
 func (h *QuizHandler) GetQuiz(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -130,6 +127,13 @@ func (h *QuizHandler) GetQuiz(c *gin.Context) {
 
 // CreateQuiz handles POST /quizzes
 func (h *QuizHandler) CreateQuiz(c *gin.Context) {
+	contentType := c.ContentType()
+
+	if contentType == "multipart/form-data" || c.Request.MultipartForm != nil {
+		h.handleImport(c)
+		return
+	}
+
 	h.logger.Info("Creating new quiz")
 
 	var req models.CreateQuizRequest
@@ -150,7 +154,7 @@ func (h *QuizHandler) CreateQuiz(c *gin.Context) {
 	c.JSON(http.StatusCreated, quiz)
 }
 
-// UpdateQuiz handles PUT /quizzes/{id}
+// UpdateQuiz handles PUT /quizzes/:id
 func (h *QuizHandler) UpdateQuiz(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -176,7 +180,7 @@ func (h *QuizHandler) UpdateQuiz(c *gin.Context) {
 	c.JSON(http.StatusOK, quiz)
 }
 
-// DeleteQuiz handles DELETE /quizzes/{id}
+// DeleteQuiz handles DELETE /quizzes/:id
 func (h *QuizHandler) DeleteQuiz(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -196,9 +200,7 @@ func (h *QuizHandler) DeleteQuiz(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// ImportQuiz handles POST /quizzes/import
-// For CSV files, accepts optional query params: title, description, type, max_options
-func (h *QuizHandler) ImportQuiz(c *gin.Context) {
+func (h *QuizHandler) handleImport(c *gin.Context) {
 	h.logger.Info("Importing quiz from file")
 
 	file, err := c.FormFile("file")
@@ -250,7 +252,7 @@ func (h *QuizHandler) ImportQuiz(c *gin.Context) {
 		zap.String("title", quiz.Title),
 		zap.Int("questions", quiz.QuestionCount))
 
-	c.JSON(http.StatusOK, gin.H{
+	c.JSON(http.StatusCreated, gin.H{
 		"message": "Quiz imported successfully",
 		"quiz":    quiz,
 	})

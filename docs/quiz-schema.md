@@ -87,7 +87,7 @@ question,option1,option2,option3,option4,answer,explanation,code,language,alt_qu
 **Via API:** Quiz-level metadata is passed via query parameters:
 
 ```bash
-curl -X POST "http://localhost:8080/api/v1/quizzes/import?title=My%20Quiz&type=practice&max_options=4" \
+curl -X POST "http://localhost:8080/api/v1/quizzes?title=My%20Quiz&type=practice&max_options=4" \
   -F "file=@questions.csv"
 ```
 

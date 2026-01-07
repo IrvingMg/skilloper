@@ -3,7 +3,6 @@ package handlers
 import (
 	"errors"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -13,20 +12,19 @@ import (
 	"github.com/irvingmg/skilloper/skilloper-api/internal/services"
 )
 
-type QuestionHandler struct {
-	service *services.QuestionService
+type AnswerHandler struct {
+	service *services.AnswerService
 	logger  *zap.Logger
 }
 
-func NewQuestionHandler(service *services.QuestionService, logger *zap.Logger) *QuestionHandler {
-	return &QuestionHandler{
+func NewAnswerHandler(service *services.AnswerService, logger *zap.Logger) *AnswerHandler {
+	return &AnswerHandler{
 		service: service,
 		logger:  logger,
 	}
 }
 
-// handleError processes application errors and returns appropriate HTTP responses
-func (h *QuestionHandler) handleError(c *gin.Context, err error, operation string) {
+func (h *AnswerHandler) handleError(c *gin.Context, err error, operation string) {
 	var appErr *apperrors.AppError
 	if errors.As(err, &appErr) {
 		switch appErr.Type {
@@ -49,36 +47,29 @@ func (h *QuestionHandler) handleError(c *gin.Context, err error, operation strin
 	}
 }
 
-// ValidateAnswer handles POST /questions/:id/validate
-// Used for practice mode to get immediate feedback after answering
-func (h *QuestionHandler) ValidateAnswer(c *gin.Context) {
-	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
-	if err != nil {
-		h.handleError(c, apperrors.ErrInvalidQuestionID, "parse_question_id")
+// CreateAnswer handles POST /answers
+func (h *AnswerHandler) CreateAnswer(c *gin.Context) {
+	var req models.CreateAnswerRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.handleError(c, apperrors.ErrInvalidJSONFormat, "parse_create_answer_request")
 		return
 	}
 
-	if id == 0 {
+	if req.QuestionID == 0 {
 		h.handleError(c, apperrors.ErrInvalidQuestionID, "invalid_question_id_zero")
 		return
 	}
 
-	h.logger.Info("Validating answer for question", zap.Uint64("id", id))
+	h.logger.Info("Validating answer for question", zap.Uint("question_id", req.QuestionID))
 
-	var req models.ValidateAnswerRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		h.handleError(c, apperrors.ErrInvalidJSONFormat, "parse_validate_answer_request")
-		return
-	}
-
-	result, err := h.service.ValidateAnswer(uint(id), req)
+	result, err := h.service.ValidateAnswer(req)
 	if err != nil {
 		h.handleError(c, err, "validate_answer")
 		return
 	}
 
 	h.logger.Info("Answer validated",
-		zap.Uint64("question_id", id),
+		zap.Uint("question_id", req.QuestionID),
 		zap.Bool("is_correct", result.IsCorrect))
 	c.JSON(http.StatusOK, result)
 }

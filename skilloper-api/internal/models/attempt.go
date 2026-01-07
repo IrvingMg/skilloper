@@ -4,7 +4,6 @@ import (
 	"time"
 )
 
-// AttemptStatus represents the status of a quiz attempt
 type AttemptStatus string
 
 const (
@@ -34,11 +33,11 @@ type AttemptAnswer struct {
 	QuestionID     uint   `json:"question_id" gorm:"not null"`
 	QuestionText   string `json:"question_text" gorm:"not null"`
 	QuestionType   string `json:"question_type" gorm:"not null;default:'single_choice'"`
-	UserAnswer     *int   `json:"user_answer"`                       // For single_choice (nullable)
-	UserAnswers    string `json:"user_answers"`                      // JSON array for multiple_choice
-	CorrectAnswer  *int   `json:"correct_answer"`                    // For single_choice (nullable)
-	CorrectAnswers string `json:"correct_answers"`                   // JSON array for multiple_choice
-	Options        string `json:"options"`                           // JSON array of options shown
+	UserAnswer     *int   `json:"user_answer"`
+	UserAnswers    string `json:"user_answers"`
+	CorrectAnswer  *int   `json:"correct_answer"`
+	CorrectAnswers string `json:"correct_answers"`
+	Options        string `json:"options"`
 	IsCorrect      bool   `json:"is_correct" gorm:"not null"`
 }
 
@@ -50,15 +49,15 @@ type StartAttemptRequest struct {
 	TotalCount int    `json:"total_count"`
 }
 
-type CompleteAttemptRequest struct {
-	Answers []UserAnswerRequest `json:"answers"`
+type UpdateAttemptRequest struct {
+	Status  AttemptStatus       `json:"status"`
+	Answers []UserAnswerRequest `json:"answers,omitempty"`
 }
 
-// UserAnswerRequest contains only user-submitted data - no correct answers or scoring
 type UserAnswerRequest struct {
 	QuestionID  uint  `json:"question_id"`
-	UserAnswer  *int  `json:"user_answer,omitempty"`  // For single_choice
-	UserAnswers []int `json:"user_answers,omitempty"` // For multiple_choice
+	UserAnswer  *int  `json:"user_answer,omitempty"`
+	UserAnswers []int `json:"user_answers,omitempty"`
 }
 
 type AttemptSummaryResponse struct {

@@ -207,8 +207,7 @@ class ApiService {
     }
 
     try {
-      // Build URL with optional query params for CSV metadata
-      final uri = Uri.parse('$baseUrl/quizzes/import').replace(
+      final uri = Uri.parse('$baseUrl/quizzes').replace(
         queryParameters: {
           if (title != null && title.isNotEmpty) 'title': title,
           if (description != null && description.isNotEmpty) 'description': description,
@@ -275,11 +274,10 @@ class ApiService {
     }
   }
 
-  /// Start a quiz attempt (creates in_progress record)
   Future<QuizAttempt> startAttempt(StartAttemptRequest request) async {
     try {
       final response = await http.post(
-        Uri.parse('$baseUrl/attempts/start'),
+        Uri.parse('$baseUrl/attempts'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode(request.toJson()),
       ).timeout(timeout);
@@ -295,13 +293,15 @@ class ApiService {
     }
   }
 
-  /// Complete a quiz attempt with results
   Future<QuizAttempt> completeAttempt(int attemptId, CompleteAttemptRequest request) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/attempts/$attemptId/complete'),
+      final response = await http.patch(
+        Uri.parse('$baseUrl/attempts/$attemptId'),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode(request.toJson()),
+        body: json.encode({
+          'status': 'completed',
+          'answers': request.toJson()['answers'],
+        }),
       ).timeout(timeout);
 
       _handleHttpResponse(response, 'complete attempt');
@@ -315,14 +315,18 @@ class ApiService {
     }
   }
 
-  /// Abandon an in-progress quiz attempt (when user exits exam)
-  Future<void> abandonAttempt(int attemptId) async {
+  Future<QuizAttempt> abandonAttempt(int attemptId) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/attempts/$attemptId/abandon'),
+      final response = await http.patch(
+        Uri.parse('$baseUrl/attempts/$attemptId'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'status': 'completed'}),
       ).timeout(timeout);
 
       _handleHttpResponse(response, 'abandon attempt');
+
+      final Map<String, dynamic> data = json.decode(response.body);
+      return QuizAttempt.fromJson(data);
     } on ApiException {
       rethrow;
     } catch (e) {
@@ -470,17 +474,19 @@ class ApiService {
     }
   }
 
-  /// Validate answer for practice mode (immediate feedback)
   Future<ValidateAnswerResponse> validateAnswer(int questionId, ValidateAnswerRequest request) async {
     if (questionId <= 0) {
       throw ApiException('Invalid question ID: $questionId');
     }
 
     try {
+      final body = request.toJson();
+      body['question_id'] = questionId;
+
       final response = await http.post(
-        Uri.parse('$baseUrl/questions/$questionId/validate'),
+        Uri.parse('$baseUrl/answers'),
         headers: {'Content-Type': 'application/json'},
-        body: json.encode(request.toJson()),
+        body: json.encode(body),
       ).timeout(timeout);
 
       _handleHttpResponse(response, 'validate answer');

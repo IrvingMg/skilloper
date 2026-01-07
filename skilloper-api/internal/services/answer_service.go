@@ -12,40 +12,39 @@ import (
 	"github.com/irvingmg/skilloper/skilloper-api/internal/validation"
 )
 
-type QuestionService struct {
+type AnswerService struct {
 	db     *gorm.DB
 	logger *zap.Logger
 }
 
-func NewQuestionService(db *gorm.DB, logger *zap.Logger) *QuestionService {
-	return &QuestionService{
+func NewAnswerService(db *gorm.DB, logger *zap.Logger) *AnswerService {
+	return &AnswerService{
 		db:     db,
 		logger: logger,
 	}
 }
 
-// ValidateAnswer validates a user's answer against the correct answer for a question
-func (s *QuestionService) ValidateAnswer(questionID uint, req models.ValidateAnswerRequest) (*models.ValidateAnswerResponse, error) {
+func (s *AnswerService) ValidateAnswer(req models.CreateAnswerRequest) (*models.AnswerResponse, error) {
 	if req.UserAnswer == nil && len(req.UserAnswers) == 0 {
 		return nil, apperrors.NewValidationError(apperrors.ErrInvalidAnswerData.Code,
 			"either user_answer or user_answers must be provided")
 	}
 
 	var question models.Question
-	if err := s.db.First(&question, questionID).Error; err != nil {
+	if err := s.db.First(&question, req.QuestionID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, apperrors.ErrQuestionNotFound
 		}
 		return nil, apperrors.ErrFetchQuestionFailed
 	}
 
-	response := &models.ValidateAnswerResponse{}
+	response := &models.AnswerResponse{}
 
 	if question.QuestionType == models.QuestionTypeMultipleChoice {
 		var correctAnswers []int
 		if err := json.Unmarshal([]byte(question.CorrectAnswers), &correctAnswers); err != nil {
 			s.logger.Warn("Failed to unmarshal correct answers",
-				zap.Uint("question_id", questionID),
+				zap.Uint("question_id", req.QuestionID),
 				zap.Error(err))
 			return nil, apperrors.ErrFetchQuestionFailed
 		}

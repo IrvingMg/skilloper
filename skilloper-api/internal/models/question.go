@@ -1,14 +1,13 @@
 package models
 
-// ValidateAnswerRequest contains the user's answer to validate
-type ValidateAnswerRequest struct {
-	UserAnswer  *int  `json:"user_answer,omitempty"`  // For single_choice
-	UserAnswers []int `json:"user_answers,omitempty"` // For multiple_choice
+type CreateAnswerRequest struct {
+	QuestionID  uint  `json:"question_id"`
+	UserAnswer  *int  `json:"user_answer,omitempty"`
+	UserAnswers []int `json:"user_answers,omitempty"`
 }
 
-// ValidateAnswerResponse contains the validation result
-type ValidateAnswerResponse struct {
+type AnswerResponse struct {
 	IsCorrect      bool  `json:"is_correct"`
-	CorrectAnswer  *int  `json:"correct_answer,omitempty"`  // For single_choice
-	CorrectAnswers []int `json:"correct_answers,omitempty"` // For multiple_choice
+	CorrectAnswer  *int  `json:"correct_answer,omitempty"`
+	CorrectAnswers []int `json:"correct_answers,omitempty"`
 }

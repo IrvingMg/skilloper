@@ -26,7 +26,6 @@ func NewAttemptService(db *gorm.DB, logger *zap.Logger) *AttemptService {
 	}
 }
 
-// Start creates a new in-progress quiz attempt
 func (s *AttemptService) Start(req models.StartAttemptRequest) (*models.AttemptResponse, error) {
 	if req.DeviceID == "" {
 		return nil, apperrors.ErrDeviceIDRequired
@@ -124,33 +123,54 @@ func (s *AttemptService) Start(req models.StartAttemptRequest) (*models.AttemptR
 	return &response, nil
 }
 
-// Abandon marks an in-progress attempt as completed with 0 score
-// Used when user explicitly exits an exam without completing
-func (s *AttemptService) Abandon(attemptID uint) error {
-	now := time.Now()
-	result := s.db.Model(&models.QuizAttempt{}).
-		Where("id = ? AND status = ?", attemptID, models.AttemptStatusInProgress).
-		Updates(map[string]interface{}{
-			"status":       models.AttemptStatusCompleted,
-			"completed_at": now,
-		})
-
-	if result.Error != nil {
-		return apperrors.NewValidationError("ABANDON_FAILED", "failed to abandon attempt")
+func (s *AttemptService) Update(attemptID uint, req models.UpdateAttemptRequest) (*models.AttemptResponse, error) {
+	if req.Status != models.AttemptStatusCompleted {
+		return nil, apperrors.NewValidationError("INVALID_STATUS", "only 'completed' status is supported")
 	}
 
-	if result.RowsAffected == 0 {
-		// Either attempt not found or already completed - both are fine
-		s.logger.Debug("Abandon: no rows affected",
-			zap.Uint("attempt_id", attemptID))
+	if len(req.Answers) == 0 {
+		return s.abandon(attemptID)
 	}
 
-	return nil
+	return s.complete(attemptID, req.Answers)
 }
 
-// Complete updates an in-progress attempt with final results
-// Server-side validation: fetches questions and validates answers
-func (s *AttemptService) Complete(attemptID uint, req models.CompleteAttemptRequest) (*models.AttemptResponse, error) {
+func (s *AttemptService) abandon(attemptID uint) (*models.AttemptResponse, error) {
+	var attempt models.QuizAttempt
+
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.First(&attempt, attemptID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperrors.ErrAttemptNotFound
+			}
+			return err
+		}
+
+		if attempt.Status != models.AttemptStatusInProgress {
+			return apperrors.NewValidationError(apperrors.ErrInvalidAttemptData.Code,
+				"attempt is already completed")
+		}
+
+		now := time.Now()
+		attempt.Status = models.AttemptStatusCompleted
+		attempt.CompletedAt = &now
+
+		return tx.Save(&attempt).Error
+	})
+
+	if err != nil {
+		var appErr *apperrors.AppError
+		if errors.As(err, &appErr) {
+			return nil, appErr
+		}
+		return nil, apperrors.ErrCreateAttemptFailed
+	}
+
+	response := s.convertToResponse(attempt)
+	return &response, nil
+}
+
+func (s *AttemptService) complete(attemptID uint, answers []models.UserAnswerRequest) (*models.AttemptResponse, error) {
 	var attempt models.QuizAttempt
 
 	err := s.db.Transaction(func(tx *gorm.DB) error {
@@ -179,10 +199,9 @@ func (s *AttemptService) Complete(attemptID uint, req models.CompleteAttemptRequ
 			questionMap[q.ID] = q
 		}
 
-		// Track seen question IDs to prevent duplicate submissions inflating score
 		seenQuestions := make(map[uint]bool)
 		correctCount := 0
-		for _, answerReq := range req.Answers {
+		for _, answerReq := range answers {
 			if seenQuestions[answerReq.QuestionID] {
 				s.logger.Warn("Duplicate question submission ignored",
 					zap.Uint("question_id", answerReq.QuestionID),
@@ -209,7 +228,7 @@ func (s *AttemptService) Complete(attemptID uint, req models.CompleteAttemptRequ
 
 			var isCorrect bool
 			var correctAnswer *int
-			correctAnswers := []int{} // Initialize to avoid nil on unmarshal error
+			correctAnswers := []int{}
 			var userAnswersJSON, correctAnswersJSON, optionsJSON string
 
 			if question.QuestionType == models.QuestionTypeMultipleChoice {
@@ -217,7 +236,7 @@ func (s *AttemptService) Complete(attemptID uint, req models.CompleteAttemptRequ
 					s.logger.Warn("Failed to unmarshal correct answers",
 						zap.Uint("question_id", question.ID),
 						zap.Error(err))
-					correctAnswers = []int{} // Ensure empty slice on error
+					correctAnswers = []int{}
 				}
 
 				isCorrect = validation.ValidateMultipleChoice(answerReq.UserAnswers, correctAnswers)
@@ -241,7 +260,7 @@ func (s *AttemptService) Complete(attemptID uint, req models.CompleteAttemptRequ
 					}
 				}
 			} else {
-				ca := question.CorrectAnswer // copy to avoid pointer to loop variable
+				ca := question.CorrectAnswer
 				correctAnswer = &ca
 
 				if answerReq.UserAnswer != nil {
@@ -278,7 +297,6 @@ func (s *AttemptService) Complete(attemptID uint, req models.CompleteAttemptRequ
 			attempt.Answers = append(attempt.Answers, answer)
 		}
 
-		// Score uses quiz's total question count (accurate even if user skips questions)
 		totalCount := len(quiz.Questions)
 		var score int
 		if totalCount > 0 {
@@ -292,7 +310,6 @@ func (s *AttemptService) Complete(attemptID uint, req models.CompleteAttemptRequ
 		attempt.TotalCount = totalCount
 		attempt.CompletedAt = &now
 
-		// Skip auto-saving Answers to control insertion ourselves
 		if err := tx.Omit("Answers").Save(&attempt).Error; err != nil {
 			return err
 		}
@@ -318,7 +335,6 @@ func (s *AttemptService) Complete(attemptID uint, req models.CompleteAttemptRequ
 	return &response, nil
 }
 
-// GetPaginatedByDeviceID returns paginated attempts for a device with search and filter
 func (s *AttemptService) GetPaginatedByDeviceID(deviceID string, params models.PaginationParams) (models.PaginatedAttemptSummaries, error) {
 	if deviceID == "" {
 		return models.PaginatedAttemptSummaries{}, apperrors.ErrDeviceIDRequired
@@ -373,7 +389,6 @@ func (s *AttemptService) GetPaginatedByDeviceID(deviceID string, params models.P
 	return models.NewPaginatedAttemptSummaries(summaries, params.Limit, params.Offset, int(totalCount)), nil
 }
 
-// GetByID returns a single attempt with all answers
 func (s *AttemptService) GetByID(id uint) (*models.AttemptResponse, error) {
 	var attempt models.QuizAttempt
 	result := s.db.Preload("Answers").First(&attempt, id)

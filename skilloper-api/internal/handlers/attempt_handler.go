@@ -25,7 +25,6 @@ func NewAttemptHandler(service *services.AttemptService, logger *zap.Logger) *At
 	}
 }
 
-// handleError processes application errors and returns appropriate HTTP responses
 func (h *AttemptHandler) handleError(c *gin.Context, err error, operation string) {
 	var appErr *apperrors.AppError
 	if errors.As(err, &appErr) {
@@ -49,13 +48,13 @@ func (h *AttemptHandler) handleError(c *gin.Context, err error, operation string
 	}
 }
 
-// StartAttempt handles POST /attempts/start
-func (h *AttemptHandler) StartAttempt(c *gin.Context) {
-	h.logger.Info("Starting new quiz attempt")
+// CreateAttempt handles POST /attempts
+func (h *AttemptHandler) CreateAttempt(c *gin.Context) {
+	h.logger.Info("Creating new quiz attempt")
 
 	var req models.StartAttemptRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.handleError(c, apperrors.ErrInvalidJSONFormat, "parse_start_attempt_request")
+		h.handleError(c, apperrors.ErrInvalidJSONFormat, "parse_create_attempt_request")
 		return
 	}
 
@@ -65,70 +64,51 @@ func (h *AttemptHandler) StartAttempt(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Starting attempt",
+	h.logger.Info("Creating attempt",
 		zap.String("device_id", req.DeviceID),
 		zap.Uint("quiz_id", req.QuizID))
 
 	attempt, err := h.service.Start(req)
 	if err != nil {
-		h.handleError(c, err, "start_attempt")
+		h.handleError(c, err, "create_attempt")
 		return
 	}
 
-	h.logger.Info("Successfully started attempt",
+	h.logger.Info("Successfully created attempt",
 		zap.Uint("id", attempt.ID),
 		zap.String("device_id", attempt.DeviceID))
 	c.JSON(http.StatusCreated, attempt)
 }
 
-// CompleteAttempt handles POST /attempts/:id/complete
-func (h *AttemptHandler) CompleteAttempt(c *gin.Context) {
+// UpdateAttempt handles PATCH /attempts/:id
+func (h *AttemptHandler) UpdateAttempt(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		h.handleError(c, apperrors.ErrInvalidAttemptID, "parse_attempt_id")
 		return
 	}
 
-	h.logger.Info("Completing quiz attempt", zap.Int("id", id))
-
-	var req models.CompleteAttemptRequest
+	var req models.UpdateAttemptRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.handleError(c, apperrors.ErrInvalidJSONFormat, "parse_complete_attempt_request")
+		h.handleError(c, apperrors.ErrInvalidJSONFormat, "parse_update_attempt_request")
 		return
 	}
 
-	attempt, err := h.service.Complete(uint(id), req)
+	h.logger.Info("Updating quiz attempt", zap.Int("id", id), zap.String("status", string(req.Status)))
+
+	attempt, err := h.service.Update(uint(id), req)
 	if err != nil {
-		h.handleError(c, err, "complete_attempt")
+		h.handleError(c, err, "update_attempt")
 		return
 	}
 
-	h.logger.Info("Successfully completed attempt",
+	h.logger.Info("Successfully updated attempt",
 		zap.Int("id", id),
-		zap.Int("score", attempt.Score))
+		zap.String("status", string(attempt.Status)))
 	c.JSON(http.StatusOK, attempt)
 }
 
-// AbandonAttempt handles POST /attempts/:id/abandon
-func (h *AttemptHandler) AbandonAttempt(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		h.handleError(c, apperrors.ErrInvalidAttemptID, "parse_attempt_id")
-		return
-	}
-
-	h.logger.Info("Abandoning quiz attempt", zap.Int("id", id))
-
-	if err := h.service.Abandon(uint(id)); err != nil {
-		h.handleError(c, err, "abandon_attempt")
-		return
-	}
-
-	h.logger.Info("Successfully abandoned attempt", zap.Int("id", id))
-	c.JSON(http.StatusOK, gin.H{"message": "Attempt abandoned"})
-}
-
-// GetAttempts handles GET /attempts?device_id=xxx
+// GetAttempts handles GET /attempts
 func (h *AttemptHandler) GetAttempts(c *gin.Context) {
 	deviceID := c.Query("device_id")
 	if deviceID == "" {

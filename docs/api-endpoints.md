@@ -15,8 +15,7 @@ Base URL: `http://localhost:8080/api/v1`
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/quizzes/summaries` | Get paginated quiz summaries |
-| `POST` | `/quizzes` | Create a new quiz |
-| `POST` | `/quizzes/import` | Import quiz from file (JSON/CSV) |
+| `POST` | `/quizzes` | Create quiz (JSON body) or import from file (multipart/form-data) |
 | `GET` | `/quizzes/{id}` | Get specific quiz with alternative text selection |
 | `PUT` | `/quizzes/{id}` | Update quiz |
 | `DELETE` | `/quizzes/{id}` | Delete quiz |
@@ -25,17 +24,16 @@ Base URL: `http://localhost:8080/api/v1`
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/attempts/start` | Start a quiz attempt (creates in_progress record) |
-| `POST` | `/attempts/{id}/complete` | Complete a quiz attempt (server validates answers) |
-| `POST` | `/attempts/{id}/abandon` | Abandon an in-progress attempt (marks as completed with 0 score) |
+| `POST` | `/attempts` | Create a quiz attempt (in_progress status) |
+| `PATCH` | `/attempts/{id}` | Update attempt status (complete or abandon) |
 | `GET` | `/attempts` | Get paginated attempt history for a device |
 | `GET` | `/attempts/{id}` | Get specific attempt with answers |
 
-### Questions (Practice Mode)
+### Answers (Practice Mode)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/questions/{id}/validate` | Validate answer for immediate feedback |
+| `POST` | `/answers` | Submit answer for immediate feedback |
 
 ### Pagination Parameters
 
@@ -78,7 +76,7 @@ The app handles attempts differently based on quiz mode:
 | Mode | On Quiz Start | On Quiz Exit | On Quiz Complete |
 |------|---------------|--------------|------------------|
 | **Practice** | No attempt created | Nothing recorded | Start + Complete attempt |
-| **Exam** | Attempt created (in_progress) | Calls `/abandon` (marks completed with 0 score) | Complete attempt |
+| **Exam** | Attempt created (in_progress) | Calls `PATCH /attempts/:id` with no answers (marks completed with 0 score) | Complete attempt |
 
 - **Practice mode**: Attempts are only recorded when completed. Users can exit freely without affecting their history.
 - **Exam mode**: Attempts are tracked from the start. Abandoning an exam marks it as completed with 0 score.
@@ -127,13 +125,15 @@ Response:
 
 Supports JSON and CSV formats. Maximum file size: **10 MB**.
 
+Use `POST /quizzes` with `multipart/form-data` Content-Type:
+
 ```bash
 # JSON file (simple or internal format)
-curl -X POST http://localhost:8080/api/v1/quizzes/import \
+curl -X POST http://localhost:8080/api/v1/quizzes \
   -F "file=@quiz.json"
 
 # CSV file with metadata via query params
-curl -X POST "http://localhost:8080/api/v1/quizzes/import?title=My%20Quiz&type=practice" \
+curl -X POST "http://localhost:8080/api/v1/quizzes?title=My%20Quiz&type=practice" \
   -F "file=@questions.csv"
 ```
 
@@ -156,16 +156,13 @@ curl -X PUT http://localhost:8080/api/v1/quizzes/1 \
 curl -X DELETE http://localhost:8080/api/v1/quizzes/1
 ```
 
-### Start Quiz Attempt
+### Create Quiz Attempt
 ```bash
-curl -X POST http://localhost:8080/api/v1/attempts/start \
+curl -X POST http://localhost:8080/api/v1/attempts \
   -H "Content-Type: application/json" \
   -d '{
     "device_id": "550e8400-e29b-41d4-a716-446655440000",
-    "quiz_id": 1,
-    "quiz_title": "JavaScript Basics",
-    "quiz_type": "practice",
-    "total_count": 10
+    "quiz_id": 1
   }'
 ```
 
@@ -188,14 +185,16 @@ Response:
 }
 ```
 
-### Complete Quiz Attempt
+### Update Quiz Attempt
 
-The client sends only user answers. The server validates answers and calculates the score.
+Use `PATCH /attempts/{id}` to complete or abandon an attempt.
 
+**Complete with answers:**
 ```bash
-curl -X POST http://localhost:8080/api/v1/attempts/1/complete \
+curl -X PATCH http://localhost:8080/api/v1/attempts/1 \
   -H "Content-Type: application/json" \
   -d '{
+    "status": "completed",
     "answers": [
       {
         "question_id": 1,
@@ -209,7 +208,15 @@ curl -X POST http://localhost:8080/api/v1/attempts/1/complete \
   }'
 ```
 
+**Abandon (no answers):**
+```bash
+curl -X PATCH http://localhost:8080/api/v1/attempts/1 \
+  -H "Content-Type: application/json" \
+  -d '{"status": "completed"}'
+```
+
 **Request Fields:**
+- `status` - Must be "completed"
 - `answers[].question_id` - Question ID
 - `answers[].user_answer` - Selected option index (single choice)
 - `answers[].user_answers` - Selected option indices (multiple choice)
@@ -260,20 +267,20 @@ Response:
 curl http://localhost:8080/api/v1/attempts/1
 ```
 
-### Validate Answer (Practice Mode)
+### Submit Answer (Practice Mode)
 
 Used in practice mode for immediate feedback after answering a question.
 
 ```bash
 # Single choice
-curl -X POST http://localhost:8080/api/v1/questions/1/validate \
+curl -X POST http://localhost:8080/api/v1/answers \
   -H "Content-Type: application/json" \
-  -d '{"user_answer": 2}'
+  -d '{"question_id": 1, "user_answer": 2}'
 
 # Multiple choice
-curl -X POST http://localhost:8080/api/v1/questions/1/validate \
+curl -X POST http://localhost:8080/api/v1/answers \
   -H "Content-Type: application/json" \
-  -d '{"user_answers": [0, 2]}'
+  -d '{"question_id": 1, "user_answers": [0, 2]}'
 ```
 
 Response:
@@ -298,8 +305,8 @@ Or for multiple choice:
 
 - `GET /quizzes/{id}` returns questions **without** `correct_answer` or `correct_answers` fields
 - The client collects user answers only
-- `POST /attempts/{id}/complete` receives user answers, the **server** validates and calculates the score
-- `POST /questions/{id}/validate` is only used in practice mode for immediate feedback
+- `PATCH /attempts/{id}` receives user answers, the **server** validates and calculates the score
+- `POST /answers` is only used in practice mode for immediate feedback
 
 This prevents submitting fake scores.
 
