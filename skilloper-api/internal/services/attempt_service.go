@@ -393,10 +393,10 @@ func (s *AttemptService) GetByID(id uint) (*models.AttemptResponse, error) {
 }
 
 func (s *AttemptService) convertToResponse(attempt models.QuizAttempt) models.AttemptResponse {
-	var answers []models.AttemptAnswerResponse
+	answers := []models.AttemptAnswerResponse{}
 
 	for _, answer := range attempt.Answers {
-		var userAnswers []int
+		userAnswers := []int{}
 		if answer.UserAnswers != "" {
 			if err := json.Unmarshal([]byte(answer.UserAnswers), &userAnswers); err != nil {
 				s.logger.Warn("Failed to unmarshal user answers",
@@ -405,7 +405,7 @@ func (s *AttemptService) convertToResponse(attempt models.QuizAttempt) models.At
 			}
 		}
 
-		var correctAnswers []int
+		correctAnswers := []int{}
 		if answer.CorrectAnswers != "" {
 			if err := json.Unmarshal([]byte(answer.CorrectAnswers), &correctAnswers); err != nil {
 				s.logger.Warn("Failed to unmarshal correct answers",
@@ -414,7 +414,7 @@ func (s *AttemptService) convertToResponse(attempt models.QuizAttempt) models.At
 			}
 		}
 
-		var options []string
+		options := []string{}
 		if answer.Options != "" {
 			if err := json.Unmarshal([]byte(answer.Options), &options); err != nil {
 				s.logger.Warn("Failed to unmarshal options",
