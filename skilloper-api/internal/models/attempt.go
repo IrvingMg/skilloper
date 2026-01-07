@@ -9,6 +9,7 @@ type AttemptStatus string
 const (
 	AttemptStatusInProgress AttemptStatus = "in_progress"
 	AttemptStatusCompleted  AttemptStatus = "completed"
+	AttemptStatusAbandoned  AttemptStatus = "abandoned"
 )
 
 type QuizAttempt struct {

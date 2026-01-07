@@ -417,7 +417,7 @@ class _AttemptListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isAbandoned = attempt.isInProgress;
+    final isAbandoned = attempt.isAbandoned;
     final displayColor = isAbandoned ? AppColors.textDisabled : _getScoreColor(attempt.score);
 
     return Card(

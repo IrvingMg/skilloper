@@ -59,7 +59,7 @@ func (s *AttemptService) Start(req models.StartAttemptRequest) (*models.AttemptR
 			Where("device_id = ? AND quiz_id = ? AND status = ? AND created_at < ?",
 				req.DeviceID, req.QuizID, models.AttemptStatusInProgress, staleThreshold).
 			Updates(map[string]interface{}{
-				"status":       models.AttemptStatusCompleted,
+				"status":       models.AttemptStatusAbandoned,
 				"completed_at": time.Now(),
 			}).Error; err != nil {
 			s.logger.Warn("Failed to clean up stale attempts", zap.Error(err))
@@ -143,7 +143,7 @@ func (s *AttemptService) abandon(attemptID uint) (*models.AttemptResponse, error
 		}
 
 		now := time.Now()
-		attempt.Status = models.AttemptStatusCompleted
+		attempt.Status = models.AttemptStatusAbandoned
 		attempt.CompletedAt = &now
 
 		return tx.Save(&attempt).Error

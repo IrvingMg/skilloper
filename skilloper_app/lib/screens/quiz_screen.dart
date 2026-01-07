@@ -186,7 +186,7 @@ class _QuizScreenState extends State<QuizScreen> {
         title: Text(isExam ? 'Leave Exam?' : 'Leave Practice?'),
         content: Text(
           isExam
-              ? 'If you leave now, this attempt will be marked as abandoned (0%). Are you sure you want to exit?'
+              ? 'If you leave now, this attempt will be marked as abandoned. Are you sure you want to exit?'
               : 'Are you sure you want to exit? Your progress will not be saved.',
         ),
         actions: [

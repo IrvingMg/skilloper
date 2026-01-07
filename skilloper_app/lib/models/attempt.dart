@@ -1,7 +1,8 @@
 /// Attempt status enum
 enum AttemptStatus {
   inProgress,
-  completed;
+  completed,
+  abandoned;
 
   static AttemptStatus fromString(String value) {
     switch (value) {
@@ -9,6 +10,8 @@ enum AttemptStatus {
         return AttemptStatus.inProgress;
       case 'completed':
         return AttemptStatus.completed;
+      case 'abandoned':
+        return AttemptStatus.abandoned;
       default:
         return AttemptStatus.inProgress;
     }
@@ -20,6 +23,8 @@ enum AttemptStatus {
         return 'in_progress';
       case AttemptStatus.completed:
         return 'completed';
+      case AttemptStatus.abandoned:
+        return 'abandoned';
     }
   }
 }
@@ -76,6 +81,7 @@ class AttemptSummary {
   bool get isPracticeMode => quizType == 'practice';
   bool get isCompleted => status == AttemptStatus.completed;
   bool get isInProgress => status == AttemptStatus.inProgress;
+  bool get isAbandoned => status == AttemptStatus.abandoned;
   int get incorrectCount => totalCount - correctCount;
 }
 
@@ -188,6 +194,7 @@ class QuizAttempt {
   bool get isPracticeMode => quizType == 'practice';
   bool get isCompleted => status == AttemptStatus.completed;
   bool get isInProgress => status == AttemptStatus.inProgress;
+  bool get isAbandoned => status == AttemptStatus.abandoned;
   int get incorrectCount => totalCount - correctCount;
 }
 

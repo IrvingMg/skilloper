@@ -76,10 +76,10 @@ The app handles attempts differently based on quiz mode:
 | Mode | On Quiz Start | On Quiz Exit | On Quiz Complete |
 |------|---------------|--------------|------------------|
 | **Practice** | No attempt created | Nothing recorded | Start + Complete attempt |
-| **Exam** | Attempt created (in_progress) | Calls `PATCH /attempts/:id` with no answers (marks completed with 0 score) | Complete attempt |
+| **Exam** | Attempt created (in_progress) | Calls `PATCH /attempts/:id` with no answers (marks as abandoned) | Complete attempt |
 
 - **Practice mode**: Attempts are only recorded when completed. Users can exit freely without affecting their history.
-- **Exam mode**: Attempts are tracked from the start. Abandoning an exam marks it as completed with 0 score.
+- **Exam mode**: Attempts are tracked from the start. Abandoning an exam marks it with `abandoned` status.
 
 ## Usage Examples
 
@@ -215,6 +215,8 @@ curl -X PATCH http://localhost:8080/api/v1/attempts/1 \
   -d '{"status": "completed"}'
 ```
 
+**Note:** When no answers are provided, the server marks the attempt as `abandoned` (not `completed`). The response will show `"status": "abandoned"`.
+
 **Request Fields:**
 - `status` - Must be "completed"
 - `answers[].question_id` - Question ID
@@ -251,6 +253,20 @@ Response:
       "total_count": 10,
       "created_at": "2025-01-15T10:30:00Z",
       "completed_at": "2025-01-15T10:45:00Z"
+    },
+    {
+      "id": 2,
+      "device_id": "550e8400-e29b-41d4-a716-446655440000",
+      "quiz_id": 1,
+      "quiz_title": "JavaScript Basics",
+      "quiz_type": "exam",
+      "attempt_number": 2,
+      "status": "abandoned",
+      "score": 0,
+      "correct_count": 0,
+      "total_count": 10,
+      "created_at": "2025-01-15T11:00:00Z",
+      "completed_at": "2025-01-15T11:05:00Z"
     }
   ],
   "pagination": {
@@ -261,6 +277,11 @@ Response:
   }
 }
 ```
+
+**Attempt Status Values:**
+- `in_progress` - Quiz started but not yet completed
+- `completed` - Quiz finished with all answers submitted
+- `abandoned` - Quiz was exited early, no answers recorded
 
 ### Get Specific Attempt
 ```bash

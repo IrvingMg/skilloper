@@ -257,7 +257,7 @@ class HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 12),
             _buildInfoRow(Icons.history, 'Your attempt will be recorded in history'),
             const SizedBox(height: 8),
-            _buildInfoRow(Icons.timer_outlined, 'Leaving early will record a 0% score'),
+            _buildInfoRow(Icons.timer_outlined, 'Leaving early will mark it as abandoned'),
             const SizedBox(height: 8),
             _buildInfoRow(Icons.visibility_off, 'Answers are revealed only at the end'),
           ],
