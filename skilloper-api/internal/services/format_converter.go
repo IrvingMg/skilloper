@@ -10,8 +10,6 @@ import (
 	"github.com/irvingmg/skilloper/skilloper-api/internal/models"
 )
 
-// JSONParser implements QuizParser for user-friendly JSON format
-// Features: 1-based indexing, answer as string array, auto-detects question type
 type JSONParser struct{}
 
 func NewJSONParser() *JSONParser {
@@ -19,18 +17,15 @@ func NewJSONParser() *JSONParser {
 }
 
 func (p *JSONParser) FormatName() string {
-	return "json"
+	return models.FormatJSON
 }
 
-// CanParse checks if data is a JSON file by extension and validates content looks like JSON
-// This prevents non-JSON content in .json files from being processed
 func (p *JSONParser) CanParse(data []byte, filename string) bool {
 	ext := strings.ToLower(filepath.Ext(filename))
 	if ext != ".json" {
 		return false
 	}
 
-	// Basic content validation: JSON should start with { or [ after trimming whitespace
 	trimmed := bytes.TrimSpace(data)
 	if len(trimmed) == 0 {
 		return false
@@ -38,10 +33,6 @@ func (p *JSONParser) CanParse(data []byte, filename string) bool {
 	return trimmed[0] == '{' || trimmed[0] == '['
 }
 
-// Parse converts JSON to internal format
-// Checks the "format" field to determine parsing strategy:
-// - "internal": parse directly as CreateQuizRequest (0-based, correctAnswer)
-// - "simple" or omitted: parse as user-friendly format (1-based, answer array)
 func (p *JSONParser) Parse(data []byte, _ ParserMetadata) (*models.CreateQuizRequest, error) {
 	var probe struct {
 		Format string `json:"format"`
@@ -81,10 +72,10 @@ func (p *JSONParser) convertToInternal(simplified *models.SimplifiedQuiz) (*mode
 
 	quizType := simplified.Type
 	if quizType == "" {
-		quizType = "practice"
+		quizType = models.QuizTypePractice
 	}
-	if quizType != "practice" && quizType != "exam" {
-		return nil, fmt.Errorf("type must be 'practice' or 'exam', got '%s'", quizType)
+	if quizType != models.QuizTypePractice && quizType != models.QuizTypeExam {
+		return nil, fmt.Errorf("type must be '%s' or '%s', got '%s'", models.QuizTypePractice, models.QuizTypeExam, quizType)
 	}
 
 	questions := make([]models.QuestionRequest, 0, len(simplified.Questions))

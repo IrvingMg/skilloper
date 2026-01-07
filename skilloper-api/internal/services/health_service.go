@@ -6,17 +6,21 @@ import (
 	"github.com/irvingmg/skilloper/skilloper-api/internal/models"
 )
 
+const (
+	HealthStatusOK      = "ok"
+	HealthStatusMessage = "Skilloper API is running"
+)
+
 type HealthService struct{}
 
 func NewHealthService() *HealthService {
 	return &HealthService{}
 }
 
-// GetHealth returns the health status of the API
 func (s *HealthService) GetHealth() models.HealthResponse {
 	return models.HealthResponse{
-		Status:    "ok",
-		Message:   "Skilloper API is running",
+		Status:    HealthStatusOK,
+		Message:   HealthStatusMessage,
 		Timestamp: time.Now().Format(time.RFC3339),
 	}
 }

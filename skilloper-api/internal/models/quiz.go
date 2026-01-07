@@ -7,6 +7,9 @@ import (
 const (
 	QuestionTypeSingleChoice   = "single_choice"
 	QuestionTypeMultipleChoice = "multiple_choice"
+
+	QuizTypePractice = "practice"
+	QuizTypeExam     = "exam"
 )
 
 type Quiz struct {

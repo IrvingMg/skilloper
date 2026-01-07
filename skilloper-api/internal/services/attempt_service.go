@@ -38,9 +38,7 @@ func (s *AttemptService) Start(req models.StartAttemptRequest) (*models.AttemptR
 
 	var attempt models.QuizAttempt
 
-	// Use transaction to ensure atomic attempt number calculation
 	err := s.db.Transaction(func(tx *gorm.DB) error {
-		// Verify quiz exists and get metadata (without preloading questions)
 		var quiz models.Quiz
 		if err := tx.First(&quiz, req.QuizID).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -49,7 +47,6 @@ func (s *AttemptService) Start(req models.StartAttemptRequest) (*models.AttemptR
 			return err
 		}
 
-		// Get question count separately (more efficient than preloading all questions)
 		var questionCount int64
 		if err := tx.Model(&models.Question{}).
 			Where("quiz_id = ?", req.QuizID).
@@ -57,8 +54,6 @@ func (s *AttemptService) Start(req models.StartAttemptRequest) (*models.AttemptR
 			return err
 		}
 
-		// Clean up stale in-progress attempts (older than StaleAttemptHours)
-		// This prevents users from being permanently locked out after abandoning attempts
 		staleThreshold := time.Now().Add(-time.Duration(models.StaleAttemptHours) * time.Hour)
 		if err := tx.Model(&models.QuizAttempt{}).
 			Where("device_id = ? AND quiz_id = ? AND status = ? AND created_at < ?",
@@ -68,10 +63,8 @@ func (s *AttemptService) Start(req models.StartAttemptRequest) (*models.AttemptR
 				"completed_at": time.Now(),
 			}).Error; err != nil {
 			s.logger.Warn("Failed to clean up stale attempts", zap.Error(err))
-			// Continue anyway - cleanup is best-effort
 		}
 
-		// Check for too many in-progress attempts (prevents abuse)
 		var inProgressCount int64
 		if err := tx.Model(&models.QuizAttempt{}).
 			Where("device_id = ? AND quiz_id = ? AND status = ?",
@@ -92,18 +85,16 @@ func (s *AttemptService) Start(req models.StartAttemptRequest) (*models.AttemptR
 		}
 		attemptNumber := int(existingCount) + 1
 
-		// Create attempt with in_progress status using server-side data
 		attempt = models.QuizAttempt{
 			DeviceID:      req.DeviceID,
 			QuizID:        req.QuizID,
-			QuizTitle:     quiz.Title, // Use server data, not client
-			QuizType:      quiz.Type,  // Use server data, not client
+			QuizTitle:     quiz.Title,
+			QuizType:      quiz.Type,
 			AttemptNumber: attemptNumber,
 			Status:        models.AttemptStatusInProgress,
-			TotalCount:    int(questionCount), // Use count query, not preloaded data
+			TotalCount:    int(questionCount),
 		}
 
-		// Save to database within transaction
 		if err := tx.Create(&attempt).Error; err != nil {
 			return err
 		}
@@ -300,7 +291,7 @@ func (s *AttemptService) complete(attemptID uint, answers []models.UserAnswerReq
 		totalCount := len(quiz.Questions)
 		var score int
 		if totalCount > 0 {
-			score = (correctCount * 100) / totalCount
+			score = (correctCount * models.ScorePercentage) / totalCount
 		}
 
 		now := time.Now()
@@ -343,9 +334,7 @@ func (s *AttemptService) GetPaginatedByDeviceID(deviceID string, params models.P
 	query := s.db.Model(&models.QuizAttempt{}).Where("device_id = ?", deviceID)
 
 	if params.Search != "" {
-		escaped := strings.ReplaceAll(params.Search, "%", "\\%")
-		escaped = strings.ReplaceAll(escaped, "_", "\\_")
-		searchPattern := "%" + strings.ToLower(escaped) + "%"
+		searchPattern := "%" + escapeLikePattern(strings.ToLower(params.Search)) + "%"
 		query = query.Where("LOWER(quiz_title) LIKE ? ESCAPE '\\'", searchPattern)
 	}
 

@@ -12,13 +12,11 @@ import (
 	"github.com/irvingmg/skilloper/skilloper-api/internal/models"
 )
 
-// sanitizeCSVValue removes potential CSV formula injection prefixes
 func sanitizeCSVValue(s string) string {
 	s = strings.TrimSpace(s)
 	if len(s) == 0 {
 		return s
 	}
-	// Prefix dangerous characters with quote to prevent formula execution in Excel/Sheets
 	switch s[0] {
 	case '=', '+', '-', '@', '\t', '\r':
 		return "'" + s
@@ -26,30 +24,25 @@ func sanitizeCSVValue(s string) string {
 	return s
 }
 
-// CSVParserAdapter implements QuizParser for CSV format
 type CSVParserAdapter struct {
 	parser *CSVParser
 }
 
-// NewCSVParserAdapter creates a new CSV parser adapter
 func NewCSVParserAdapter() *CSVParserAdapter {
 	return &CSVParserAdapter{
 		parser: NewCSVParser(),
 	}
 }
 
-// FormatName returns the format name
 func (a *CSVParserAdapter) FormatName() string {
-	return "csv"
+	return models.FormatCSV
 }
 
-// CanParse checks if data is in CSV format (by file extension)
 func (a *CSVParserAdapter) CanParse(_ []byte, filename string) bool {
 	ext := strings.ToLower(filepath.Ext(filename))
 	return ext == ".csv"
 }
 
-// Parse converts CSV to internal format
 func (a *CSVParserAdapter) Parse(data []byte, metadata ParserMetadata) (*models.CreateQuizRequest, error) {
 	csvMeta := CSVMetadata{
 		Title:       metadata.Title,
@@ -72,39 +65,19 @@ func (a *CSVParserAdapter) Parse(data []byte, metadata ParserMetadata) (*models.
 	return a.parser.ParseCSV(bytes.NewReader(data), csvMeta)
 }
 
-// CSVParser handles parsing CSV files into quiz format
 type CSVParser struct{}
 
-// NewCSVParser creates a new CSV parser
 func NewCSVParser() *CSVParser {
 	return &CSVParser{}
 }
 
-// CSVMetadata holds quiz metadata passed via query params for CSV imports
 type CSVMetadata struct {
 	Title       string
 	Description string
-	Type        string // "practice" or "exam"
+	Type        string
 	MaxOptions  int
 }
 
-// ParseCSV converts CSV data to CreateQuizRequest
-// Expected CSV format:
-// question,option1,option2,option3,option4,answer,explanation,code,language,alt_question1,alt_option1
-// "What is 2+2?","1","2","3","4",4,"Basic math","","","",""
-// "Select primes","2","3","4","5","1,2,4","Multiple correct","","","",""
-//
-// Required columns:
-// - question: The question text
-// - option1, option2, ... option8: Answer options (at least 2 required)
-// - answer: single number or comma-separated for multiple choice (1-based)
-//
-// Optional columns:
-// - explanation: Why the answer is correct
-// - code: Code snippet to display with the question
-// - language: Programming language for syntax highlighting
-// - alt_question1, alt_question2, ...: Alternative question phrasings
-// - alt_option1, alt_option2, ...: Additional distractor options
 func (p *CSVParser) ParseCSV(reader io.Reader, metadata CSVMetadata) (*models.CreateQuizRequest, error) {
 	if metadata.Title == "" {
 		return nil, fmt.Errorf("title is required for CSV import")
@@ -159,10 +132,10 @@ func (p *CSVParser) ParseCSV(reader io.Reader, metadata CSVMetadata) (*models.Cr
 
 	quizType := metadata.Type
 	if quizType == "" {
-		quizType = "practice"
+		quizType = models.QuizTypePractice
 	}
-	if quizType != "practice" && quizType != "exam" {
-		return nil, fmt.Errorf("type must be 'practice' or 'exam', got '%s'", quizType)
+	if quizType != models.QuizTypePractice && quizType != models.QuizTypeExam {
+		return nil, fmt.Errorf("type must be '%s' or '%s', got '%s'", models.QuizTypePractice, models.QuizTypeExam, quizType)
 	}
 
 	return &models.CreateQuizRequest{
@@ -174,19 +147,17 @@ func (p *CSVParser) ParseCSV(reader io.Reader, metadata CSVMetadata) (*models.Cr
 	}, nil
 }
 
-// columnIndices holds parsed CSV header column positions
 type columnIndices struct {
 	question             int
-	options              []int // indices of option1, option2, etc.
+	options              []int
 	answer               int
 	explanation          int
 	code                 int
 	language             int
-	alternativeQuestions []int // indices of alt_question1, alt_question2, etc.
-	alternativeOptions   []int // indices of alt_option1, alt_option2, etc.
+	alternativeQuestions []int
+	alternativeOptions   []int
 }
 
-// parseHeader extracts column indices from CSV header
 func (p *CSVParser) parseHeader(header []string) (*columnIndices, error) {
 	cols := &columnIndices{
 		question:             -1,
@@ -243,23 +214,21 @@ func (p *CSVParser) parseRow(record []string, cols *columnIndices, _ int) (*mode
 		return nil, fmt.Errorf("question text is empty")
 	}
 
-	// Options must be contiguous (no gaps) to prevent index confusion
 	options := []string{}
-	firstEmptyIdx := -1 // Track which option column was first empty (1-based for user display)
+	firstEmptyIdx := -1
 	for i, optIdx := range cols.options {
 		if optIdx < len(record) {
 			opt := sanitizeCSVValue(record[optIdx])
 			if opt != "" {
 				if firstEmptyIdx >= 0 {
-					// Found non-empty after empty - report 1-based option numbers
 					return nil, fmt.Errorf("option%d is empty but option%d has a value - options must be contiguous with no gaps", firstEmptyIdx, i+1)
 				}
 				options = append(options, opt)
 			} else if firstEmptyIdx < 0 {
-				firstEmptyIdx = i + 1 // Store 1-based index
+				firstEmptyIdx = i + 1
 			}
 		} else if firstEmptyIdx < 0 {
-			firstEmptyIdx = i + 1 // Store 1-based index
+			firstEmptyIdx = i + 1
 		}
 	}
 	if len(options) < 2 {
@@ -299,7 +268,7 @@ func (p *CSVParser) parseRow(record []string, cols *columnIndices, _ int) (*mode
 		question.Explanation = sanitizeCSVValue(record[cols.explanation])
 	}
 	if cols.code >= 0 && cols.code < len(record) {
-		question.Code = strings.TrimSpace(record[cols.code]) // Don't sanitize - may start with special chars
+		question.Code = strings.TrimSpace(record[cols.code])
 	}
 	if cols.language >= 0 && cols.language < len(record) {
 		question.Language = strings.TrimSpace(record[cols.language])
@@ -332,7 +301,6 @@ func (p *CSVParser) parseRow(record []string, cols *columnIndices, _ int) (*mode
 	return question, nil
 }
 
-// parseSingleAnswer parses a single answer value (1-based input, 0-based output)
 func (p *CSVParser) parseSingleAnswer(s string, numOptions int) (int, error) {
 	answer, err := strconv.Atoi(s)
 	if err != nil {
@@ -341,10 +309,9 @@ func (p *CSVParser) parseSingleAnswer(s string, numOptions int) (int, error) {
 	if answer < 1 || answer > numOptions {
 		return 0, fmt.Errorf("must be between 1 and %d, got %d", numOptions, answer)
 	}
-	return answer - 1, nil // Convert to 0-based for internal API
+	return answer - 1, nil
 }
 
-// parseMultipleAnswers parses comma-separated answers (1-based input, 0-based output)
 func (p *CSVParser) parseMultipleAnswers(s string, numOptions int) ([]int, error) {
 	parts := strings.Split(s, ",")
 	answers := []int{}
@@ -366,7 +333,7 @@ func (p *CSVParser) parseMultipleAnswers(s string, numOptions int) ([]int, error
 			return nil, fmt.Errorf("duplicate answer value: %d", answer)
 		}
 		seen[answer] = true
-		answers = append(answers, answer-1) // Convert to 0-based for internal API
+		answers = append(answers, answer-1)
 	}
 
 	if len(answers) == 0 {
@@ -376,7 +343,6 @@ func (p *CSVParser) parseMultipleAnswers(s string, numOptions int) ([]int, error
 	return answers, nil
 }
 
-// isEmptyRow checks if all cells in a row are empty
 func (p *CSVParser) isEmptyRow(record []string) bool {
 	for _, cell := range record {
 		if strings.TrimSpace(cell) != "" {

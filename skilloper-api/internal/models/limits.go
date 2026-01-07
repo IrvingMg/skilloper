@@ -1,29 +1,29 @@
 package models
 
-// Centralized limits for quiz validation
-// These limits are shared across all import paths (JSON, CSV, API)
-// Keep in sync with Flutter app limits in lib/constants/limits.dart
 const (
-	// Options per question
-	MinOptionsLimit   = 2 // Minimum options required per question
-	MaxOptionsLimit   = 8 // Maximum options allowed per question
-	DefaultMaxOptions = 4 // Default max options when not specified
+	MinOptionsLimit   = 2
+	MaxOptionsLimit   = 8
+	DefaultMaxOptions = 4
 
-	// Questions per quiz
-	MaxQuestionsPerQuiz = 500 // Maximum questions per quiz
+	MaxQuestionsPerQuiz = 500
 
-	// Field lengths
-	MaxTitleLength       = 255  // Maximum title length
-	MaxDescriptionLength = 1000 // Maximum description length
+	MaxTitleLength       = 255
+	MaxDescriptionLength = 1000
 
-	// Alternative fields (for question variety)
-	MaxAlternativeQuestions = 10 // Maximum alternative question phrasings
-	MaxAlternativeOptions   = 20 // Maximum alternative distractor options
+	MaxAlternativeQuestions = 10
+	MaxAlternativeOptions   = 20
 
-	// Device tracking
-	MaxDeviceIDLength = 128 // Maximum device ID length (UUID is 36 chars)
+	MaxDeviceIDLength = 128
 
-	// Attempt limits
-	MaxConcurrentAttempts  = 2  // Maximum in-progress attempts per device per quiz
-	StaleAttemptHours      = 24 // Hours after which in-progress attempts are considered stale
+	MaxConcurrentAttempts = 2
+	StaleAttemptHours     = 24
+
+	ScorePercentage = 100
+
+	MaxImportFileSize = 10 * 1024 * 1024
+)
+
+const (
+	FormatCSV  = "csv"
+	FormatJSON = "json"
 )

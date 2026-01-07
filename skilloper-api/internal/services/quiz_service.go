@@ -8,8 +8,6 @@ import (
 	"math/rand"
 	"mime/multipart"
 	"strings"
-	"sync"
-	"time"
 
 	"gorm.io/gorm"
 
@@ -17,24 +15,6 @@ import (
 	"github.com/irvingmg/skilloper/skilloper-api/internal/jsonutil"
 	"github.com/irvingmg/skilloper/skilloper-api/internal/models"
 )
-
-// Package-level RNG for alternative text selection (thread-safe via mutex)
-var (
-	globalRng   *rand.Rand
-	globalRngMu sync.Mutex
-)
-
-// init initializes the global RNG at package load time
-func init() {
-	globalRng = rand.New(rand.NewSource(time.Now().UnixNano()))
-}
-
-// randomIntn returns a random int in [0,n) using the global RNG (thread-safe)
-func randomIntn(n int) int {
-	globalRngMu.Lock()
-	defer globalRngMu.Unlock()
-	return globalRng.Intn(n)
-}
 
 type QuizService struct {
 	db *gorm.DB
@@ -46,20 +26,17 @@ func NewQuizService(db *gorm.DB) *QuizService {
 	}
 }
 
-// QuizSummaryRow represents a quiz with question count from a single query
 type QuizSummaryRow struct {
 	models.Quiz
 	QuestionCount int64 `gorm:"column:question_count"`
 }
 
-// escapeLikePattern escapes SQL LIKE special characters (%, _) in search terms
 func escapeLikePattern(s string) string {
 	s = strings.ReplaceAll(s, "%", "\\%")
 	s = strings.ReplaceAll(s, "_", "\\_")
 	return s
 }
 
-// GetPaginatedSummaries returns paginated quiz summaries with search and filter
 func (s *QuizService) GetPaginatedSummaries(params models.PaginationParams) (models.PaginatedQuizSummaries, error) {
 	baseQuery := s.db.Model(&models.Quiz{})
 
@@ -120,7 +97,6 @@ func (s *QuizService) GetPaginatedSummaries(params models.PaginationParams) (mod
 	return models.NewPaginatedQuizSummaries(summaries, params.Limit, params.Offset, int(totalCount)), nil
 }
 
-// GetByID retrieves a quiz by ID
 func (s *QuizService) GetByID(id uint) (*models.QuizResponse, error) {
 	var quiz models.Quiz
 	result := s.db.Preload("Questions").First(&quiz, id)
@@ -135,7 +111,6 @@ func (s *QuizService) GetByID(id uint) (*models.QuizResponse, error) {
 	return &response, nil
 }
 
-// GetByIDWithAnswers retrieves a quiz by ID including correct answers (for edit mode)
 func (s *QuizService) GetByIDWithAnswers(id uint) (*models.QuizResponseWithAnswers, error) {
 	var quiz models.Quiz
 	result := s.db.Preload("Questions").First(&quiz, id)
@@ -150,7 +125,6 @@ func (s *QuizService) GetByIDWithAnswers(id uint) (*models.QuizResponseWithAnswe
 	return &response, nil
 }
 
-// Create creates a new quiz
 func (s *QuizService) Create(req models.CreateQuizRequest) (*models.QuizResponse, error) {
 	if req.Title == "" {
 		return nil, apperrors.ErrQuizTitleRequired
@@ -165,8 +139,8 @@ func (s *QuizService) Create(req models.CreateQuizRequest) (*models.QuizResponse
 			fmt.Sprintf("description exceeds %d character limit", models.MaxDescriptionLength))
 	}
 
-	if req.Type != "practice" && req.Type != "exam" {
-		req.Type = "practice"
+	if req.Type != models.QuizTypePractice && req.Type != models.QuizTypeExam {
+		req.Type = models.QuizTypePractice
 	}
 
 	maxOptions := req.MaxOptions
@@ -192,114 +166,11 @@ func (s *QuizService) Create(req models.CreateQuizRequest) (*models.QuizResponse
 	}
 
 	for i, qReq := range req.Questions {
-		if qReq.Question == "" {
-			return nil, apperrors.NewValidationError(apperrors.ErrQuestionTextRequired.Code,
-				fmt.Sprintf("Question %d is missing required text", i+1))
-		}
-
-		questionType := qReq.QuestionType
-		if questionType == "" {
-			questionType = models.QuestionTypeSingleChoice
-		}
-
-		if questionType != models.QuestionTypeSingleChoice && questionType != models.QuestionTypeMultipleChoice {
-			return nil, apperrors.NewValidationError(apperrors.ErrInvalidQuestionType.Code,
-				fmt.Sprintf("Question %d has invalid type '%s'. Must be 'single_choice' or 'multiple_choice'", i+1, questionType))
-		}
-
-		if len(qReq.Options) < models.MinOptionsLimit {
-			return nil, apperrors.NewValidationError(apperrors.ErrQuestionOptionsRequired.Code,
-				fmt.Sprintf("Question %d requires at least %d options", i+1, models.MinOptionsLimit))
-		}
-
-		if len(qReq.Options) > maxOptions {
-			return nil, apperrors.NewValidationError(apperrors.ErrTooManyOptions.Code,
-				fmt.Sprintf("Question has %d options but quiz max_options is %d", len(qReq.Options), maxOptions))
-		}
-
-		optionBytes, err := json.Marshal(qReq.Options)
+		vq, err := validateAndPrepareQuestion(qReq, i, maxOptions)
 		if err != nil {
-			return nil, apperrors.ErrInvalidOptionsFormat
+			return nil, err
 		}
-		optionsJSON := string(optionBytes)
-
-		var alternativeQuestionsJSON, alternativeOptionsJSON, alternativeAnswersJSON string
-
-		if len(qReq.AlternativeQuestions) > 0 {
-			alternativeQuestions, err := json.Marshal(qReq.AlternativeQuestions)
-			if err != nil {
-				return nil, apperrors.ErrInvalidOptionsFormat
-			}
-			alternativeQuestionsJSON = string(alternativeQuestions)
-		}
-
-		if len(qReq.AlternativeOptions) > 0 {
-			alternativeOptions, err := json.Marshal(qReq.AlternativeOptions)
-			if err != nil {
-				return nil, apperrors.ErrInvalidOptionsFormat
-			}
-			alternativeOptionsJSON = string(alternativeOptions)
-		}
-
-		if len(qReq.AlternativeAnswers) > 0 {
-			alternativeAnswers, err := json.Marshal(qReq.AlternativeAnswers)
-			if err != nil {
-				return nil, apperrors.ErrInvalidOptionsFormat
-			}
-			alternativeAnswersJSON = string(alternativeAnswers)
-		}
-
-		var correctAnswersJSON string
-		var finalCorrectAnswer int
-
-		if questionType == models.QuestionTypeMultipleChoice {
-			if len(qReq.CorrectAnswers) == 0 {
-				return nil, apperrors.NewValidationError(apperrors.ErrMultipleChoiceAnswersRequired.Code,
-					fmt.Sprintf("Question %d (multiple_choice) is missing required correct_answers array", i+1))
-			}
-			validCorrectAnswers := []int{}
-			seenAnswers := make(map[int]bool)
-			for _, answer := range qReq.CorrectAnswers {
-				if seenAnswers[answer] {
-					return nil, apperrors.NewValidationError("DUPLICATE_ANSWER",
-						fmt.Sprintf("Question %d has duplicate correct answer index: %d", i+1, answer))
-				}
-				seenAnswers[answer] = true
-				if answer >= 0 && answer < len(qReq.Options) {
-					validCorrectAnswers = append(validCorrectAnswers, answer)
-				}
-			}
-			if len(validCorrectAnswers) == 0 {
-				return nil, apperrors.NewValidationError(apperrors.ErrInvalidCorrectAnswer.Code,
-					fmt.Sprintf("Question %d has invalid correct_answers indices. All indices must be between 0 and %d", i+1, len(qReq.Options)-1))
-			}
-			correctAnswersBytes, err := json.Marshal(validCorrectAnswers)
-			if err != nil {
-				return nil, apperrors.ErrInvalidOptionsFormat
-			}
-			correctAnswersJSON = string(correctAnswersBytes)
-		} else {
-			if qReq.CorrectAnswer < 0 || qReq.CorrectAnswer >= len(qReq.Options) {
-				return nil, apperrors.NewValidationError(apperrors.ErrInvalidCorrectAnswer.Code,
-					fmt.Sprintf("Question %d has invalid correctAnswer index %d. Must be between 0 and %d", i+1, qReq.CorrectAnswer, len(qReq.Options)-1))
-			}
-			finalCorrectAnswer = qReq.CorrectAnswer
-		}
-
-		question := models.Question{
-			QuestionType:         questionType,
-			QuestionText:         qReq.Question,
-			AlternativeQuestions: alternativeQuestionsJSON,
-			Code:                 qReq.Code,
-			Language:             qReq.Language,
-			Options:              optionsJSON,
-			AlternativeOptions:   alternativeOptionsJSON,
-			CorrectAnswer:        finalCorrectAnswer,
-			CorrectAnswers:       correctAnswersJSON,
-			AlternativeAnswers:   alternativeAnswersJSON,
-			Explanation:          qReq.Explanation,
-		}
-		quiz.Questions = append(quiz.Questions, question)
+		quiz.Questions = append(quiz.Questions, vq.toQuestion(0))
 	}
 
 	result := s.db.Create(&quiz)
@@ -311,14 +182,13 @@ func (s *QuizService) Create(req models.CreateQuizRequest) (*models.QuizResponse
 	return &response, nil
 }
 
-// Update updates an existing quiz
 func (s *QuizService) Update(id uint, req models.CreateQuizRequest) (*models.QuizResponse, error) {
 	if req.Title == "" {
 		return nil, apperrors.ErrQuizTitleRequired
 	}
 
-	if req.Type != "practice" && req.Type != "exam" {
-		req.Type = "practice"
+	if req.Type != models.QuizTypePractice && req.Type != models.QuizTypeExam {
+		req.Type = models.QuizTypePractice
 	}
 
 	maxOptions := req.MaxOptions
@@ -336,122 +206,15 @@ func (s *QuizService) Update(id uint, req models.CreateQuizRequest) (*models.Qui
 			"quiz must have at least one question")
 	}
 
-	type validatedQuestion struct {
-		questionType             string
-		optionsJSON              string
-		alternativeQuestionsJSON string
-		alternativeOptionsJSON   string
-		alternativeAnswersJSON   string
-		correctAnswersJSON       string
-		finalCorrectAnswer       int
-		qReq                     models.QuestionRequest
-	}
-	validatedQuestions := make([]validatedQuestion, 0, len(req.Questions))
-
+	validatedQuestions := make([]*validatedQuestion, 0, len(req.Questions))
 	for i, qReq := range req.Questions {
-		if qReq.Question == "" {
-			return nil, apperrors.NewValidationError(apperrors.ErrQuestionTextRequired.Code,
-				fmt.Sprintf("Question %d is missing required text", i+1))
-		}
-
-		questionType := qReq.QuestionType
-		if questionType == "" {
-			questionType = models.QuestionTypeSingleChoice
-		}
-
-		if questionType != models.QuestionTypeSingleChoice && questionType != models.QuestionTypeMultipleChoice {
-			return nil, apperrors.NewValidationError(apperrors.ErrInvalidQuestionType.Code,
-				fmt.Sprintf("Question %d has invalid type '%s'. Must be 'single_choice' or 'multiple_choice'", i+1, questionType))
-		}
-
-		if len(qReq.Options) < models.MinOptionsLimit {
-			return nil, apperrors.NewValidationError(apperrors.ErrQuestionOptionsRequired.Code,
-				fmt.Sprintf("Question %d requires at least %d options", i+1, models.MinOptionsLimit))
-		}
-
-		if len(qReq.Options) > maxOptions {
-			return nil, apperrors.NewValidationError(apperrors.ErrTooManyOptions.Code,
-				fmt.Sprintf("Question has %d options but quiz max_options is %d", len(qReq.Options), maxOptions))
-		}
-
-		optionBytes, err := json.Marshal(qReq.Options)
+		vq, err := validateAndPrepareQuestion(qReq, i, maxOptions)
 		if err != nil {
-			return nil, apperrors.ErrInvalidOptionsFormat
+			return nil, err
 		}
-
-		var alternativeQuestionsJSON, alternativeOptionsJSON, alternativeAnswersJSON string
-		if len(qReq.AlternativeQuestions) > 0 {
-			b, err := json.Marshal(qReq.AlternativeQuestions)
-			if err != nil {
-				return nil, apperrors.ErrInvalidOptionsFormat
-			}
-			alternativeQuestionsJSON = string(b)
-		}
-		if len(qReq.AlternativeOptions) > 0 {
-			b, err := json.Marshal(qReq.AlternativeOptions)
-			if err != nil {
-				return nil, apperrors.ErrInvalidOptionsFormat
-			}
-			alternativeOptionsJSON = string(b)
-		}
-		if len(qReq.AlternativeAnswers) > 0 {
-			b, err := json.Marshal(qReq.AlternativeAnswers)
-			if err != nil {
-				return nil, apperrors.ErrInvalidOptionsFormat
-			}
-			alternativeAnswersJSON = string(b)
-		}
-
-		var correctAnswersJSON string
-		var finalCorrectAnswer int
-
-		if questionType == models.QuestionTypeMultipleChoice {
-			if len(qReq.CorrectAnswers) == 0 {
-				return nil, apperrors.NewValidationError(apperrors.ErrMultipleChoiceAnswersRequired.Code,
-					fmt.Sprintf("Question %d (multiple_choice) is missing required correct_answers array", i+1))
-			}
-			validCorrectAnswers := []int{}
-			seenAnswers := make(map[int]bool)
-			for _, answer := range qReq.CorrectAnswers {
-				if seenAnswers[answer] {
-					return nil, apperrors.NewValidationError("DUPLICATE_ANSWER",
-						fmt.Sprintf("Question %d has duplicate correct answer index: %d", i+1, answer))
-				}
-				seenAnswers[answer] = true
-				if answer >= 0 && answer < len(qReq.Options) {
-					validCorrectAnswers = append(validCorrectAnswers, answer)
-				}
-			}
-			if len(validCorrectAnswers) == 0 {
-				return nil, apperrors.NewValidationError(apperrors.ErrInvalidCorrectAnswer.Code,
-					fmt.Sprintf("Question %d has invalid correct_answers indices. All indices must be between 0 and %d", i+1, len(qReq.Options)-1))
-			}
-			correctAnswersBytes, err := json.Marshal(validCorrectAnswers)
-			if err != nil {
-				return nil, apperrors.ErrInvalidOptionsFormat
-			}
-			correctAnswersJSON = string(correctAnswersBytes)
-		} else {
-			if qReq.CorrectAnswer < 0 || qReq.CorrectAnswer >= len(qReq.Options) {
-				return nil, apperrors.NewValidationError(apperrors.ErrInvalidCorrectAnswer.Code,
-					fmt.Sprintf("Question %d has invalid correctAnswer index %d. Must be between 0 and %d", i+1, qReq.CorrectAnswer, len(qReq.Options)-1))
-			}
-			finalCorrectAnswer = qReq.CorrectAnswer
-		}
-
-		validatedQuestions = append(validatedQuestions, validatedQuestion{
-			questionType:             questionType,
-			optionsJSON:              string(optionBytes),
-			alternativeQuestionsJSON: alternativeQuestionsJSON,
-			alternativeOptionsJSON:   alternativeOptionsJSON,
-			alternativeAnswersJSON:   alternativeAnswersJSON,
-			correctAnswersJSON:       correctAnswersJSON,
-			finalCorrectAnswer:       finalCorrectAnswer,
-			qReq:                     qReq,
-		})
+		validatedQuestions = append(validatedQuestions, vq)
 	}
 
-	// Use transaction to ensure atomicity - either all changes succeed or none
 	var quiz models.Quiz
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.First(&quiz, id).Error; err != nil {
@@ -471,20 +234,7 @@ func (s *QuizService) Update(id uint, req models.CreateQuizRequest) (*models.Qui
 		}
 
 		for _, vq := range validatedQuestions {
-			question := models.Question{
-				QuizID:               quiz.ID,
-				QuestionType:         vq.questionType,
-				QuestionText:         vq.qReq.Question,
-				AlternativeQuestions: vq.alternativeQuestionsJSON,
-				Code:                 vq.qReq.Code,
-				Language:             vq.qReq.Language,
-				Options:              vq.optionsJSON,
-				AlternativeOptions:   vq.alternativeOptionsJSON,
-				CorrectAnswer:        vq.finalCorrectAnswer,
-				CorrectAnswers:       vq.correctAnswersJSON,
-				AlternativeAnswers:   vq.alternativeAnswersJSON,
-				Explanation:          vq.qReq.Explanation,
-			}
+			question := vq.toQuestion(quiz.ID)
 			if err := tx.Create(&question).Error; err != nil {
 				return apperrors.ErrCreateQuestionFailed
 			}
@@ -513,7 +263,6 @@ func (s *QuizService) Update(id uint, req models.CreateQuizRequest) (*models.Qui
 	return &response, nil
 }
 
-// Delete deletes a quiz by ID
 func (s *QuizService) Delete(id uint) error {
 	result := s.db.Where("quiz_id = ?", id).Delete(&models.Question{})
 	if result.Error != nil {
@@ -532,12 +281,8 @@ func (s *QuizService) Delete(id uint) error {
 	return nil
 }
 
-// MaxImportFileSize is the maximum allowed file size for imports (10MB)
-const MaxImportFileSize = 10 * 1024 * 1024
-
-// ImportFromFile imports quizzes from an uploaded file (JSON or CSV)
 func (s *QuizService) ImportFromFile(file *multipart.FileHeader, csvMeta ...CSVMetadata) (*models.QuizSummary, error) {
-	if file.Size > MaxImportFileSize {
+	if file.Size > models.MaxImportFileSize {
 		return nil, apperrors.NewValidationError("FILE_TOO_LARGE", "file exceeds 10MB limit")
 	}
 
@@ -547,7 +292,7 @@ func (s *QuizService) ImportFromFile(file *multipart.FileHeader, csvMeta ...CSVM
 	}
 	defer src.Close()
 
-	fileContent, err := io.ReadAll(io.LimitReader(src, MaxImportFileSize))
+	fileContent, err := io.ReadAll(io.LimitReader(src, models.MaxImportFileSize))
 	if err != nil {
 		return nil, apperrors.ErrFileReadFailed
 	}
@@ -566,9 +311,9 @@ func (s *QuizService) ImportFromFile(file *multipart.FileHeader, csvMeta ...CSVM
 	req, formatType, err := registry.Parse(fileContent, metadata)
 	if err != nil {
 		switch formatType {
-		case "csv":
+		case models.FormatCSV:
 			return nil, apperrors.NewValidationError("INVALID_CSV_FORMAT", err.Error())
-		case "json":
+		case models.FormatJSON:
 			errMsg := err.Error()
 			if strings.HasPrefix(errMsg, "invalid JSON:") || strings.HasPrefix(errMsg, "invalid internal format JSON:") {
 				errorInfo := jsonutil.ParseJSONError(err, fileContent, file.Filename)
@@ -599,7 +344,6 @@ func (s *QuizService) ImportFromFile(file *multipart.FileHeader, csvMeta ...CSVM
 	return summary, nil
 }
 
-// parseOptionsJSON safely parses the options JSON string, returning empty slice on error
 func parseOptionsJSON(optionsJSON string) []string {
 	if optionsJSON == "" {
 		return []string{}
@@ -611,7 +355,6 @@ func parseOptionsJSON(optionsJSON string) []string {
 	return options
 }
 
-// parseCorrectAnswersJSON safely parses the correct_answers JSON string for multiple choice
 func parseCorrectAnswersJSON(answersJSON string) []int {
 	if answersJSON == "" {
 		return []int{}
@@ -623,7 +366,6 @@ func parseCorrectAnswersJSON(answersJSON string) []int {
 	return answers
 }
 
-// parseStringArrayJSON safely parses a JSON string array
 func parseStringArrayJSON(jsonStr string) []string {
 	if jsonStr == "" {
 		return nil
@@ -635,7 +377,138 @@ func parseStringArrayJSON(jsonStr string) []string {
 	return result
 }
 
-// Applies alternative text selection for variety
+type validatedQuestion struct {
+	questionType             string
+	questionText             string
+	code                     string
+	language                 string
+	explanation              string
+	optionsJSON              string
+	alternativeQuestionsJSON string
+	alternativeOptionsJSON   string
+	alternativeAnswersJSON   string
+	correctAnswersJSON       string
+	correctAnswer            int
+}
+
+func validateAndPrepareQuestion(qReq models.QuestionRequest, index int, maxOptions int) (*validatedQuestion, error) {
+	if qReq.Question == "" {
+		return nil, apperrors.NewValidationError(apperrors.ErrQuestionTextRequired.Code,
+			fmt.Sprintf("Question %d is missing required text", index+1))
+	}
+
+	questionType := qReq.QuestionType
+	if questionType == "" {
+		questionType = models.QuestionTypeSingleChoice
+	}
+
+	if questionType != models.QuestionTypeSingleChoice && questionType != models.QuestionTypeMultipleChoice {
+		return nil, apperrors.NewValidationError(apperrors.ErrInvalidQuestionType.Code,
+			fmt.Sprintf("Question %d has invalid type '%s'. Must be 'single_choice' or 'multiple_choice'", index+1, questionType))
+	}
+
+	if len(qReq.Options) < models.MinOptionsLimit {
+		return nil, apperrors.NewValidationError(apperrors.ErrQuestionOptionsRequired.Code,
+			fmt.Sprintf("Question %d requires at least %d options", index+1, models.MinOptionsLimit))
+	}
+
+	if len(qReq.Options) > maxOptions {
+		return nil, apperrors.NewValidationError(apperrors.ErrTooManyOptions.Code,
+			fmt.Sprintf("Question has %d options but quiz max_options is %d", len(qReq.Options), maxOptions))
+	}
+
+	optionBytes, err := json.Marshal(qReq.Options)
+	if err != nil {
+		return nil, apperrors.ErrInvalidOptionsFormat
+	}
+
+	vq := &validatedQuestion{
+		questionType: questionType,
+		questionText: qReq.Question,
+		code:         qReq.Code,
+		language:     qReq.Language,
+		explanation:  qReq.Explanation,
+		optionsJSON:  string(optionBytes),
+	}
+
+	if len(qReq.AlternativeQuestions) > 0 {
+		b, err := json.Marshal(qReq.AlternativeQuestions)
+		if err != nil {
+			return nil, apperrors.ErrInvalidOptionsFormat
+		}
+		vq.alternativeQuestionsJSON = string(b)
+	}
+
+	if len(qReq.AlternativeOptions) > 0 {
+		b, err := json.Marshal(qReq.AlternativeOptions)
+		if err != nil {
+			return nil, apperrors.ErrInvalidOptionsFormat
+		}
+		vq.alternativeOptionsJSON = string(b)
+	}
+
+	if len(qReq.AlternativeAnswers) > 0 {
+		b, err := json.Marshal(qReq.AlternativeAnswers)
+		if err != nil {
+			return nil, apperrors.ErrInvalidOptionsFormat
+		}
+		vq.alternativeAnswersJSON = string(b)
+	}
+
+	if questionType == models.QuestionTypeMultipleChoice {
+		if len(qReq.CorrectAnswers) == 0 {
+			return nil, apperrors.NewValidationError(apperrors.ErrMultipleChoiceAnswersRequired.Code,
+				fmt.Sprintf("Question %d (multiple_choice) is missing required correct_answers array", index+1))
+		}
+		validCorrectAnswers := []int{}
+		seenAnswers := make(map[int]bool)
+		for _, answer := range qReq.CorrectAnswers {
+			if seenAnswers[answer] {
+				return nil, apperrors.NewValidationError("DUPLICATE_ANSWER",
+					fmt.Sprintf("Question %d has duplicate correct answer index: %d", index+1, answer))
+			}
+			seenAnswers[answer] = true
+			if answer >= 0 && answer < len(qReq.Options) {
+				validCorrectAnswers = append(validCorrectAnswers, answer)
+			}
+		}
+		if len(validCorrectAnswers) == 0 {
+			return nil, apperrors.NewValidationError(apperrors.ErrInvalidCorrectAnswer.Code,
+				fmt.Sprintf("Question %d has invalid correct_answers indices. All indices must be between 0 and %d", index+1, len(qReq.Options)-1))
+		}
+		correctAnswersBytes, err := json.Marshal(validCorrectAnswers)
+		if err != nil {
+			return nil, apperrors.ErrInvalidOptionsFormat
+		}
+		vq.correctAnswersJSON = string(correctAnswersBytes)
+	} else {
+		if qReq.CorrectAnswer < 0 || qReq.CorrectAnswer >= len(qReq.Options) {
+			return nil, apperrors.NewValidationError(apperrors.ErrInvalidCorrectAnswer.Code,
+				fmt.Sprintf("Question %d has invalid correctAnswer index %d. Must be between 0 and %d", index+1, qReq.CorrectAnswer, len(qReq.Options)-1))
+		}
+		vq.correctAnswer = qReq.CorrectAnswer
+	}
+
+	return vq, nil
+}
+
+func (vq *validatedQuestion) toQuestion(quizID uint) models.Question {
+	return models.Question{
+		QuizID:               quizID,
+		QuestionType:         vq.questionType,
+		QuestionText:         vq.questionText,
+		AlternativeQuestions: vq.alternativeQuestionsJSON,
+		Code:                 vq.code,
+		Language:             vq.language,
+		Options:              vq.optionsJSON,
+		AlternativeOptions:   vq.alternativeOptionsJSON,
+		CorrectAnswer:        vq.correctAnswer,
+		CorrectAnswers:       vq.correctAnswersJSON,
+		AlternativeAnswers:   vq.alternativeAnswersJSON,
+		Explanation:          vq.explanation,
+	}
+}
+
 func (s *QuizService) convertToResponse(q models.Quiz) models.QuizResponse {
 	var questions []models.QuestionResponse
 
@@ -645,13 +518,13 @@ func (s *QuizService) convertToResponse(q models.Quiz) models.QuizResponse {
 		questionText := question.QuestionText
 		if alternatives := parseStringArrayJSON(question.AlternativeQuestions); len(alternatives) > 0 {
 			allTexts := append([]string{questionText}, alternatives...)
-			questionText = allTexts[randomIntn(len(allTexts))]
+			questionText = allTexts[rand.Intn(len(allTexts))]
 		}
 
 		if alternatives := parseStringArrayJSON(question.AlternativeAnswers); len(alternatives) > 0 {
 			if len(options) > 0 && question.CorrectAnswer >= 0 && question.CorrectAnswer < len(options) {
 				allTexts := append([]string{options[question.CorrectAnswer]}, alternatives...)
-				options[question.CorrectAnswer] = allTexts[randomIntn(len(allTexts))]
+				options[question.CorrectAnswer] = allTexts[rand.Intn(len(allTexts))]
 			}
 		}
 
@@ -685,7 +558,6 @@ func (s *QuizService) convertToResponse(q models.Quiz) models.QuizResponse {
 	return resp
 }
 
-// For edit mode - does NOT apply alternative text selection to preserve original data
 func (s *QuizService) convertToResponseWithAnswers(q models.Quiz) models.QuizResponseWithAnswers {
 	var questions []models.QuestionResponseWithAnswers
 
