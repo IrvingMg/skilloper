@@ -373,7 +373,22 @@ class _QuizScreenState extends State<QuizScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(widget.quiz.title),
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              QuizModeIcon(
+                isExamMode: !widget.quiz.isPracticeMode,
+                size: AppIconSizes.appBarLogo,
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  widget.quiz.title,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
           leading: IconButton(
             icon: const Icon(Icons.close),
             onPressed: _handleExit,
@@ -407,19 +422,15 @@ class _QuizScreenState extends State<QuizScreen> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: widget.quiz.isPracticeMode
-                            ? AppColors.practiceModeContainer
-                            : AppColors.examModeContainer,
+                        color: AppColors.surfaceContainerHigh,
                         borderRadius: AppRadius.fullAll,
                       ),
                       child: Text(
                         widget.quiz.type.toUpperCase(),
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w500,
-                          color: widget.quiz.isPracticeMode
-                              ? AppColors.onPracticeModeContainer
-                              : AppColors.onExamModeContainer,
+                          color: AppColors.textTertiary,
                         ),
                       ),
                     ),

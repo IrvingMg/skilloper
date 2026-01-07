@@ -226,13 +226,12 @@ class HomeScreenState extends State<HomeScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppColors.examModeContainer,
+                color: AppColors.surfaceContainerHigh,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(
-                AppIcons.examMode,
-                color: AppColors.examMode,
-                size: 24,
+              child: const QuizModeIcon(
+                isExamMode: true,
+                size: AppIconSizes.xxl,
               ),
             ),
             const SizedBox(width: 12),
@@ -274,7 +273,7 @@ class HomeScreenState extends State<HomeScreen> {
               _startExamWithAttempt(summary);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.examMode,
+              backgroundColor: AppColors.primary,
               foregroundColor: AppColors.textOnPrimary,
             ),
             child: const Text('Start Exam'),
@@ -715,17 +714,14 @@ class _QuizListItem extends StatelessWidget {
                     width: isNarrowScreen ? 44 : 56,
                     height: isNarrowScreen ? 44 : 56,
                     decoration: BoxDecoration(
-                      color: quiz.type == 'exam'
-                          ? AppColors.examModeContainer
-                          : AppColors.practiceModeContainer,
+                      color: AppColors.surfaceContainerHigh,
                       borderRadius: BorderRadius.circular(isNarrowScreen ? AppRadius.sm : AppRadius.md),
                     ),
-                    child: Icon(
-                      quiz.type == 'exam' ? AppIcons.examMode : AppIcons.practiceMode,
-                      color: quiz.type == 'exam'
-                          ? AppColors.examMode
-                          : AppColors.practiceMode,
-                      size: isNarrowScreen ? 22 : 28,
+                    child: Center(
+                      child: QuizModeIcon(
+                        isExamMode: quiz.type == 'exam',
+                        size: isNarrowScreen ? 32 : 40,
+                      ),
                     ),
                   ),
 
@@ -756,19 +752,15 @@ class _QuizListItem extends StatelessWidget {
                                 vertical: 3,
                               ),
                               decoration: BoxDecoration(
-                                color: quiz.type == 'exam'
-                                    ? AppColors.examModeContainer
-                                    : AppColors.practiceModeContainer,
+                                color: AppColors.surfaceContainerHigh,
                                 borderRadius: AppRadius.xsAll,
                               ),
                               child: Text(
                                 quiz.type.toUpperCase(),
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
-                                  color: quiz.type == 'exam'
-                                      ? AppColors.onExamModeContainer
-                                      : AppColors.onPracticeModeContainer,
+                                  color: AppColors.textTertiary,
                                 ),
                               ),
                             ),

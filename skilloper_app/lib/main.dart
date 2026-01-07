@@ -77,8 +77,8 @@ class _MainScreenState extends State<MainScreen> {
             // Logo from SVG asset
             SvgPicture.asset(
               'assets/images/logo.svg',
-              width: 36,
-              height: 36,
+              width: AppIconSizes.appBarLogo,
+              height: AppIconSizes.appBarLogo,
             ),
             const SizedBox(width: 10),
             // Brand name

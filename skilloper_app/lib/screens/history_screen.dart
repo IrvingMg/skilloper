@@ -488,7 +488,7 @@ class _AttemptListItem extends StatelessWidget {
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.surfaceVariant,
+                            color: AppColors.surfaceContainerHigh,
                             borderRadius: AppRadius.xsAll,
                           ),
                           child: Text(
@@ -507,19 +507,15 @@ class _AttemptListItem extends StatelessWidget {
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: attempt.quizType == 'exam'
-                                ? AppColors.examModeContainer
-                                : AppColors.practiceModeContainer,
+                            color: AppColors.surfaceContainerHigh,
                             borderRadius: AppRadius.xsAll,
                           ),
                           child: Text(
                             attempt.quizType.toUpperCase(),
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
-                              color: attempt.quizType == 'exam'
-                                  ? AppColors.onExamModeContainer
-                                  : AppColors.onPracticeModeContainer,
+                              color: AppColors.textTertiary,
                             ),
                           ),
                         ),
@@ -531,9 +527,7 @@ class _AttemptListItem extends StatelessWidget {
                     Row(
                       children: [
                         Icon(
-                          attempt.isPracticeMode
-                              ? AppIcons.practiceMode
-                              : AppIcons.examMode,
+                          Icons.check_circle_outline,
                           size: AppIconSizes.xs,
                           color: AppColors.textDisabled,
                         ),

@@ -534,12 +534,9 @@ class _ImportScreenState extends State<ImportScreen> {
                           ),
                         ),
                         const SizedBox(width: 16),
-                        Icon(
-                          response.quiz.isPracticeMode
-                              ? Icons.school
-                              : Icons.assignment,
+                        QuizModeIcon(
+                          isExamMode: !response.quiz.isPracticeMode,
                           size: AppIconSizes.sm,
-                          color: AppColors.textTertiary,
                         ),
                         const SizedBox(width: 4),
                         Text(

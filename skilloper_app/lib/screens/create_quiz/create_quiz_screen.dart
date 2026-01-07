@@ -195,12 +195,9 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                           ),
                         ),
                         const SizedBox(width: 16),
-                        Icon(
-                          _draft.type == 'practice'
-                              ? Icons.school
-                              : Icons.assignment,
+                        QuizModeIcon(
+                          isExamMode: _draft.type == 'exam',
                           size: AppIconSizes.sm,
-                          color: AppColors.textTertiary,
                         ),
                         const SizedBox(width: 4),
                         Text(
@@ -490,7 +487,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
               child: _TypeCard(
                 title: 'Practice',
                 description: 'Show answers after each question',
-                icon: Icons.school,
+                isExamMode: false,
                 isSelected: _draft.type == 'practice',
                 onTap: () => setState(() => _draft.type = 'practice'),
               ),
@@ -500,7 +497,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
               child: _TypeCard(
                 title: 'Exam',
                 description: 'Show results only at the end',
-                icon: Icons.assignment,
+                isExamMode: true,
                 isSelected: _draft.type == 'exam',
                 onTap: () => setState(() => _draft.type = 'exam'),
               ),
@@ -662,9 +659,9 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
             children: [
               Row(
                 children: [
-                  Icon(
-                    _draft.type == 'practice' ? Icons.school : Icons.assignment,
-                    color: AppColors.primary,
+                  QuizModeIcon(
+                    isExamMode: _draft.type == 'exam',
+                    size: AppIconSizes.xxl,
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -989,14 +986,14 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
 class _TypeCard extends StatelessWidget {
   final String title;
   final String description;
-  final IconData icon;
+  final bool isExamMode;
   final bool isSelected;
   final VoidCallback onTap;
 
   const _TypeCard({
     required this.title,
     required this.description,
-    required this.icon,
+    required this.isExamMode,
     required this.isSelected,
     required this.onTap,
   });
@@ -1020,8 +1017,10 @@ class _TypeCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon,
-                color: isSelected ? AppColors.primary : AppColors.textTertiary),
+            QuizModeIcon(
+              isExamMode: isExamMode,
+              size: AppIconSizes.xxxl,
+            ),
             const SizedBox(height: 8),
             Text(
               title,

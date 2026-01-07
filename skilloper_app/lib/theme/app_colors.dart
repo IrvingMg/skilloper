@@ -67,15 +67,6 @@ class AppColors {
   static const Color textDisabled = Color(0xFF9CA3AF); // Gray 400 - disabled
   static const Color textOnPrimary = Color(0xFFFFFFFF); // White text on primary
 
-  // MARK: - Quiz Mode Colors
-  static const Color practiceMode = Color(0xFFEC4899); // Pink for practice
-  static const Color practiceModeContainer = Color(0xFFFCE7F3); // Light pink
-  static const Color onPracticeModeContainer = Color(0xFF831843); // Dark pink text
-
-  static const Color examMode = Color(0xFFF97316); // Orange for exam
-  static const Color examModeContainer = Color(0xFFFEEBDC); // Light orange
-  static const Color onExamModeContainer = Color(0xFF7C2D12); // Dark orange text
-
   // MARK: - Code Block Colors
   static const Color codeBackground = Color(0xFFF1F5F9); // Slate 100
   static const Color codeBorder = Color(0xFFCBD5E1); // Slate 300

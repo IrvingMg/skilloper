@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'app_colors.dart';
 
 /// Skilloper App Design System - Icons
@@ -6,12 +7,9 @@ import 'app_colors.dart';
 class AppIcons {
   AppIcons._();
 
-  // MARK: - Question Types (Learning Platform Optimized)
-  static const IconData practiceMode = Icons.lightbulb_outlined; // Lightbulb for learning/ideas
-  static const IconData practiceModeSelected = Icons.lightbulb;
-  static const IconData examMode = Icons.school_outlined;
-  static const IconData examModeSelected = Icons.school;
-  
+  // MARK: - SVG Asset Paths
+  static const String practiceModeSvg = 'assets/images/skilloper_practice.svg';
+  static const String examModeSvg = 'assets/images/skilloper_exam.svg';
 
   // MARK: - Navigation
   static const IconData home = Icons.home_outlined;
@@ -79,6 +77,11 @@ class AppIconSizes {
   static const double xxl = 24.0;
   static const double xxxl = 28.0;
 
+  // Large sizes for prominent icons
+  static const double appBarLogo = 36.0;
+  static const double quizCardNarrow = 44.0;
+  static const double quizCardWide = 56.0;
+
   // Semantic aliases for common contexts
   static const double inline = xs;       // For inline text icons
   static const double button = md;       // For button icons
@@ -95,4 +98,25 @@ class AppIconThemes {
     color: AppColors.textTertiary,
     size: AppIconSizes.lg,
   );
+}
+
+/// Widget for displaying quiz mode SVG icons
+class QuizModeIcon extends StatelessWidget {
+  final bool isExamMode;
+  final double size;
+
+  const QuizModeIcon({
+    super.key,
+    required this.isExamMode,
+    this.size = AppIconSizes.lg,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SvgPicture.asset(
+      isExamMode ? AppIcons.examModeSvg : AppIcons.practiceModeSvg,
+      width: size,
+      height: size,
+    );
+  }
 }
