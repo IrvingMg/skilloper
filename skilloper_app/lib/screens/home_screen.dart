@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/quiz.dart';
 import '../models/pagination.dart';
+import '../models/attempt.dart';
 import '../services/api_service.dart';
+import '../services/device_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
 import '../utils/date_formatter.dart';
@@ -19,6 +21,7 @@ class HomeScreen extends StatefulWidget {
 
 class HomeScreenState extends State<HomeScreen> {
   final ApiService _apiService = ApiService();
+  final DeviceService _deviceService = DeviceService();
 
   void refresh() {
     _loadQuizzes(refresh: true);
@@ -202,6 +205,180 @@ class HomeScreenState extends State<HomeScreen> {
   Future<void> _startQuiz(QuizSummary summary) async {
     // Prevent double-tap
     if (_isStartingQuiz) return;
+
+    // For exam mode, show confirmation dialog first
+    if (!summary.isPracticeMode) {
+      _showExamConfirmation(summary);
+      return;
+    }
+
+    // Practice mode: load quiz and navigate directly
+    _loadAndNavigateToQuiz(summary, attemptId: null);
+  }
+
+  void _showExamConfirmation(QuizSummary summary) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.examModeContainer,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                AppIcons.examMode,
+                color: AppColors.examMode,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text('Start Exam'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              summary.title,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'You are about to start an exam. Please note:',
+              style: TextStyle(fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 12),
+            _buildInfoRow(Icons.history, 'Your attempt will be recorded in history'),
+            const SizedBox(height: 8),
+            _buildInfoRow(Icons.timer_outlined, 'Leaving early will record a 0% score'),
+            const SizedBox(height: 8),
+            _buildInfoRow(Icons.visibility_off, 'Answers are revealed only at the end'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _startExamWithAttempt(summary);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.examMode,
+              foregroundColor: AppColors.textOnPrimary,
+            ),
+            child: const Text('Start Exam'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String text) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: AppColors.textTertiary),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 14,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _startExamWithAttempt(QuizSummary summary) async {
+    if (_isStartingQuiz) return;
+    _isStartingQuiz = true;
+
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    try {
+      // Load quiz and create attempt in parallel
+      final quizFuture = _apiService.getQuiz(summary.id);
+      final deviceId = await _deviceService.getDeviceId();
+
+      final quiz = await quizFuture;
+
+      // Create the attempt (this checks concurrent session limits)
+      final request = StartAttemptRequest(
+        deviceId: deviceId,
+        quizId: summary.id,
+        quizTitle: summary.title,
+        quizType: summary.type,
+        totalCount: summary.questionCount,
+      );
+
+      final attempt = await _apiService.startAttempt(request);
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+      _isStartingQuiz = false;
+
+      // Navigate with the pre-created attempt ID
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => QuizScreen(quiz: quiz, attemptId: attempt.id),
+        ),
+      );
+    } catch (e) {
+      _isStartingQuiz = false;
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      // Show error dialog instead of snackbar for better visibility
+      _showExamStartError(e.toString());
+    }
+  }
+
+  void _showExamStartError(String error) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.error_outline, color: AppColors.error),
+            SizedBox(width: 8),
+            Text('Cannot Start Exam'),
+          ],
+        ),
+        content: Text(error),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _loadAndNavigateToQuiz(QuizSummary summary, {int? attemptId}) async {
+    if (_isStartingQuiz) return;
     _isStartingQuiz = true;
 
     showDialog(
@@ -222,7 +399,7 @@ class HomeScreenState extends State<HomeScreen> {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => QuizScreen(quiz: quiz),
+          builder: (context) => QuizScreen(quiz: quiz, attemptId: attemptId),
         ),
       );
     } catch (e) {

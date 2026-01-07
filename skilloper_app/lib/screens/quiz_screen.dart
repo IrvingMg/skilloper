@@ -12,10 +12,12 @@ import 'results_screen.dart';
 
 class QuizScreen extends StatefulWidget {
   final Quiz quiz;
+  final int? attemptId; // Pre-created attempt ID for exam mode
 
   const QuizScreen({
     super.key,
     required this.quiz,
+    this.attemptId,
   });
 
   @override
@@ -42,7 +44,12 @@ class _QuizScreenState extends State<QuizScreen> {
   void initState() {
     super.initState();
     _initializeShuffleMappings();
-    _startAttempt();
+    // Use pre-created attemptId if provided, otherwise create one (for practice mode)
+    if (widget.attemptId != null) {
+      _attemptId = widget.attemptId;
+    } else {
+      _startAttempt();
+    }
   }
 
   /// Initialize shuffle mappings for all questions
