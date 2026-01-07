@@ -302,14 +302,14 @@ class HomeScreenState extends State<HomeScreen> {
         SnackBar(
           content: Row(
             children: [
-              const Icon(Icons.check_circle, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
+              const Icon(Icons.check_circle, color: AppColors.textOnPrimary, size: AppIconSizes.lg),
+              const SizedBox(width: AppSpacing.sm),
               const Text('Quiz deleted'),
             ],
           ),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.smAll),
         ),
       );
 
@@ -331,7 +331,7 @@ class HomeScreenState extends State<HomeScreen> {
       body: RefreshIndicator(
         onRefresh: () => _loadQuizzes(refresh: true),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: AppSpacing.allLg,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -344,7 +344,7 @@ class HomeScreenState extends State<HomeScreen> {
                   letterSpacing: -0.5,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               const Text(
                 'Choose a quiz to test your skills',
                 style: TextStyle(
@@ -353,7 +353,7 @@ class HomeScreenState extends State<HomeScreen> {
                   fontWeight: FontWeight.w400,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
 
               SearchFilterBar(
                 searchHint: 'Search quizzes...',
@@ -367,7 +367,7 @@ class HomeScreenState extends State<HomeScreen> {
                 onSortChanged: _onSortChanged,
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
 
               if (_isInitialLoading && _quizzes.isEmpty)
                 const Expanded(
@@ -376,10 +376,10 @@ class HomeScreenState extends State<HomeScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         CircularProgressIndicator(),
-                        SizedBox(height: 16),
+                        SizedBox(height: AppSpacing.lg),
                         Text(
                           'Loading quizzes...',
-                          style: TextStyle(color: Color(0xFF6B7280)),
+                          style: TextStyle(color: AppColors.textTertiary),
                         ),
                       ],
                     ),
@@ -396,7 +396,7 @@ class HomeScreenState extends State<HomeScreen> {
                           size: 64,
                           color: AppColors.textDisabled,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpacing.lg),
                         const Text(
                           'Failed to load quizzes',
                           style: TextStyle(
@@ -404,7 +404,7 @@ class HomeScreenState extends State<HomeScreen> {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppSpacing.sm),
                         const Text(
                           'Make sure the API is running on localhost:8080',
                           style: TextStyle(
@@ -412,7 +412,7 @@ class HomeScreenState extends State<HomeScreen> {
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpacing.lg),
                         ElevatedButton(
                           onPressed: () => _loadQuizzes(refresh: true),
                           child: const Text('Retry'),
@@ -434,7 +434,7 @@ class HomeScreenState extends State<HomeScreen> {
                           size: 64,
                           color: AppColors.textDisabled,
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: AppSpacing.lg),
                         Text(
                           _searchQuery.isNotEmpty || _typeFilter.isNotEmpty
                               ? 'No matches found'
@@ -444,7 +444,7 @@ class HomeScreenState extends State<HomeScreen> {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppSpacing.sm),
                         Text(
                           _searchQuery.isNotEmpty || _typeFilter.isNotEmpty
                               ? 'Try a different search or filter'
@@ -455,7 +455,7 @@ class HomeScreenState extends State<HomeScreen> {
                           textAlign: TextAlign.center,
                         ),
                         if (_searchQuery.isNotEmpty || _typeFilter.isNotEmpty) ...[
-                          const SizedBox(height: 16),
+                          const SizedBox(height: AppSpacing.lg),
                           TextButton(
                             onPressed: () {
                               _searchController.clear();
@@ -477,12 +477,12 @@ class HomeScreenState extends State<HomeScreen> {
                   child: ListView.separated(
                     controller: _scrollController,
                     itemCount: _quizzes.length + (_isLoadingMore ? 1 : 0),
-                    separatorBuilder: (context, index) => const SizedBox(height: 12),
+                    separatorBuilder: (context, index) => const SizedBox(height: AppSpacing.md),
                     itemBuilder: (context, index) {
                       if (index == _quizzes.length) {
-                        return const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          child: Center(child: CircularProgressIndicator()),
+                        return Padding(
+                          padding: AppSpacing.verticalLg,
+                          child: const Center(child: CircularProgressIndicator()),
                         );
                       }
                       final quiz = _quizzes[index];
@@ -521,11 +521,11 @@ class _QuizListItem extends StatelessWidget {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadius.lgAll,
       ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadius.lgAll,
         child: LayoutBuilder(
           builder: (context, constraints) {
             final isNarrowScreen = constraints.maxWidth < 360;
@@ -541,7 +541,7 @@ class _QuizListItem extends StatelessWidget {
                       color: quiz.type == 'exam'
                           ? AppColors.examModeContainer
                           : AppColors.practiceModeContainer,
-                      borderRadius: BorderRadius.circular(isNarrowScreen ? 10 : 12),
+                      borderRadius: BorderRadius.circular(isNarrowScreen ? AppRadius.sm : AppRadius.md),
                     ),
                     child: Icon(
                       quiz.type == 'exam' ? AppIcons.examMode : AppIcons.practiceMode,
@@ -552,7 +552,7 @@ class _QuizListItem extends StatelessWidget {
                     ),
                   ),
 
-                  SizedBox(width: isNarrowScreen ? 12 : 16),
+                  SizedBox(width: isNarrowScreen ? AppSpacing.md : AppSpacing.lg),
 
                   Expanded(
                     child: Column(
@@ -582,7 +582,7 @@ class _QuizListItem extends StatelessWidget {
                                 color: quiz.type == 'exam'
                                     ? AppColors.examModeContainer
                                     : AppColors.practiceModeContainer,
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius: AppRadius.xsAll,
                               ),
                               child: Text(
                                 quiz.type.toUpperCase(),
@@ -598,7 +598,7 @@ class _QuizListItem extends StatelessWidget {
                           ],
                         ),
 
-                        if (!isNarrowScreen) const SizedBox(height: 6),
+                        if (!isNarrowScreen) const SizedBox(height: AppSpacing.xs),
 
                         if (!isNarrowScreen && quiz.description.isNotEmpty) ...[
                           Text(
@@ -611,19 +611,19 @@ class _QuizListItem extends StatelessWidget {
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: AppSpacing.sm),
                         ],
 
                         if (isNarrowScreen) ...[
-                          const SizedBox(height: 4),
+                          const SizedBox(height: AppSpacing.xs),
                           Row(
                             children: [
                               const Icon(
                                 Icons.quiz_outlined,
-                                size: 14,
+                                size: AppIconSizes.xs,
                                 color: AppColors.textDisabled,
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: AppSpacing.xs),
                               Text(
                                 '${quiz.questionCount} questions',
                                 style: const TextStyle(
@@ -632,13 +632,13 @@ class _QuizListItem extends StatelessWidget {
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: AppSpacing.md),
                               const Icon(
                                 Icons.schedule,
-                                size: 14,
+                                size: AppIconSizes.xs,
                                 color: AppColors.textDisabled,
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: AppSpacing.xs),
                               Text(
                                 formatRelativeDate(quiz.createdAt),
                                 style: const TextStyle(
@@ -653,10 +653,10 @@ class _QuizListItem extends StatelessWidget {
                             children: [
                               const Icon(
                                 Icons.quiz_outlined,
-                                size: 16,
+                                size: AppIconSizes.sm,
                                 color: AppColors.textDisabled,
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: AppSpacing.xs),
                               Text(
                                 '${quiz.questionCount} questions',
                                 style: const TextStyle(
@@ -665,13 +665,13 @@ class _QuizListItem extends StatelessWidget {
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
-                              const SizedBox(width: 16),
+                              const SizedBox(width: AppSpacing.lg),
                               const Icon(
                                 Icons.schedule,
-                                size: 16,
+                                size: AppIconSizes.sm,
                                 color: AppColors.textDisabled,
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: AppSpacing.xs),
                               Text(
                                 formatRelativeDate(quiz.createdAt),
                                 style: const TextStyle(
@@ -686,7 +686,7 @@ class _QuizListItem extends StatelessWidget {
                     ),
                   ),
 
-                  SizedBox(width: isNarrowScreen ? 8 : 12),
+                  SizedBox(width: isNarrowScreen ? AppSpacing.sm : AppSpacing.md),
 
                   PopupMenuButton<String>(
                     icon: Icon(
@@ -706,8 +706,8 @@ class _QuizListItem extends StatelessWidget {
                         value: 'edit',
                         child: Row(
                           children: [
-                            Icon(Icons.edit_outlined, size: 20),
-                            SizedBox(width: 12),
+                            Icon(Icons.edit_outlined, size: AppIconSizes.lg),
+                            SizedBox(width: AppSpacing.md),
                             Text('Edit'),
                           ],
                         ),
@@ -716,8 +716,8 @@ class _QuizListItem extends StatelessWidget {
                         value: 'delete',
                         child: Row(
                           children: [
-                            Icon(Icons.delete_outline, size: 20, color: AppColors.error),
-                            const SizedBox(width: 12),
+                            Icon(Icons.delete_outline, size: AppIconSizes.lg, color: AppColors.error),
+                            const SizedBox(width: AppSpacing.md),
                             Text('Delete', style: TextStyle(color: AppColors.error)),
                           ],
                         ),

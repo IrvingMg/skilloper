@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_icons.dart';
 
+/// Answer button widget for quiz questions
+/// Supports single choice (radio) and multiple choice (checkbox) modes
+/// with various visual states: unselected, selected, correct, incorrect
 class AnswerButton extends StatelessWidget {
   final int index;
   final String text;
@@ -27,51 +31,56 @@ class AnswerButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color borderColor = AppColors.outlineVariant;
-    Color backgroundColor = Colors.white;
+    // Determine colors based on state
+    Color borderColor = AppColors.outline;
+    Color backgroundColor = AppColors.surfaceWhite;
     Color textColor = AppColors.textPrimary;
     Color labelColor = AppColors.textTertiary;
     Color labelBackgroundColor = AppColors.surfaceContainer;
     Widget? trailingIcon;
 
     if (isCorrect) {
+      // Correct answer - green theme (matches summary cards)
       borderColor = AppColors.success;
       backgroundColor = AppColors.successContainer;
       textColor = AppColors.onSuccessContainer;
-      labelColor = Colors.white;
+      labelColor = AppColors.textOnPrimary;
       labelBackgroundColor = AppColors.success;
-      trailingIcon = Icon(
+      trailingIcon = const Icon(
         Icons.check_circle,
         color: AppColors.success,
-        size: 20,
+        size: AppIconSizes.xl,
       );
     } else if (isCorrectButNotSelected) {
-      borderColor = AppColors.success;
-      backgroundColor = Colors.white;
-      textColor = AppColors.success;
+      // Correct but user didn't select it - outlined green (no fill) to indicate "also correct"
+      borderColor = AppColors.success.withValues(alpha: 0.5);
+      backgroundColor = AppColors.surfaceWhite; // No green fill
+      textColor = AppColors.textPrimary;
       labelColor = AppColors.success;
-      labelBackgroundColor = Colors.white;
+      labelBackgroundColor = AppColors.surfaceWhite;
       trailingIcon = Icon(
         Icons.check_circle_outline,
-        color: AppColors.success,
-        size: 20,
+        color: AppColors.success.withValues(alpha: 0.7),
+        size: AppIconSizes.xl,
       );
     } else if (isIncorrect) {
+      // Incorrect answer - red theme
       borderColor = AppColors.error;
       backgroundColor = AppColors.errorContainer;
       textColor = AppColors.onErrorContainer;
-      labelColor = Colors.white;
+      labelColor = AppColors.textOnPrimary;
       labelBackgroundColor = AppColors.error;
-      trailingIcon = Icon(
+      trailingIcon = const Icon(
         Icons.cancel,
         color: AppColors.error,
-        size: 20,
+        size: AppIconSizes.xl,
       );
     } else if (isSelected) {
+      // Selected (before validation) - primary violet
       borderColor = AppColors.primary;
       backgroundColor = AppColors.primaryContainer;
       textColor = AppColors.onPrimaryContainer;
-      labelColor = Colors.white;
+      labelColor = AppColors.textOnPrimary;
       labelBackgroundColor = AppColors.primary;
     }
 
@@ -79,83 +88,113 @@ class AnswerButton extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: isDisabled ? null : onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadius.mdAll,
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md + 2),
           decoration: BoxDecoration(
             color: backgroundColor,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: AppRadius.mdAll,
             border: Border.all(
               color: borderColor,
-              width: 2,
+              width: isCorrectButNotSelected ? 1.5 : 2,
+              strokeAlign: BorderSide.strokeAlignInside,
             ),
+            boxShadow: isSelected && !isCorrect && !isIncorrect
+                ? AppShadows.sm
+                : null,
           ),
           child: Row(
             children: [
               if (isMultipleChoice) ...[
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: isSelected ? labelBackgroundColor : Colors.transparent,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: isSelected ? labelBackgroundColor : 
-                             isCorrectButNotSelected ? borderColor : const Color(0xFF9CA3AF),
-                      width: 2,
-                    ),
-                  ),
-                  child: isSelected
-                      ? Icon(
-                          Icons.check,
-                          color: Colors.white,
-                          size: 16,
-                        )
-                      : null,
-                ),
+                // Checkbox indicator for multiple choice
+                _buildCheckbox(labelBackgroundColor, borderColor),
               ] else ...[
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: labelBackgroundColor,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Text(
-                      String.fromCharCode(65 + index), // A, B, C, D
-                      style: TextStyle(
-                        color: labelColor,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                ),
+                // Letter badge for single choice (A, B, C, D)
+                _buildLetterBadge(labelBackgroundColor, labelColor),
               ],
 
-              const SizedBox(width: 12),
+              SizedBox(width: AppSpacing.md + 2),
 
+              // Answer text
               Expanded(
                 child: Text(
                   text,
                   style: TextStyle(
                     color: textColor,
-                    fontSize: 14,
+                    fontSize: 15,
                     height: 1.4,
+                    fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
                   ),
                 ),
               ),
 
+              // Trailing icon (check/cancel)
               if (trailingIcon != null) ...[
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.md),
                 trailingIcon,
               ],
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildLetterBadge(Color backgroundColor, Color textColor) {
+    return Container(
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Text(
+          String.fromCharCode(65 + index), // A, B, C, D
+          style: TextStyle(
+            color: textColor,
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCheckbox(Color fillColor, Color borderColor) {
+    final bool showCheck = isSelected || isCorrect || isCorrectButNotSelected;
+    final Color checkboxBorder = isSelected
+        ? fillColor
+        : isCorrectButNotSelected
+            ? AppColors.success.withValues(alpha: 0.5)
+            : AppColors.textDisabled;
+
+    // For "correct but not selected", no fill - just outlined
+    final Color checkboxFill = isCorrectButNotSelected
+        ? Colors.transparent
+        : (isSelected ? fillColor : Colors.transparent);
+
+    return Container(
+      width: 24,
+      height: 24,
+      decoration: BoxDecoration(
+        color: checkboxFill,
+        borderRadius: AppRadius.xsAll,
+        border: Border.all(
+          color: checkboxBorder,
+          width: 2,
+        ),
+      ),
+      child: showCheck
+          ? Icon(
+              Icons.check,
+              color: isCorrectButNotSelected
+                  ? AppColors.success.withValues(alpha: 0.7)
+                  : AppColors.textOnPrimary,
+              size: AppIconSizes.sm,
+            )
+          : null,
     );
   }
 }

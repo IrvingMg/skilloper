@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_colors.dart';
 
 /// Skilloper App Design System - Icons
 /// Consistent iconography following Material Design principles
@@ -15,6 +16,10 @@ class AppIcons {
   // MARK: - Navigation
   static const IconData home = Icons.home_outlined;
   static const IconData homeSelected = Icons.home;
+  static const IconData history = Icons.history_outlined;
+  static const IconData historySelected = Icons.history;
+  static const IconData add = Icons.add_circle_outline;
+  static const IconData addSelected = Icons.add_circle;
   static const IconData upload = Icons.upload_outlined;
   static const IconData uploadSelected = Icons.upload;
 
@@ -65,21 +70,29 @@ class AppIcons {
 class AppIconSizes {
   AppIconSizes._();
 
-  // Standard sizes
-  static const double medium = 20.0;
-  static const double large = 24.0;
+  // Standard sizes (4px increments)
+  static const double xs = 14.0;
+  static const double sm = 16.0;
+  static const double md = 18.0;
+  static const double lg = 20.0;
+  static const double xl = 22.0;
+  static const double xxl = 24.0;
+  static const double xxxl = 28.0;
 
-  // Context-specific sizes
-  static const double buttonIcon = 18.0;
-  static const double navIcon = 24.0;
+  // Semantic aliases for common contexts
+  static const double inline = xs;       // For inline text icons
+  static const double button = md;       // For button icons
+  static const double menu = lg;         // For menu/list item icons
+  static const double nav = xxl;         // For navigation icons
+  static const double header = xxxl;     // For section headers
 }
 
 /// Icon themes for different contexts (Learning Platform Optimized)
 class AppIconThemes {
   AppIconThemes._();
 
-  static IconThemeData light = const IconThemeData(
-    color: Color(0xFF6B7280), // textTertiary
-    size: AppIconSizes.medium,
+  static const IconThemeData light = IconThemeData(
+    color: AppColors.textTertiary,
+    size: AppIconSizes.lg,
   );
 }

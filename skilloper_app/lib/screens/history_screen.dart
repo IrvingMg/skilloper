@@ -275,7 +275,7 @@ class HistoryScreenState extends State<HistoryScreen> {
                         SizedBox(height: 16),
                         Text(
                           'Loading history...',
-                          style: TextStyle(color: Color(0xFF6B7280)),
+                          style: TextStyle(color: AppColors.textTertiary),
                         ),
                       ],
                     ),
@@ -423,11 +423,11 @@ class _AttemptListItem extends StatelessWidget {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadius.lgAll,
       ),
       child: InkWell(
         onTap: isAbandoned ? null : onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadius.lgAll,
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -448,7 +448,7 @@ class _AttemptListItem extends StatelessWidget {
                       ? Icon(
                           Icons.close,
                           color: displayColor,
-                          size: 24,
+                          size: AppIconSizes.xxl,
                         )
                       : Text(
                           '${attempt.score}%',
@@ -489,7 +489,7 @@ class _AttemptListItem extends StatelessWidget {
                           ),
                           decoration: BoxDecoration(
                             color: AppColors.surfaceVariant,
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: AppRadius.xsAll,
                           ),
                           child: Text(
                             '#${attempt.attemptNumber}',
@@ -510,7 +510,7 @@ class _AttemptListItem extends StatelessWidget {
                             color: attempt.quizType == 'exam'
                                 ? AppColors.examModeContainer
                                 : AppColors.practiceModeContainer,
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: AppRadius.xsAll,
                           ),
                           child: Text(
                             attempt.quizType.toUpperCase(),
@@ -534,7 +534,7 @@ class _AttemptListItem extends StatelessWidget {
                           attempt.isPracticeMode
                               ? AppIcons.practiceMode
                               : AppIcons.examMode,
-                          size: 14,
+                          size: AppIconSizes.xs,
                           color: AppColors.textDisabled,
                         ),
                         const SizedBox(width: 4),
@@ -549,7 +549,7 @@ class _AttemptListItem extends StatelessWidget {
                         const SizedBox(width: 16),
                         const Icon(
                           Icons.access_time,
-                          size: 14,
+                          size: AppIconSizes.xs,
                           color: AppColors.textDisabled,
                         ),
                         const SizedBox(width: 4),
@@ -571,8 +571,8 @@ class _AttemptListItem extends StatelessWidget {
               if (!isAbandoned)
                 const Icon(
                   Icons.arrow_forward_ios,
-                  size: 16,
-                  color: Color(0xFF9CA3AF),
+                  size: AppIconSizes.sm,
+                  color: AppColors.textDisabled,
                 ),
             ],
           ),

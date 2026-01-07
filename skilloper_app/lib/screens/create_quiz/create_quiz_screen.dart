@@ -3,6 +3,7 @@ import '../../models/draft_quiz.dart';
 import '../../models/quiz.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_icons.dart';
 import 'question_editor_dialog.dart';
 
 class CreateQuizScreen extends StatefulWidget {
@@ -118,14 +119,14 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: AppRadius.lgAll,
           ),
           title: Row(
             children: [
               Icon(
                 Icons.check_circle,
                 color: AppColors.success,
-                size: 28,
+                size: AppIconSizes.xxxl,
               ),
               const SizedBox(width: 12),
               Text(
@@ -153,7 +154,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: AppColors.successContainer,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: AppRadius.smAll,
                   border: Border.all(
                       color: AppColors.success.withValues(alpha: 0.3)),
                 ),
@@ -182,7 +183,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                       children: [
                         Icon(
                           Icons.quiz,
-                          size: 16,
+                          size: AppIconSizes.sm,
                           color: AppColors.textTertiary,
                         ),
                         const SizedBox(width: 4),
@@ -198,7 +199,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                           _draft.type == 'practice'
                               ? Icons.school
                               : Icons.assignment,
-                          size: 16,
+                          size: AppIconSizes.sm,
                           color: AppColors.textTertiary,
                         ),
                         const SizedBox(width: 4),
@@ -253,14 +254,14 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.error, color: Colors.white, size: 20),
+            Icon(Icons.error, color: AppColors.textOnPrimary, size: AppIconSizes.lg),
             const SizedBox(width: 8),
             Expanded(child: Text(message)),
           ],
         ),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.smAll),
       ),
     );
   }
@@ -350,8 +351,8 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+        color: AppColors.surfaceWhite,
+        border: Border(bottom: BorderSide(color: AppColors.outline)),
       ),
       child: Row(
         children: [
@@ -379,18 +380,18 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
               height: 32,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isActive ? AppColors.primary : Colors.grey.shade300,
+                color: isActive ? AppColors.primary : AppColors.outline,
                 border: isCurrent
                     ? Border.all(color: AppColors.primary, width: 3)
                     : null,
               ),
               child: Center(
                 child: isActive && !isCurrent
-                    ? const Icon(Icons.check, color: Colors.white, size: 18)
+                    ? Icon(Icons.check, color: AppColors.textOnPrimary, size: AppIconSizes.md)
                     : Text(
                         '${step + 1}',
                         style: TextStyle(
-                          color: isActive ? Colors.white : Colors.grey,
+                          color: isActive ? AppColors.textOnPrimary : AppColors.textDisabled,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -417,7 +418,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
       child: Container(
         height: 2,
         margin: const EdgeInsets.only(bottom: 20),
-        color: isActive ? AppColors.primary : Colors.grey.shade300,
+        color: isActive ? AppColors.primary : AppColors.outline,
       ),
     );
   }
@@ -538,8 +539,8 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: AppColors.surface,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: AppRadius.smAll,
+                border: Border.all(color: AppColors.outline),
               ),
               child: Text(
                 '${_draft.maxOptions}',
@@ -587,14 +588,14 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
           Container(
             padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.outline),
+              borderRadius: AppRadius.mdAll,
             ),
             child: Center(
               child: Column(
                 children: [
                   Icon(Icons.quiz_outlined,
-                      size: 48, color: Colors.grey.shade400),
+                      size: 48, color: AppColors.textDisabled),
                   const SizedBox(height: 12),
                   const Text('No questions yet',
                       style: TextStyle(fontSize: 16)),
@@ -653,7 +654,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: AppColors.surface,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: AppRadius.mdAll,
             border: Border.all(color: AppColors.primary),
           ),
           child: Column(
@@ -689,7 +690,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Icon(Icons.quiz, size: 16, color: AppColors.textTertiary),
+                  Icon(Icons.quiz, size: AppIconSizes.sm, color: AppColors.textTertiary),
                   const SizedBox(width: 4),
                   Text(
                     '${_draft.questions.length} questions',
@@ -719,9 +720,9 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade200),
+              color: AppColors.surfaceWhite,
+              borderRadius: AppRadius.smAll,
+              border: Border.all(color: AppColors.outline),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -735,7 +736,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                       height: 24,
                       decoration: BoxDecoration(
                         color: AppColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: AppRadius.xsAll,
                       ),
                       child: Center(
                         child: Text(
@@ -772,7 +773,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                       message: q.validationError ?? 'Valid',
                       child: Icon(
                         q.isValid ? Icons.check_circle : Icons.warning,
-                        size: 20,
+                        size: AppIconSizes.lg,
                         color: q.isValid ? AppColors.success : AppColors.warning,
                       ),
                     ),
@@ -800,15 +801,15 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                                   ? BoxShape.rectangle
                                   : BoxShape.circle,
                               borderRadius: q.isMultipleChoice
-                                  ? BorderRadius.circular(3)
+                                  ? BorderRadius.circular(AppRadius.xs)
                                   : null,
                               color: isCorrect
                                   ? AppColors.success.withValues(alpha: 0.2)
-                                  : Colors.grey.shade100,
+                                  : AppColors.surface,
                               border: Border.all(
                                 color: isCorrect
                                     ? AppColors.success
-                                    : Colors.grey.shade400,
+                                    : AppColors.textDisabled,
                                 width: 1.5,
                               ),
                             ),
@@ -847,13 +848,13 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                     margin: const EdgeInsets.only(left: 36),
                     decoration: BoxDecoration(
                       color: AppColors.codeBackground,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: AppRadius.xsAll,
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.code,
-                            size: 14, color: AppColors.textTertiary),
+                            size: AppIconSizes.xs, color: AppColors.textTertiary),
                         const SizedBox(width: 4),
                         Text(
                           q.language.isNotEmpty
@@ -880,7 +881,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: AppColors.warningContainer,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: AppRadius.smAll,
             ),
             child: Row(
               children: [
@@ -915,8 +916,8 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+        color: AppColors.surfaceWhite,
+        border: Border(top: BorderSide(color: AppColors.outline)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -939,12 +940,12 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
               onPressed:
                   _draft.isValid && !_isSubmitting ? _submitQuiz : null,
               child: _isSubmitting
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.white,
+                        color: AppColors.textOnPrimary,
                       ),
                     )
                   : Text(_isEditMode ? 'Save Changes' : 'Create Quiz'),
@@ -1009,10 +1010,10 @@ class _TypeCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: isSelected
               ? AppColors.primary.withValues(alpha: 0.1)
-              : Colors.white,
-          borderRadius: BorderRadius.circular(12),
+              : AppColors.surfaceWhite,
+          borderRadius: AppRadius.mdAll,
           border: Border.all(
-            color: isSelected ? AppColors.primary : Colors.grey.shade300,
+            color: isSelected ? AppColors.primary : AppColors.outline,
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -1071,7 +1072,7 @@ class _QuestionCard extends StatelessWidget {
             color: question.isValid
                 ? AppColors.primary.withValues(alpha: 0.1)
                 : AppColors.warning.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: AppRadius.xsAll,
           ),
           child: Center(
             child: Text(
@@ -1098,14 +1099,14 @@ class _QuestionCard extends StatelessWidget {
             if (!question.isValid)
               Tooltip(
                 message: question.validationError ?? 'Invalid',
-                child: Icon(Icons.warning, color: AppColors.warning, size: 20),
+                child: Icon(Icons.warning, color: AppColors.warning, size: AppIconSizes.lg),
               ),
             IconButton(
-              icon: const Icon(Icons.edit_outlined, size: 20),
+              icon: const Icon(Icons.edit_outlined, size: AppIconSizes.lg),
               onPressed: onEdit,
             ),
             IconButton(
-              icon: Icon(Icons.delete_outline, size: 20, color: AppColors.error),
+              icon: Icon(Icons.delete_outline, size: AppIconSizes.lg, color: AppColors.error),
               onPressed: onDelete,
             ),
             const Icon(Icons.drag_handle),

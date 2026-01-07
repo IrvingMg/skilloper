@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_icons.dart';
 import 'create_quiz/create_quiz_screen.dart';
 import 'import_screen.dart';
 
@@ -136,12 +137,12 @@ class _OptionCard extends StatelessWidget {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.lgAll,
         side: BorderSide(color: color.withValues(alpha: 0.3), width: 2),
       ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppRadius.lgAll,
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -152,7 +153,7 @@ class _OptionCard extends StatelessWidget {
                 height: 72,
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: AppRadius.lgAll,
                 ),
                 child: Icon(
                   icon,
@@ -183,7 +184,7 @@ class _OptionCard extends StatelessWidget {
               Icon(
                 Icons.arrow_forward,
                 color: color,
-                size: 24,
+                size: AppIconSizes.xxl,
               ),
             ],
           ),

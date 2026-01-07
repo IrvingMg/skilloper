@@ -18,21 +18,87 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="Skilloper - A self-training platform for developers featuring interactive quizzes with practice and exam modes.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Theme Color -->
+  <meta name="theme-color" content="#6D5EF7">
+  <meta name="msapplication-TileColor" content="#6D5EF7">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="skilloper_flutter">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Skilloper">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
 
-  <title>skilloper_flutter</title>
+  <title>Skilloper</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Loading styles -->
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #EEE8FF;
+    }
+
+    .loading-container {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    .loading-logo {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 24px;
+      animation: spin 2s ease-in-out infinite;
+    }
+
+    .loading-logo img {
+      width: 100%;
+      height: 100%;
+    }
+
+    .loading-text {
+      color: #111827;
+      font-size: 14px;
+      font-weight: 400;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 <body>
+  <!-- Loading screen while Flutter initializes -->
+  <div class="loading-container" id="loading">
+    <div class="loading-logo">
+      <img src="favicon.svg" alt="Skilloper">
+    </div>
+    <p class="loading-text">Loading...</p>
+  </div>
+
+  <script>
+    // Remove loading screen when Flutter is ready
+    window.addEventListener('flutter-first-frame', function() {
+      const loading = document.getElementById('loading');
+      if (loading) {
+        loading.style.opacity = '0';
+        loading.style.transition = 'opacity 0.3s ease';
+        setTimeout(() => loading.remove(), 300);
+      }
+    });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

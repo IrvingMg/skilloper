@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../constants/limits.dart';
 import '../../models/draft_quiz.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_icons.dart';
 
 class QuestionEditorDialog extends StatefulWidget {
   final DraftQuestion? question;
@@ -182,7 +183,7 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
     final canAddOption = _optionControllers.length < widget.maxOptions;
 
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: AppRadius.lgAll),
       child: Container(
         width: MediaQuery.of(context).size.width * 0.9,
         constraints: const BoxConstraints(maxWidth: 600, maxHeight: 700),
@@ -194,7 +195,7 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(16)),
+                    BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
               ),
               child: Row(
                 children: [
@@ -270,7 +271,7 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                         if (canAddOption)
                           TextButton.icon(
                             onPressed: _addOption,
-                            icon: const Icon(Icons.add, size: 18),
+                            icon: const Icon(Icons.add, size: AppIconSizes.md),
                             label: const Text('Add Option'),
                           ),
                       ],
@@ -304,21 +305,21 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                                       ? BoxShape.rectangle
                                       : BoxShape.circle,
                                   borderRadius: _isMultipleChoice
-                                      ? BorderRadius.circular(4)
+                                      ? BorderRadius.circular(AppRadius.xs)
                                       : null,
                                   color: isSelected
                                       ? AppColors.success
-                                      : Colors.white,
+                                      : AppColors.surfaceWhite,
                                   border: Border.all(
                                     color: isSelected
                                         ? AppColors.success
-                                        : Colors.grey.shade400,
+                                        : AppColors.textDisabled,
                                     width: 2,
                                   ),
                                 ),
                                 child: isSelected
-                                    ? const Icon(Icons.check,
-                                        color: Colors.white, size: 18)
+                                    ? Icon(Icons.check,
+                                        color: AppColors.textOnPrimary, size: AppIconSizes.md)
                                     : null,
                               ),
                             ),
@@ -372,8 +373,8 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                             vertical: 12, horizontal: 16),
                         decoration: BoxDecoration(
                           color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: AppRadius.smAll,
+                          border: Border.all(color: AppColors.outline),
                         ),
                         child: Row(
                           children: [
@@ -450,7 +451,7 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                               style: TextStyle(fontWeight: FontWeight.w500)),
                           TextButton.icon(
                             onPressed: _addAltQuestion,
-                            icon: const Icon(Icons.add, size: 18),
+                            icon: const Icon(Icons.add, size: AppIconSizes.md),
                             label: const Text('Add'),
                           ),
                         ],
@@ -498,7 +499,7 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                               style: TextStyle(fontWeight: FontWeight.w500)),
                           TextButton.icon(
                             onPressed: _addAltOption,
-                            icon: const Icon(Icons.add, size: 18),
+                            icon: const Icon(Icons.add, size: AppIconSizes.md),
                             label: const Text('Add'),
                           ),
                         ],
@@ -544,7 +545,7 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: Colors.grey.shade200)),
+                border: Border(top: BorderSide(color: AppColors.outline)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,

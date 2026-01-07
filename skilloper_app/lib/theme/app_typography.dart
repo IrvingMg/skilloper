@@ -219,6 +219,101 @@ class AppTypography {
     color: AppColors.codeText,
   );
 
+  static const TextStyle codeSmall = TextStyle(
+    fontSize: 13,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0,
+    height: 1.4,
+    fontFamily: 'monospace',
+    color: AppColors.codeText,
+  );
+
+  // Helper/hint text
+  static const TextStyle helper = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0.4,
+    height: 1.3,
+    color: AppColors.textTertiary,
+  );
+
+  // Stat/score display (large numbers)
+  static const TextStyle statLarge = TextStyle(
+    fontSize: 48,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.5,
+    height: 1.1,
+    color: AppColors.textPrimary,
+  );
+
+  static const TextStyle statMedium = TextStyle(
+    fontSize: 24,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.25,
+    height: 1.2,
+    color: AppColors.textPrimary,
+  );
+
+  // Section headers (bold variants)
+  static const TextStyle sectionTitle = TextStyle(
+    fontSize: 24,
+    fontWeight: FontWeight.w700,
+    letterSpacing: -0.25,
+    height: 1.3,
+    color: AppColors.textPrimary,
+  );
+
+  static const TextStyle sectionSubtitle = TextStyle(
+    fontSize: 20,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0,
+    height: 1.3,
+    color: AppColors.textPrimary,
+  );
+
+  // Input/form text
+  static const TextStyle input = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0.25,
+    height: 1.4,
+    color: AppColors.textPrimary,
+  );
+
+  static const TextStyle inputLabel = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0.1,
+    height: 1.4,
+    color: AppColors.textSecondary,
+  );
+
+  // List item text
+  static const TextStyle listTitle = TextStyle(
+    fontSize: 16,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0,
+    height: 1.4,
+    color: AppColors.textPrimary,
+  );
+
+  static const TextStyle listSubtitle = TextStyle(
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0.25,
+    height: 1.4,
+    color: AppColors.textTertiary,
+  );
+
+  // Caption for small descriptive text
+  static const TextStyle caption = TextStyle(
+    fontSize: 11,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0.4,
+    height: 1.3,
+    color: AppColors.textTertiary,
+  );
+
   // MARK: - Color Variants
 
   // Success variants

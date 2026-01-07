@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 class SummaryCard extends StatelessWidget {
   final String title;
@@ -15,10 +16,10 @@ class SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: AppSpacing.allLg,
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
-        borderRadius: BorderRadius.circular(8),
+        color: AppColors.surfaceContainer,
+        borderRadius: AppRadius.smAll,
       ),
       child: Column(
         children: [
@@ -30,12 +31,12 @@ class SummaryCard extends StatelessWidget {
               color: color,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
           Text(
             title,
             style: const TextStyle(
               fontSize: 12,
-              color: Color(0xFF6B7280),
+              color: AppColors.textTertiary,
               fontWeight: FontWeight.w500,
             ),
           ),

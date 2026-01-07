@@ -5,6 +5,7 @@ import '../models/attempt.dart';
 import '../services/api_service.dart';
 import '../services/device_service.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_icons.dart';
 import '../widgets/code_block.dart';
 import '../widgets/summary_card.dart';
 
@@ -119,10 +120,10 @@ class _ResultsScreenState extends State<ResultsScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircularProgressIndicator(),
-            SizedBox(height: 16),
+            SizedBox(height: AppSpacing.lg),
             Text(
               'Calculating results...',
-              style: TextStyle(color: Color(0xFF6B7280)),
+              style: TextStyle(color: AppColors.textTertiary),
             ),
           ],
         ),
@@ -139,7 +140,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
               size: 64,
               color: AppColors.textDisabled,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             const Text(
               'Failed to calculate results',
               style: TextStyle(
@@ -147,7 +148,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.sm),
             Text(
               _error!,
               style: const TextStyle(
@@ -155,7 +156,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             ElevatedButton(
               onPressed: _completeAttempt,
               child: const Text('Retry'),
@@ -172,12 +173,12 @@ class _ResultsScreenState extends State<ResultsScreen> {
         children: [
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(32),
+            padding: AppSpacing.allXxxl,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  Theme.of(context).primaryColor,
-                  Theme.of(context).primaryColor.withValues(alpha: 0.8),
+                  AppColors.primary,
+                  AppColors.primary.withValues(alpha: 0.8),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -190,33 +191,33 @@ class _ResultsScreenState extends State<ResultsScreen> {
                   style: const TextStyle(
                     fontSize: 48,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    color: AppColors.textOnPrimary,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 Text(
                   '${attempt.correctCount} out of ${attempt.totalCount} questions correct',
                   style: const TextStyle(
                     fontSize: 18,
-                    color: Colors.white,
+                    color: AppColors.textOnPrimary,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       Icons.cloud_done,
-                      size: 14,
-                      color: Colors.white.withValues(alpha: 0.8),
+                      size: AppIconSizes.xs,
+                      color: AppColors.textOnPrimary,
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                     Text(
                       'Result saved',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.white.withValues(alpha: 0.8),
+                        color: AppColors.textOnPrimary,
                       ),
                     ),
                   ],
@@ -226,7 +227,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
           ),
 
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: AppSpacing.allLg,
             child: Column(
               children: [
                 Row(
@@ -238,7 +239,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                         color: _getScoreColor(attempt.score),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpacing.md),
                     Expanded(
                       child: SummaryCard(
                         title: 'Correct',
@@ -246,7 +247,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                         color: AppColors.success,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpacing.md),
                     Expanded(
                       child: SummaryCard(
                         title: 'Incorrect',
@@ -254,7 +255,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                         color: AppColors.error,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpacing.md),
                     Expanded(
                       child: SummaryCard(
                         title: 'Total',
@@ -265,7 +266,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                   ],
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpacing.xxl),
 
                 const Align(
                   alignment: Alignment.centerLeft,
@@ -278,7 +279,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
 
                 ...List.generate(
                   attempt.answers.length,
@@ -289,7 +290,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                         .firstOrNull;
 
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.only(bottom: AppSpacing.lg),
                       child: _AnswerReviewCard(
                         questionNumber: index + 1,
                         answer: answer,
@@ -299,7 +300,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
                   },
                 ),
 
-                const SizedBox(height: 32),
+                const SizedBox(height: AppSpacing.xxxl),
 
                 Row(
                   children: [
@@ -312,14 +313,14 @@ class _ResultsScreenState extends State<ResultsScreen> {
                         icon: const Icon(Icons.home),
                         label: const Text('Back to Home'),
                         style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          padding: AppSpacing.verticalLg,
                         ),
                       ),
                     ),
                   ],
                 ),
 
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
               ],
             ),
           ),
@@ -354,12 +355,12 @@ class _AnswerReviewCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: AppSpacing.allLg,
             decoration: BoxDecoration(
               color: AppColors.surfaceVariant,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(AppRadius.lg),
+                topRight: Radius.circular(AppRadius.lg),
               ),
             ),
             child: Row(
@@ -372,15 +373,15 @@ class _AnswerReviewCard extends StatelessWidget {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: AppSpacing.xs,
                   ),
                   decoration: BoxDecoration(
                     color: answer.isCorrect
                         ? AppColors.successContainer
                         : AppColors.errorContainer,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.fullAll,
                   ),
                   child: Text(
                     answer.isCorrect ? 'Correct' : 'Incorrect',
@@ -398,7 +399,7 @@ class _AnswerReviewCard extends StatelessWidget {
           ),
 
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: AppSpacing.allLg,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -410,14 +411,14 @@ class _AnswerReviewCard extends StatelessWidget {
                   ),
                 ),
 
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
 
                 if (question?.code != null) ...[
                   CodeBlock(
                     code: question!.code!,
                     language: question!.language,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.lg),
                 ],
 
                 if (answer.isMultipleChoice) ...[
@@ -460,16 +461,16 @@ class _AnswerReviewCard extends StatelessWidget {
                     ),
                   ],
                 ],
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
 
                 if (question?.explanation != null) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(16),
+                    padding: AppSpacing.allLg,
                     decoration: BoxDecoration(
                       color: AppColors.infoContainer,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: AppRadius.lgAll,
                       border: Border.all(
                         color: AppColors.info,
                         width: 1,
@@ -483,9 +484,9 @@ class _AnswerReviewCard extends StatelessWidget {
                             Icon(
                               Icons.lightbulb_outlined,
                               color: AppColors.info,
-                              size: 18,
+                              size: AppIconSizes.md,
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: AppSpacing.sm),
                             Text(
                               'Explanation',
                               style: TextStyle(
@@ -496,7 +497,7 @@ class _AnswerReviewCard extends StatelessWidget {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: AppSpacing.md),
                         Text(
                           question!.explanation!,
                           style: TextStyle(
@@ -536,10 +537,10 @@ class _AnswerDisplay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: AppSpacing.allLg,
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadius.smAll,
         border: Border.all(
           color: isCorrect ? AppColors.success : AppColors.error,
           width: 2,
@@ -550,9 +551,9 @@ class _AnswerDisplay extends StatelessWidget {
           Icon(
             isCorrect ? Icons.check_circle : Icons.cancel,
             color: isCorrect ? AppColors.success : AppColors.error,
-            size: 20,
+            size: AppIconSizes.lg,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -565,11 +566,11 @@ class _AnswerDisplay extends StatelessWidget {
                     color: AppColors.textTertiary,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   '$option. $text',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 15,
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w500,
                   ),
@@ -601,10 +602,10 @@ class _MultipleAnswerDisplay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: AppSpacing.allLg,
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadius.smAll,
         border: Border.all(
           color: isCorrect ? AppColors.success : AppColors.error,
           width: 2,
@@ -616,9 +617,9 @@ class _MultipleAnswerDisplay extends StatelessWidget {
           Icon(
             isCorrect ? Icons.check_circle : Icons.cancel,
             color: isCorrect ? AppColors.success : AppColors.error,
-            size: 20,
+            size: AppIconSizes.lg,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -631,15 +632,15 @@ class _MultipleAnswerDisplay extends StatelessWidget {
                     color: AppColors.textTertiary,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 ...userAnswers
                     .where((i) => i >= 0 && i < options.length)
                     .map((answerIndex) => Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
+                  padding: const EdgeInsets.only(bottom: AppSpacing.xs),
                   child: Text(
                     '${String.fromCharCode(65 + answerIndex)}. ${options[answerIndex]}',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 15,
                       color: AppColors.textPrimary,
                       fontWeight: FontWeight.w500,
                     ),
@@ -683,7 +684,7 @@ class _CompactAnswerComparison extends StatelessWidget {
               isUserAnswer: true,
             ),
           ),
-        if (userAnswerValid && correctAnswerValid) const SizedBox(width: 8),
+        if (userAnswerValid && correctAnswerValid) const SizedBox(width: AppSpacing.sm),
         if (correctAnswerValid)
           Expanded(
             child: _AnswerDisplay(
@@ -724,7 +725,7 @@ class _CompactMultipleAnswerComparison extends StatelessWidget {
             isUserAnswer: true,
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpacing.sm),
         Expanded(
           child: _MultipleAnswerDisplay(
             label: 'Correct answers',

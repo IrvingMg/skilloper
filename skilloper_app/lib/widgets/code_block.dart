@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_highlight/flutter_highlight.dart';
+import 'package:flutter_code_view/flutter_code_view.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_icons.dart';
 
+/// Code block widget for displaying code snippets in quiz questions
 class CodeBlock extends StatelessWidget {
   final String code;
   final String? language;
@@ -17,11 +19,11 @@ class CodeBlock extends StatelessWidget {
     Clipboard.setData(ClipboardData(text: code));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Row(
+        content: Row(
           children: [
-            Icon(Icons.check, color: Colors.white, size: 16),
-            SizedBox(width: 8),
-            Text('Code copied to clipboard'),
+            Icon(Icons.check, color: AppColors.textOnPrimary, size: AppIconSizes.sm),
+            const SizedBox(width: AppSpacing.sm),
+            const Text('Code copied to clipboard'),
           ],
         ),
         duration: const Duration(seconds: 2),
@@ -30,123 +32,44 @@ class CodeBlock extends StatelessWidget {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.outline,
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceContainerHigh,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryContainer,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        _getLanguageIcon(language),
-                        size: 14,
-                        color: AppColors.primary,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        language?.toUpperCase() ?? 'CODE',
-                        style: TextStyle(
-                          color: AppColors.onPrimaryContainer,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                const Spacer(),
-
-                Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () => _copyToClipboard(context),
-                    borderRadius: BorderRadius.circular(6),
-                    child: Padding(
-                      padding: const EdgeInsets.all(6),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.copy,
-                            size: 14,
-                            color: AppColors.textTertiary,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Copy',
-                            style: TextStyle(
-                              color: AppColors.textTertiary,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.codeBackground,
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(12),
-                bottomRight: Radius.circular(12),
-              ),
-            ),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: HighlightView(
-                code,
-                language: language,
-                theme: _customTheme,
-                padding: EdgeInsets.zero,
-                textStyle: const TextStyle(
-                  fontFamily: 'SF Mono',
-                  fontSize: 14,
-                  height: 1.5,
-                  letterSpacing: 0.2,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  Languages? _getLanguage(String? lang) {
+    switch (lang?.toLowerCase()) {
+      case 'javascript':
+      case 'js':
+        return Languages.javascript;
+      case 'python':
+      case 'py':
+        return Languages.python;
+      case 'java':
+        return Languages.java;
+      case 'go':
+        return Languages.go;
+      case 'dart':
+        return Languages.dart;
+      case 'html':
+        return Languages.xml;
+      case 'css':
+        return Languages.css;
+      case 'sql':
+        return Languages.sql;
+      case 'typescript':
+      case 'ts':
+        return Languages.typescript;
+      case 'json':
+        return Languages.json;
+      case 'swift':
+        return Languages.swift;
+      case 'kotlin':
+        return Languages.kotlin;
+      case 'rust':
+        return Languages.rust;
+      case 'c':
+      case 'cpp':
+      case 'c++':
+        return Languages.cpp;
+      default:
+        return null;
+    }
   }
 
   IconData _getLanguageIcon(String? language) {
@@ -174,71 +97,107 @@ class CodeBlock extends StatelessWidget {
     }
   }
 
-  static const Map<String, TextStyle> _customTheme = {
-    'root': TextStyle(
-      color: AppColors.codeText,
-      backgroundColor: Colors.transparent,
-    ),
-    'keyword': TextStyle(
-      color: AppColors.primary,
-      fontWeight: FontWeight.w600,
-    ),
-    'built_in': TextStyle(
-      color: AppColors.primary,
-      fontWeight: FontWeight.w500,
-    ),
-    'type': TextStyle(
-      color: AppColors.primary,
-      fontStyle: FontStyle.italic,
-    ),
-    'literal': TextStyle(
-      color: AppColors.success,
-    ),
-    'number': TextStyle(
-      color: AppColors.success,
-    ),
-    'string': TextStyle(
-      color: AppColors.success,
-    ),
-    'doctag': TextStyle(
-      color: AppColors.success,
-    ),
-    'comment': TextStyle(
-      color: AppColors.textTertiary,
-      fontStyle: FontStyle.italic,
-    ),
-    'meta': TextStyle(
-      color: AppColors.textTertiary,
-    ),
-    'function': TextStyle(
-      color: AppColors.examMode,
-      fontWeight: FontWeight.w500,
-    ),
-    'title': TextStyle(
-      color: AppColors.examMode,
-      fontWeight: FontWeight.w500,
-    ),
-    'variable': TextStyle(
-      color: AppColors.textPrimary,
-    ),
-    'attribute': TextStyle(
-      color: AppColors.info,
-    ),
-    'symbol': TextStyle(
-      color: AppColors.warning,
-    ),
-    'tag': TextStyle(
-      color: AppColors.error,
-      fontWeight: FontWeight.w500,
-    ),
-    'name': TextStyle(
-      color: AppColors.error,
-    ),
-    'selector-id': TextStyle(
-      color: AppColors.error,
-    ),
-    'selector-class': TextStyle(
-      color: AppColors.warning,
-    ),
-  };
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: AppSpacing.verticalSm,
+      decoration: BoxDecoration(
+        borderRadius: AppRadius.mdAll,
+        border: Border.all(
+          color: AppColors.outline,
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with language badge and copy button
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm + 2),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainerHigh,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.md)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryContainer,
+                    borderRadius: AppRadius.xsAll,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _getLanguageIcon(language),
+                        size: AppIconSizes.xs,
+                        color: AppColors.primary,
+                      ),
+                      SizedBox(width: AppSpacing.xs + 2),
+                      Text(
+                        language?.toUpperCase() ?? 'CODE',
+                        style: TextStyle(
+                          color: AppColors.onPrimaryContainer,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => _copyToClipboard(context),
+                    borderRadius: AppRadius.xsAll,
+                    child: Padding(
+                      padding: EdgeInsets.all(AppSpacing.xs + 2),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.copy,
+                            size: AppIconSizes.xs,
+                            color: AppColors.textTertiary,
+                          ),
+                          const SizedBox(width: AppSpacing.xs),
+                          Text(
+                            'Copy',
+                            style: TextStyle(
+                              color: AppColors.textTertiary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Code view - wrapped in Container with consistent background
+          ClipRRect(
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(AppRadius.md)),
+            child: Container(
+              width: double.infinity,
+              color: AppColors.codeBackground,
+              child: FlutterCodeView(
+                source: code,
+                language: _getLanguage(language),
+                themeType: ThemeType.github,
+                showLineNumbers: true,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

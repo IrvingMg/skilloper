@@ -7,6 +7,7 @@ import '../services/device_service.dart';
 import '../widgets/answer_button.dart';
 import '../widgets/code_block.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_icons.dart';
 import 'results_screen.dart';
 
 class QuizScreen extends StatefulWidget {
@@ -376,9 +377,9 @@ class _QuizScreenState extends State<QuizScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: const BoxDecoration(
-              color: Colors.white,
+              color: AppColors.surfaceWhite,
               border: Border(
-                bottom: BorderSide(color: Color(0xFFE5E7EB)),
+                bottom: BorderSide(color: AppColors.outline),
               ),
             ),
             child: Column(
@@ -389,7 +390,7 @@ class _QuizScreenState extends State<QuizScreen> {
                     Text(
                       'Question ${_currentQuestionIndex + 1} of ${widget.quiz.questions.length}',
                       style: const TextStyle(
-                        color: Color(0xFF6B7280),
+                        color: AppColors.textTertiary,
                         fontSize: 14,
                       ),
                     ),
@@ -402,7 +403,7 @@ class _QuizScreenState extends State<QuizScreen> {
                         color: widget.quiz.isPracticeMode
                             ? AppColors.practiceModeContainer
                             : AppColors.examModeContainer,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: AppRadius.fullAll,
                       ),
                       child: Text(
                         widget.quiz.type.toUpperCase(),
@@ -422,8 +423,8 @@ class _QuizScreenState extends State<QuizScreen> {
                   width: MediaQuery.of(context).size.width - 32,
                   lineHeight: 8.0,
                   percent: progress,
-                  backgroundColor: const Color(0xFFF3F4F6),
-                  progressColor: Theme.of(context).primaryColor,
+                  backgroundColor: AppColors.surfaceContainer,
+                  progressColor: AppColors.primary,
                   barRadius: const Radius.circular(4),
                 ),
               ],
@@ -451,7 +452,7 @@ class _QuizScreenState extends State<QuizScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: AppColors.infoContainer,
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: AppRadius.xsAll,
                       ),
                       child: Text(
                         'Select all that apply',
@@ -486,7 +487,7 @@ class _QuizScreenState extends State<QuizScreen> {
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: AppColors.infoContainer,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: AppRadius.mdAll,
                         border: Border.all(
                           color: AppColors.info,
                           width: 1,
@@ -500,7 +501,7 @@ class _QuizScreenState extends State<QuizScreen> {
                               Icon(
                                 Icons.lightbulb_outlined,
                                 color: AppColors.info,
-                                size: 18,
+                                size: AppIconSizes.md,
                               ),
                               const SizedBox(width: 8),
                               Text(
@@ -534,9 +535,9 @@ class _QuizScreenState extends State<QuizScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: const BoxDecoration(
-              color: Colors.white,
+              color: AppColors.surfaceWhite,
               border: Border(
-                top: BorderSide(color: Color(0xFFE5E7EB)),
+                top: BorderSide(color: AppColors.outline),
               ),
             ),
             child: Column(
@@ -550,19 +551,19 @@ class _QuizScreenState extends State<QuizScreen> {
                     child: ElevatedButton.icon(
                       onPressed: _isValidating ? null : _checkAnswers,
                       icon: _isValidating
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 18,
                               height: 18,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: Colors.white,
+                                color: AppColors.textOnPrimary,
                               ),
                             )
                           : const Icon(Icons.fact_check),
                       label: Text(_isValidating ? 'Checking...' : 'Check Answers'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.info,
-                        foregroundColor: Colors.white,
+                        foregroundColor: AppColors.textOnPrimary,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),

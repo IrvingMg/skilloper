@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_icons.dart';
 
 class FilterOption {
   final String value;
@@ -113,7 +114,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
     return SizedBox(
       width: 18,
       child: isSelected
-          ? Icon(Icons.check, size: 18, color: Theme.of(context).primaryColor)
+          ? const Icon(Icons.check, size: AppIconSizes.md, color: AppColors.primary)
           : null,
     );
   }
@@ -138,14 +139,14 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
               prefixIcon: const Icon(
                 Icons.search,
                 color: AppColors.textDisabled,
-                size: 20,
+                size: AppIconSizes.lg,
               ),
               suffixIcon: hasText
                   ? IconButton(
                       icon: const Icon(
                         Icons.clear,
                         color: AppColors.textDisabled,
-                        size: 18,
+                        size: AppIconSizes.md,
                       ),
                       onPressed: () {
                         widget.searchController.clear();
@@ -160,17 +161,17 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                 vertical: 12,
               ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: AppRadius.smAll,
                 borderSide: BorderSide.none,
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: AppRadius.smAll,
                 borderSide: BorderSide.none,
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(
-                  color: Theme.of(context).primaryColor,
+                borderRadius: AppRadius.smAll,
+                borderSide: const BorderSide(
+                  color: AppColors.primary,
                   width: 1.5,
                 ),
               ),
@@ -178,24 +179,24 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
           ),
         ),
 
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpacing.md),
 
         PopupMenuButton<String>(
           onSelected: widget.onFilterChanged,
           offset: const Offset(0, 45),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: AppRadius.smAll,
           ),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color: hasFilter
-                  ? Theme.of(context).primaryColor.withValues(alpha: 0.1)
+                  ? AppColors.primary.withValues(alpha: 0.1)
                   : AppColors.surfaceVariant,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: AppRadius.smAll,
               border: hasFilter
                   ? Border.all(
-                      color: Theme.of(context).primaryColor,
+                      color: AppColors.primary,
                       width: 1.5,
                     )
                   : null,
@@ -205,28 +206,28 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
               children: [
                 Icon(
                   Icons.filter_list,
-                  size: 20,
+                  size: AppIconSizes.lg,
                   color: hasFilter
-                      ? Theme.of(context).primaryColor
+                      ? AppColors.primary
                       : AppColors.textTertiary,
                 ),
-                const SizedBox(width: 6),
+                SizedBox(width: AppSpacing.xs + 2),
                 Text(
                   _getSelectedFilterLabel(),
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                     color: hasFilter
-                        ? Theme.of(context).primaryColor
+                        ? AppColors.primary
                         : AppColors.textTertiary,
                   ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: AppSpacing.xs),
                 Icon(
                   Icons.arrow_drop_down,
-                  size: 20,
+                  size: AppIconSizes.lg,
                   color: hasFilter
-                      ? Theme.of(context).primaryColor
+                      ? AppColors.primary
                       : AppColors.textTertiary,
                 ),
               ],
@@ -238,7 +239,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
               child: Row(
                 children: [
                   _buildCheckIcon(widget.selectedFilter.isEmpty),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.sm),
                   const Text('All'),
                 ],
               ),
@@ -249,7 +250,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                 child: Row(
                   children: [
                     _buildCheckIcon(widget.selectedFilter == option.value),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                     Text(option.label),
                   ],
                 ),
@@ -259,28 +260,28 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
         ),
 
         if (widget.sortOptions != null && widget.sortOptions!.isNotEmpty && widget.onSortChanged != null) ...[
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.sm),
           PopupMenuButton<String>(
             onSelected: widget.onSortChanged,
             offset: const Offset(0, 45),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: AppRadius.smAll,
             ),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
                 color: AppColors.surfaceVariant,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: AppRadius.smAll,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(
                     Icons.swap_vert,
-                    size: 20,
+                    size: AppIconSizes.lg,
                     color: AppColors.textTertiary,
                   ),
-                  const SizedBox(width: 6),
+                  SizedBox(width: AppSpacing.xs + 2),
                   Text(
                     _getSelectedSortLabel(),
                     style: const TextStyle(
@@ -289,10 +290,10 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                       color: AppColors.textTertiary,
                     ),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: AppSpacing.xs),
                   const Icon(
                     Icons.arrow_drop_down,
-                    size: 20,
+                    size: AppIconSizes.lg,
                     color: AppColors.textTertiary,
                   ),
                 ],
@@ -305,7 +306,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                   children: [
                     _buildCheckIcon(widget.selectedSort == option.value ||
                         (widget.selectedSort?.isEmpty ?? true) && option == widget.sortOptions!.first),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                     Text(option.label),
                   ],
                 ),

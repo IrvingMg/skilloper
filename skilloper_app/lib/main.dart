@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'screens/home_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/add_quiz_screen.dart';
@@ -67,29 +68,29 @@ class _MainScreenState extends State<MainScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        centerTitle: true, // Center the title
+        centerTitle: true,
+        backgroundColor: AppColors.primaryContainer,
+        surfaceTintColor: Colors.transparent,
         title: Row(
-          mainAxisSize: MainAxisSize.min, // Take minimum space to center properly
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.primary,
-                    AppColors.primaryLight,
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                Icons.psychology, // Brain with gear icon for learning app
-                color: Colors.white,
-                size: AppIconSizes.large,
+            // Logo from SVG asset
+            SvgPicture.asset(
+              'assets/images/logo.svg',
+              width: 36,
+              height: 36,
+            ),
+            const SizedBox(width: 10),
+            // Brand name
+            Text(
+              'Skilloper',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppColors.onPrimaryContainer,
+                letterSpacing: -0.3,
               ),
             ),
-            const SizedBox(width: 12),
-            const Text('Skilloper'),
           ],
         ),
       ),
@@ -97,26 +98,37 @@ class _MainScreenState extends State<MainScreen> {
         index: _currentIndex,
         children: _screens,
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: _onTabSelected,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(AppIcons.home),
-            selectedIcon: Icon(AppIcons.homeSelected),
-            label: 'Home',
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surfaceWhite,
+          border: Border(
+            top: BorderSide(
+              color: AppColors.outline,
+              width: 1,
+            ),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.history),
-            selectedIcon: Icon(Icons.history),
-            label: 'History',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.add_circle_outline),
-            selectedIcon: Icon(Icons.add_circle),
-            label: 'Add',
-          ),
-        ],
+        ),
+        child: NavigationBar(
+          selectedIndex: _currentIndex,
+          onDestinationSelected: _onTabSelected,
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(AppIcons.home),
+              selectedIcon: Icon(AppIcons.homeSelected),
+              label: 'Home',
+            ),
+            NavigationDestination(
+              icon: Icon(AppIcons.history),
+              selectedIcon: Icon(AppIcons.historySelected),
+              label: 'History',
+            ),
+            NavigationDestination(
+              icon: Icon(AppIcons.add),
+              selectedIcon: Icon(AppIcons.addSelected),
+              label: 'Add',
+            ),
+          ],
+        ),
       ),
     );
   }

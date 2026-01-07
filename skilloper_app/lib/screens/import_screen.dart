@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_icons.dart';
 import '../models/quiz.dart';
 import 'import_help_screen.dart';
 
@@ -82,11 +83,11 @@ class _ImportScreenState extends State<ImportScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: AppRadius.lgAll,
           ),
           title: Row(
             children: [
-              Icon(Icons.table_chart, color: AppColors.primary, size: 28),
+              Icon(Icons.table_chart, color: AppColors.primary, size: AppIconSizes.xxxl),
               const SizedBox(width: 12),
               const Expanded(
                 child: Text(
@@ -117,7 +118,7 @@ class _ImportScreenState extends State<ImportScreen> {
                     labelText: 'Quiz Title *',
                     hintText: 'Enter quiz title',
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: AppRadius.smAll,
                     ),
                   ),
                 ),
@@ -130,7 +131,7 @@ class _ImportScreenState extends State<ImportScreen> {
                     labelText: 'Description (optional)',
                     hintText: 'Brief description of the quiz',
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: AppRadius.smAll,
                     ),
                   ),
                   maxLines: 2,
@@ -152,12 +153,12 @@ class _ImportScreenState extends State<ImportScreen> {
                     ButtonSegment(
                       value: 'practice',
                       label: Text('Practice'),
-                      icon: Icon(Icons.school, size: 18),
+                      icon: Icon(Icons.school, size: AppIconSizes.md),
                     ),
                     ButtonSegment(
                       value: 'exam',
                       label: Text('Exam'),
-                      icon: Icon(Icons.assignment, size: 18),
+                      icon: Icon(Icons.assignment, size: AppIconSizes.md),
                     ),
                   ],
                   selected: {selectedType},
@@ -370,14 +371,14 @@ class _ImportScreenState extends State<ImportScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: AppRadius.lgAll,
           ),
           title: Row(
             children: [
               Icon(
                 Icons.error_outline,
                 color: AppColors.error,
-                size: 28,
+                size: AppIconSizes.xxxl,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -403,14 +404,14 @@ class _ImportScreenState extends State<ImportScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               // Error message in a clean container
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: AppColors.errorContainer,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: AppRadius.smAll,
                   border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
                 ),
                 child: Text(
@@ -458,14 +459,14 @@ class _ImportScreenState extends State<ImportScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: AppRadius.lgAll,
           ),
           title: Row(
             children: [
               Icon(
                 Icons.check_circle,
                 color: AppColors.success,
-                size: 28,
+                size: AppIconSizes.xxxl,
               ),
               const SizedBox(width: 12),
               const Text(
@@ -493,7 +494,7 @@ class _ImportScreenState extends State<ImportScreen> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: AppColors.successContainer,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: AppRadius.smAll,
                   border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
                 ),
                 child: Column(
@@ -521,7 +522,7 @@ class _ImportScreenState extends State<ImportScreen> {
                       children: [
                         Icon(
                           Icons.quiz,
-                          size: 16,
+                          size: AppIconSizes.sm,
                           color: AppColors.textTertiary,
                         ),
                         const SizedBox(width: 4),
@@ -537,7 +538,7 @@ class _ImportScreenState extends State<ImportScreen> {
                           response.quiz.isPracticeMode
                               ? Icons.school
                               : Icons.assignment,
-                          size: 16,
+                          size: AppIconSizes.sm,
                           color: AppColors.textTertiary,
                         ),
                         const SizedBox(width: 4),
@@ -586,8 +587,8 @@ class _ImportScreenState extends State<ImportScreen> {
           children: [
             Icon(
               isSuccess ? Icons.check_circle : Icons.error,
-              color: Colors.white,
-              size: 20,
+              color: AppColors.textOnPrimary,
+              size: AppIconSizes.lg,
             ),
             const SizedBox(width: 8),
             Expanded(child: Text(message)),
@@ -596,7 +597,7 @@ class _ImportScreenState extends State<ImportScreen> {
         backgroundColor: isSuccess ? AppColors.success : AppColors.error,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: AppRadius.smAll,
         ),
         duration: const Duration(seconds: 3),
       ),
@@ -650,12 +651,12 @@ class _ImportScreenState extends State<ImportScreen> {
                       padding: EdgeInsets.all(MediaQuery.of(context).size.height < 700 ? 24 : 48),
                       decoration: BoxDecoration(
                         border: Border.all(
-                          color: const Color(0xFFD1D5DB),
+                          color: AppColors.outline,
                           width: 2,
                           style: BorderStyle.solid,
                         ),
-                        borderRadius: BorderRadius.circular(12),
-                        color: Colors.white,
+                        borderRadius: AppRadius.lgAll,
+                        color: AppColors.surfaceWhite,
                       ),
                       child: Column(
                         children: [
@@ -663,8 +664,8 @@ class _ImportScreenState extends State<ImportScreen> {
                             Icons.cloud_upload_outlined,
                             size: MediaQuery.of(context).size.height < 700 ? 48 : 64,
                             color: _isUploading
-                                ? Theme.of(context).primaryColor
-                                : const Color(0xFF9CA3AF),
+                                ? AppColors.primary
+                                : AppColors.textDisabled,
                           ),
                           SizedBox(height: MediaQuery.of(context).size.height < 700 ? 12 : 16),
 
@@ -728,22 +729,22 @@ class _ImportScreenState extends State<ImportScreen> {
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: _isSuccess
-                              ? const Color(0xFFD1FAE5)
-                              : const Color(0xFFFEE2E2),
+                              ? AppColors.successContainer
+                              : AppColors.errorContainer,
                           border: Border.all(
                             color: _isSuccess
-                                ? const Color(0xFFA7F3D0)
-                                : const Color(0xFFFECACA),
+                                ? AppColors.success.withValues(alpha: 0.5)
+                                : AppColors.error.withValues(alpha: 0.5),
                           ),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: AppRadius.smAll,
                         ),
                         child: Row(
                           children: [
                             Icon(
                               _isSuccess ? Icons.check_circle : Icons.error,
                               color: _isSuccess
-                                  ? const Color(0xFF065F46)
-                                  : const Color(0xFF991B1B),
+                                  ? AppColors.onSuccessContainer
+                                  : AppColors.onErrorContainer,
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -751,8 +752,8 @@ class _ImportScreenState extends State<ImportScreen> {
                                 _message!,
                                 style: TextStyle(
                                   color: _isSuccess
-                                      ? const Color(0xFF065F46)
-                                      : const Color(0xFF991B1B),
+                                      ? AppColors.onSuccessContainer
+                                      : AppColors.onErrorContainer,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -768,7 +769,7 @@ class _ImportScreenState extends State<ImportScreen> {
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
                         color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: AppRadius.lgAll,
                         border: Border.all(
                           color: AppColors.primary,
                           width: 2,
@@ -782,7 +783,7 @@ class _ImportScreenState extends State<ImportScreen> {
                               Icon(
                                 Icons.checklist_rtl,
                                 color: AppColors.primary,
-                                size: 24,
+                                size: AppIconSizes.xxl,
                               ),
                               const SizedBox(width: 12),
                               Text(
@@ -844,7 +845,7 @@ class _RequirementItem extends StatelessWidget {
         Icon(
           icon,
           color: AppColors.primary,
-          size: 20,
+          size: AppIconSizes.lg,
         ),
         const SizedBox(width: 12),
         Expanded(
