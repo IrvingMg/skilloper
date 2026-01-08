@@ -70,6 +70,20 @@ PORT=8080 DATABASE_PATH=production.db ./skilloper-api
 | `PORT` | `8080` | Server port |
 | `DATABASE_PATH` | `skilloper.db` | SQLite database file path |
 | `ALLOWED_ORIGINS` | http://localhost:3000,3001 + 127.0.0.1 variants | Comma-separated CORS origins |
+| `JWT_SECRET` | **Required** | Secret key for signing JWT tokens (min 32 chars recommended) |
+| `JWT_EXPIRY` | `24` | Token expiry time in hours |
+
+### Authentication Setup
+
+The API requires JWT authentication. Set `JWT_SECRET` before running:
+
+```bash
+# Development
+export JWT_SECRET="your-development-secret-key-min-32-chars"
+go run main.go
+```
+
+**Note:** The server will exit immediately if `JWT_SECRET` is not set.
 
 ## API Reference
 

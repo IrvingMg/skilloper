@@ -62,6 +62,9 @@ dependencies:
   # For generating unique device IDs
   uuid: ^4.2.1
 
+  # For secure token storage
+  flutter_secure_storage: ^9.2.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

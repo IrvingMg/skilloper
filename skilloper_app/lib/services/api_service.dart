@@ -4,58 +4,74 @@ import 'package:http/http.dart' as http;
 import '../models/quiz.dart';
 import '../models/attempt.dart';
 import '../models/pagination.dart';
+import 'api_config.dart';
+import 'auth_service.dart';
 
 /// Custom exception for API-related errors
 class ApiException implements Exception {
   final String message;
-  
-  const ApiException(this.message);
-  
+  final bool isUnauthorized;
+
+  const ApiException(this.message, {this.isUnauthorized = false});
+
   @override
   String toString() => message;
 }
 
 class ApiService {
-  // API URL can be configured at build time via --dart-define=API_URL=https://your-api.com/api/v1
-  static const String _defaultBaseUrl = String.fromEnvironment(
-    'API_URL',
-    defaultValue: 'http://localhost:8080/api/v1',
-  );
   static const Duration _defaultTimeout = Duration(seconds: 30);
-  static const String _viewModeEdit = 'edit'; // Query param value for edit mode
+  static const String _viewModeEdit = 'edit';
 
   final String baseUrl;
   final Duration timeout;
+  final AuthService _authService = AuthService();
 
-  // Singleton pattern with configurable base URL
   static final ApiService _instance = ApiService._internal();
   factory ApiService({String? baseUrl, Duration? timeout}) => _instance;
   ApiService._internal({String? baseUrl, Duration? timeout})
-      : baseUrl = baseUrl ?? _defaultBaseUrl,
+      : baseUrl = baseUrl ?? ApiConfig.baseUrl,
         timeout = timeout ?? _defaultTimeout;
+
+  Map<String, String> get _headers {
+    _validateTokenBeforeRequest();
+    return _authService.getAuthHeaders();
+  }
+
+  void _validateTokenBeforeRequest() {
+    if (_authService.token != null && !_authService.isTokenValid) {
+      _authService.handleSessionExpired();
+      throw const ApiException(
+        'Session expired. Please log in again.',
+        isUnauthorized: true,
+      );
+    }
+  }
 
   /// Handles HTTP response and throws appropriate exceptions
   void _handleHttpResponse(http.Response response, String operation) {
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      return; // Success
+      return;
     }
-    
+
+    if (response.statusCode == 401) {
+      _authService.handleSessionExpired();
+      throw const ApiException(
+        'Session expired. Please log in again.',
+        isUnauthorized: true,
+      );
+    }
+
     String errorMessage = 'Failed to $operation (${response.statusCode})';
-    
-    // Try to extract error details from response body
+
     try {
       final Map<String, dynamic> errorData = json.decode(response.body);
       if (errorData.containsKey('error')) {
         errorMessage = errorData['error'] as String;
       }
     } catch (e) {
-      // If can't parse JSON, use status code message
       switch (response.statusCode) {
         case 400:
           errorMessage = 'Invalid request for $operation';
-          break;
-        case 401:
-          errorMessage = 'Unauthorized access for $operation';
           break;
         case 403:
           errorMessage = 'Forbidden access for $operation';
@@ -65,6 +81,9 @@ class ApiService {
           break;
         case 422:
           errorMessage = 'Validation failed for $operation';
+          break;
+        case 429:
+          errorMessage = 'Too many requests. Please try again later.';
           break;
         case 500:
           errorMessage = 'Server error during $operation';
@@ -76,7 +95,7 @@ class ApiService {
           errorMessage = 'Failed to $operation (${response.statusCode})';
       }
     }
-    
+
     throw ApiException(errorMessage);
   }
 
@@ -85,7 +104,6 @@ class ApiService {
     if (e is TimeoutException) {
       return ApiException('Request timed out - please check your connection and try again');
     }
-    // Check for common network error patterns in the exception message
     final errorStr = e.toString().toLowerCase();
     if (errorStr.contains('socketexception') ||
         errorStr.contains('connection refused') ||
@@ -121,7 +139,7 @@ class ApiService {
       final uri = Uri.parse('$baseUrl/quizzes/summaries')
           .replace(queryParameters: queryParams);
 
-      final response = await http.get(uri).timeout(timeout);
+      final response = await http.get(uri, headers: _headers).timeout(timeout);
 
       _handleHttpResponse(response, 'load quiz summaries');
 
@@ -155,6 +173,7 @@ class ApiService {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/quizzes/$id'),
+        headers: _headers,
       ).timeout(timeout);
 
       _handleHttpResponse(response, 'load quiz');
@@ -177,6 +196,7 @@ class ApiService {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/quizzes/$id?view=$_viewModeEdit'),
+        headers: _headers,
       ).timeout(timeout);
 
       _handleHttpResponse(response, 'load quiz for edit');
@@ -218,6 +238,11 @@ class ApiService {
 
       var request = http.MultipartRequest('POST', uri);
 
+      final authHeaders = _authService.getAuthHeaders();
+      if (authHeaders.containsKey('Authorization')) {
+        request.headers['Authorization'] = authHeaders['Authorization']!;
+      }
+
       request.files.add(
         http.MultipartFile.fromBytes(
           'file',
@@ -228,12 +253,19 @@ class ApiService {
 
       final response = await request.send().timeout(timeout);
 
+      if (response.statusCode == 401) {
+        _authService.handleSessionExpired();
+        throw const ApiException(
+          'Session expired. Please log in again.',
+          isUnauthorized: true,
+        );
+      }
+
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final responseBody = await response.stream.bytesToString();
         final Map<String, dynamic> data = json.decode(responseBody);
         return ImportResponse.fromJson(data);
       } else {
-        // Get error details from response
         final responseBody = await response.stream.bytesToString();
         String errorMessage = 'Upload failed (${response.statusCode})';
 
@@ -241,12 +273,8 @@ class ApiService {
           final Map<String, dynamic> errorData = json.decode(responseBody);
           if (errorData.containsKey('error')) {
             errorMessage = errorData['error'] as String;
-          } else {
-            // Fallback if no error field
-            errorMessage = 'Upload failed (${response.statusCode})';
           }
         } catch (e) {
-          // If can't parse JSON, use status code message
           switch (response.statusCode) {
             case 400:
               errorMessage = 'Invalid file format or content';
@@ -256,6 +284,9 @@ class ApiService {
               break;
             case 422:
               errorMessage = 'File validation failed';
+              break;
+            case 429:
+              errorMessage = 'Too many requests. Please try again later.';
               break;
             case 500:
               errorMessage = 'Server error - please try again later';
@@ -278,7 +309,7 @@ class ApiService {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/attempts'),
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers,
         body: json.encode(request.toJson()),
       ).timeout(timeout);
 
@@ -297,7 +328,7 @@ class ApiService {
     try {
       final response = await http.patch(
         Uri.parse('$baseUrl/attempts/$attemptId'),
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers,
         body: json.encode({
           'status': 'completed',
           'answers': request.toJson()['answers'],
@@ -319,7 +350,7 @@ class ApiService {
     try {
       final response = await http.patch(
         Uri.parse('$baseUrl/attempts/$attemptId'),
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers,
         body: json.encode({'status': 'completed'}),
       ).timeout(timeout);
 
@@ -334,22 +365,16 @@ class ApiService {
     }
   }
 
-  /// Get paginated quiz history for a device with search and filter
-  Future<PaginatedResponse<AttemptSummary>> getHistory(
-    String deviceId, {
+  /// Get paginated quiz history for the current user
+  Future<PaginatedResponse<AttemptSummary>> getHistory({
     int limit = 20,
     int offset = 0,
     String search = '',
     String type = '',
     String sort = '',
   }) async {
-    if (deviceId.isEmpty) {
-      throw ApiException('Device ID is required');
-    }
-
     try {
       final queryParams = <String, String>{
-        'device_id': deviceId,
         'limit': limit.toString(),
         'offset': offset.toString(),
       };
@@ -366,7 +391,7 @@ class ApiService {
       final uri = Uri.parse('$baseUrl/attempts')
           .replace(queryParameters: queryParams);
 
-      final response = await http.get(uri).timeout(timeout);
+      final response = await http.get(uri, headers: _headers).timeout(timeout);
 
       _handleHttpResponse(response, 'load history');
 
@@ -400,6 +425,7 @@ class ApiService {
     try {
       final response = await http.get(
         Uri.parse('$baseUrl/attempts/$attemptId'),
+        headers: _headers,
       ).timeout(timeout);
 
       _handleHttpResponse(response, 'load attempt details');
@@ -418,7 +444,7 @@ class ApiService {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/quizzes'),
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers,
         body: json.encode(data),
       ).timeout(timeout);
 
@@ -441,7 +467,7 @@ class ApiService {
     try {
       final response = await http.put(
         Uri.parse('$baseUrl/quizzes/$id'),
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers,
         body: json.encode(data),
       ).timeout(timeout);
 
@@ -464,6 +490,7 @@ class ApiService {
     try {
       final response = await http.delete(
         Uri.parse('$baseUrl/quizzes/$id'),
+        headers: _headers,
       ).timeout(timeout);
 
       _handleHttpResponse(response, 'delete quiz');
@@ -485,7 +512,7 @@ class ApiService {
 
       final response = await http.post(
         Uri.parse('$baseUrl/answers'),
-        headers: {'Content-Type': 'application/json'},
+        headers: _headers,
         body: json.encode(body),
       ).timeout(timeout);
 

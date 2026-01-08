@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../models/quiz.dart';
 import '../models/attempt.dart';
 import '../services/api_service.dart';
-import '../services/device_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
 import '../widgets/code_block.dart';
@@ -27,7 +26,6 @@ class ResultsScreen extends StatefulWidget {
 
 class _ResultsScreenState extends State<ResultsScreen> {
   final ApiService _apiService = ApiService();
-  final DeviceService _deviceService = DeviceService();
 
   bool _isLoading = true;
   QuizAttempt? _completedAttempt;
@@ -50,14 +48,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
       int? attemptId = widget.attemptId ?? _createdAttemptId;
 
       if (attemptId == null) {
-        final deviceId = await _deviceService.getDeviceId();
-        final startRequest = StartAttemptRequest(
-          deviceId: deviceId,
-          quizId: widget.quiz.id,
-          quizTitle: widget.quiz.title,
-          quizType: widget.quiz.type,
-          totalCount: widget.quiz.questions.length,
-        );
+        final startRequest = StartAttemptRequest(quizId: widget.quiz.id);
         if (!mounted) return;
         try {
           final attempt = await _apiService.startAttempt(startRequest);

@@ -9,6 +9,7 @@ import (
 	"go.uber.org/zap"
 
 	apperrors "github.com/irvingmg/skilloper/skilloper-api/internal/errors"
+	"github.com/irvingmg/skilloper/skilloper-api/internal/middleware"
 	"github.com/irvingmg/skilloper/skilloper-api/internal/models"
 	"github.com/irvingmg/skilloper/skilloper-api/internal/services"
 )
@@ -50,7 +51,8 @@ func (h *AttemptHandler) handleError(c *gin.Context, err error, operation string
 
 // CreateAttempt handles POST /attempts
 func (h *AttemptHandler) CreateAttempt(c *gin.Context) {
-	h.logger.Info("Creating new quiz attempt")
+	userID := middleware.GetUserID(c)
+	h.logger.Info("Creating new quiz attempt", zap.Uint("user_id", userID))
 
 	var req models.StartAttemptRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -58,17 +60,11 @@ func (h *AttemptHandler) CreateAttempt(c *gin.Context) {
 		return
 	}
 
-	if len(req.DeviceID) > models.MaxDeviceIDLength {
-		h.handleError(c, apperrors.NewValidationError("DEVICE_ID_TOO_LONG",
-			"device ID exceeds maximum length"), "validate_device_id")
-		return
-	}
-
 	h.logger.Info("Creating attempt",
-		zap.String("device_id", req.DeviceID),
+		zap.Uint("user_id", userID),
 		zap.Uint("quiz_id", req.QuizID))
 
-	attempt, err := h.service.Start(req)
+	attempt, err := h.service.Start(userID, req)
 	if err != nil {
 		h.handleError(c, err, "create_attempt")
 		return
@@ -76,12 +72,13 @@ func (h *AttemptHandler) CreateAttempt(c *gin.Context) {
 
 	h.logger.Info("Successfully created attempt",
 		zap.Uint("id", attempt.ID),
-		zap.String("device_id", attempt.DeviceID))
+		zap.Uint("user_id", attempt.UserID))
 	c.JSON(http.StatusCreated, attempt)
 }
 
 // UpdateAttempt handles PATCH /attempts/:id
 func (h *AttemptHandler) UpdateAttempt(c *gin.Context) {
+	userID := middleware.GetUserID(c)
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		h.handleError(c, apperrors.ErrInvalidAttemptID, "parse_attempt_id")
@@ -94,9 +91,9 @@ func (h *AttemptHandler) UpdateAttempt(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Updating quiz attempt", zap.Int("id", id), zap.String("status", string(req.Status)))
+	h.logger.Info("Updating quiz attempt", zap.Uint("user_id", userID), zap.Int("id", id), zap.String("status", string(req.Status)))
 
-	attempt, err := h.service.Update(uint(id), req)
+	attempt, err := h.service.Update(userID, uint(id), req)
 	if err != nil {
 		h.handleError(c, err, "update_attempt")
 		return
@@ -110,16 +107,7 @@ func (h *AttemptHandler) UpdateAttempt(c *gin.Context) {
 
 // GetAttempts handles GET /attempts
 func (h *AttemptHandler) GetAttempts(c *gin.Context) {
-	deviceID := c.Query("device_id")
-	if deviceID == "" {
-		h.handleError(c, apperrors.ErrDeviceIDRequired, "parse_device_id")
-		return
-	}
-	if len(deviceID) > models.MaxDeviceIDLength {
-		h.handleError(c, apperrors.NewValidationError("DEVICE_ID_TOO_LONG",
-			"device ID exceeds maximum length"), "validate_device_id")
-		return
-	}
+	userID := middleware.GetUserID(c)
 
 	var params models.PaginationParams
 	if err := c.ShouldBindQuery(&params); err != nil {
@@ -131,21 +119,21 @@ func (h *AttemptHandler) GetAttempts(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Fetching attempts for device",
-		zap.String("device_id", deviceID),
+	h.logger.Info("Fetching attempts for user",
+		zap.Uint("user_id", userID),
 		zap.Int("limit", params.Limit),
 		zap.Int("offset", params.Offset),
 		zap.String("search", params.Search),
 		zap.String("type", params.Type))
 
-	result, err := h.service.GetPaginatedByDeviceID(deviceID, params)
+	result, err := h.service.GetPaginatedByUserID(userID, params)
 	if err != nil {
 		h.handleError(c, err, "fetch_attempts")
 		return
 	}
 
 	h.logger.Info("Successfully fetched attempts",
-		zap.String("device_id", deviceID),
+		zap.Uint("user_id", userID),
 		zap.Int("count", len(result.Data)),
 		zap.Int("total", result.Pagination.TotalCount))
 	c.JSON(http.StatusOK, result)
@@ -153,15 +141,16 @@ func (h *AttemptHandler) GetAttempts(c *gin.Context) {
 
 // GetAttempt handles GET /attempts/:id
 func (h *AttemptHandler) GetAttempt(c *gin.Context) {
+	userID := middleware.GetUserID(c)
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		h.handleError(c, apperrors.ErrInvalidAttemptID, "parse_attempt_id")
 		return
 	}
 
-	h.logger.Info("Fetching attempt", zap.Int("id", id))
+	h.logger.Info("Fetching attempt", zap.Uint("user_id", userID), zap.Int("id", id))
 
-	attempt, err := h.service.GetByID(uint(id))
+	attempt, err := h.service.GetByID(userID, uint(id))
 	if err != nil {
 		h.handleError(c, err, "fetch_attempt")
 		return

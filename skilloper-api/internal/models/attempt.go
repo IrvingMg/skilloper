@@ -14,7 +14,7 @@ const (
 
 type QuizAttempt struct {
 	ID            uint            `json:"id" gorm:"primaryKey"`
-	DeviceID      string          `json:"device_id" gorm:"not null;index"`
+	UserID        uint            `json:"user_id" gorm:"not null;index"`
 	QuizID        uint            `json:"quiz_id" gorm:"not null"`
 	QuizTitle     string          `json:"quiz_title" gorm:"not null"`
 	QuizType      string          `json:"quiz_type" gorm:"not null"`
@@ -43,11 +43,7 @@ type AttemptAnswer struct {
 }
 
 type StartAttemptRequest struct {
-	DeviceID   string `json:"device_id"`
-	QuizID     uint   `json:"quiz_id"`
-	QuizTitle  string `json:"quiz_title"`
-	QuizType   string `json:"quiz_type"`
-	TotalCount int    `json:"total_count"`
+	QuizID uint `json:"quiz_id"`
 }
 
 type UpdateAttemptRequest struct {
@@ -63,7 +59,7 @@ type UserAnswerRequest struct {
 
 type AttemptSummaryResponse struct {
 	ID            uint          `json:"id"`
-	DeviceID      string        `json:"device_id"`
+	UserID        uint          `json:"user_id"`
 	QuizID        uint          `json:"quiz_id"`
 	QuizTitle     string        `json:"quiz_title"`
 	QuizType      string        `json:"quiz_type"`
@@ -78,7 +74,7 @@ type AttemptSummaryResponse struct {
 
 type AttemptResponse struct {
 	ID            uint                    `json:"id"`
-	DeviceID      string                  `json:"device_id"`
+	UserID        uint                    `json:"user_id"`
 	QuizID        uint                    `json:"quiz_id"`
 	QuizTitle     string                  `json:"quiz_title"`
 	QuizType      string                  `json:"quiz_type"`

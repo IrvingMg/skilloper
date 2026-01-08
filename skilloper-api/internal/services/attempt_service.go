@@ -26,9 +26,9 @@ func NewAttemptService(db *gorm.DB, logger *zap.Logger) *AttemptService {
 	}
 }
 
-func (s *AttemptService) Start(req models.StartAttemptRequest) (*models.AttemptResponse, error) {
-	if req.DeviceID == "" {
-		return nil, apperrors.ErrDeviceIDRequired
+func (s *AttemptService) Start(userID uint, req models.StartAttemptRequest) (*models.AttemptResponse, error) {
+	if userID == 0 {
+		return nil, apperrors.ErrUnauthorized
 	}
 
 	if req.QuizID == 0 {
@@ -56,8 +56,8 @@ func (s *AttemptService) Start(req models.StartAttemptRequest) (*models.AttemptR
 
 		staleThreshold := time.Now().Add(-time.Duration(models.StaleAttemptHours) * time.Hour)
 		if err := tx.Model(&models.QuizAttempt{}).
-			Where("device_id = ? AND quiz_id = ? AND status = ? AND created_at < ?",
-				req.DeviceID, req.QuizID, models.AttemptStatusInProgress, staleThreshold).
+			Where("user_id = ? AND quiz_id = ? AND status = ? AND created_at < ?",
+				userID, req.QuizID, models.AttemptStatusInProgress, staleThreshold).
 			Updates(map[string]interface{}{
 				"status":       models.AttemptStatusAbandoned,
 				"completed_at": time.Now(),
@@ -67,8 +67,8 @@ func (s *AttemptService) Start(req models.StartAttemptRequest) (*models.AttemptR
 
 		var inProgressCount int64
 		if err := tx.Model(&models.QuizAttempt{}).
-			Where("device_id = ? AND quiz_id = ? AND status = ?",
-				req.DeviceID, req.QuizID, models.AttemptStatusInProgress).
+			Where("user_id = ? AND quiz_id = ? AND status = ?",
+				userID, req.QuizID, models.AttemptStatusInProgress).
 			Count(&inProgressCount).Error; err != nil {
 			return err
 		}
@@ -79,14 +79,14 @@ func (s *AttemptService) Start(req models.StartAttemptRequest) (*models.AttemptR
 
 		var existingCount int64
 		if err := tx.Model(&models.QuizAttempt{}).
-			Where("device_id = ? AND quiz_id = ?", req.DeviceID, req.QuizID).
+			Where("user_id = ? AND quiz_id = ?", userID, req.QuizID).
 			Count(&existingCount).Error; err != nil {
 			return err
 		}
 		attemptNumber := int(existingCount) + 1
 
 		attempt = models.QuizAttempt{
-			DeviceID:      req.DeviceID,
+			UserID:        userID,
 			QuizID:        req.QuizID,
 			QuizTitle:     quiz.Title,
 			QuizType:      quiz.Type,
@@ -114,19 +114,19 @@ func (s *AttemptService) Start(req models.StartAttemptRequest) (*models.AttemptR
 	return &response, nil
 }
 
-func (s *AttemptService) Update(attemptID uint, req models.UpdateAttemptRequest) (*models.AttemptResponse, error) {
+func (s *AttemptService) Update(userID uint, attemptID uint, req models.UpdateAttemptRequest) (*models.AttemptResponse, error) {
 	if req.Status != models.AttemptStatusCompleted {
 		return nil, apperrors.NewValidationError("INVALID_STATUS", "only 'completed' status is supported")
 	}
 
 	if len(req.Answers) == 0 {
-		return s.abandon(attemptID)
+		return s.abandon(userID, attemptID)
 	}
 
-	return s.complete(attemptID, req.Answers)
+	return s.complete(userID, attemptID, req.Answers)
 }
 
-func (s *AttemptService) abandon(attemptID uint) (*models.AttemptResponse, error) {
+func (s *AttemptService) abandon(userID uint, attemptID uint) (*models.AttemptResponse, error) {
 	var attempt models.QuizAttempt
 
 	err := s.db.Transaction(func(tx *gorm.DB) error {
@@ -135,6 +135,10 @@ func (s *AttemptService) abandon(attemptID uint) (*models.AttemptResponse, error
 				return apperrors.ErrAttemptNotFound
 			}
 			return err
+		}
+
+		if attempt.UserID != userID {
+			return apperrors.ErrAttemptNotFound
 		}
 
 		if attempt.Status != models.AttemptStatusInProgress {
@@ -161,7 +165,7 @@ func (s *AttemptService) abandon(attemptID uint) (*models.AttemptResponse, error
 	return &response, nil
 }
 
-func (s *AttemptService) complete(attemptID uint, answers []models.UserAnswerRequest) (*models.AttemptResponse, error) {
+func (s *AttemptService) complete(userID uint, attemptID uint, answers []models.UserAnswerRequest) (*models.AttemptResponse, error) {
 	var attempt models.QuizAttempt
 
 	err := s.db.Transaction(func(tx *gorm.DB) error {
@@ -170,6 +174,10 @@ func (s *AttemptService) complete(attemptID uint, answers []models.UserAnswerReq
 				return apperrors.ErrAttemptNotFound
 			}
 			return err
+		}
+
+		if attempt.UserID != userID {
+			return apperrors.ErrAttemptNotFound
 		}
 
 		if attempt.Status != models.AttemptStatusInProgress {
@@ -326,12 +334,12 @@ func (s *AttemptService) complete(attemptID uint, answers []models.UserAnswerReq
 	return &response, nil
 }
 
-func (s *AttemptService) GetPaginatedByDeviceID(deviceID string, params models.PaginationParams) (models.PaginatedAttemptSummaries, error) {
-	if deviceID == "" {
-		return models.PaginatedAttemptSummaries{}, apperrors.ErrDeviceIDRequired
+func (s *AttemptService) GetPaginatedByUserID(userID uint, params models.PaginationParams) (models.PaginatedAttemptSummaries, error) {
+	if userID == 0 {
+		return models.PaginatedAttemptSummaries{}, apperrors.ErrUnauthorized
 	}
 
-	query := s.db.Model(&models.QuizAttempt{}).Where("device_id = ?", deviceID)
+	query := s.db.Model(&models.QuizAttempt{}).Where("user_id = ?", userID)
 
 	if params.Search != "" {
 		searchPattern := "%" + escapeLikePattern(strings.ToLower(params.Search)) + "%"
@@ -361,7 +369,7 @@ func (s *AttemptService) GetPaginatedByDeviceID(deviceID string, params models.P
 	for _, attempt := range attempts {
 		summaries = append(summaries, models.AttemptSummaryResponse{
 			ID:            attempt.ID,
-			DeviceID:      attempt.DeviceID,
+			UserID:        attempt.UserID,
 			QuizID:        attempt.QuizID,
 			QuizTitle:     attempt.QuizTitle,
 			QuizType:      attempt.QuizType,
@@ -378,7 +386,7 @@ func (s *AttemptService) GetPaginatedByDeviceID(deviceID string, params models.P
 	return models.NewPaginatedAttemptSummaries(summaries, params.Limit, params.Offset, int(totalCount)), nil
 }
 
-func (s *AttemptService) GetByID(id uint) (*models.AttemptResponse, error) {
+func (s *AttemptService) GetByID(userID uint, id uint) (*models.AttemptResponse, error) {
 	var attempt models.QuizAttempt
 	result := s.db.Preload("Answers").First(&attempt, id)
 	if result.Error != nil {
@@ -386,6 +394,10 @@ func (s *AttemptService) GetByID(id uint) (*models.AttemptResponse, error) {
 			return nil, apperrors.ErrAttemptNotFound
 		}
 		return nil, apperrors.ErrFetchAttemptFailed
+	}
+
+	if attempt.UserID != userID {
+		return nil, apperrors.ErrAttemptNotFound
 	}
 
 	response := s.convertToResponse(attempt)
@@ -439,7 +451,7 @@ func (s *AttemptService) convertToResponse(attempt models.QuizAttempt) models.At
 
 	return models.AttemptResponse{
 		ID:            attempt.ID,
-		DeviceID:      attempt.DeviceID,
+		UserID:        attempt.UserID,
 		QuizID:        attempt.QuizID,
 		QuizTitle:     attempt.QuizTitle,
 		QuizType:      attempt.QuizType,

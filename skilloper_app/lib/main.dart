@@ -3,6 +3,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'screens/home_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/add_quiz_screen.dart';
+import 'screens/profile_screen.dart';
+import 'screens/login_screen.dart';
+import 'services/auth_service.dart';
 import 'theme/app_theme.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_icons.dart';
@@ -20,13 +23,93 @@ class SkiloperApp extends StatelessWidget {
       title: 'Skilloper',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      home: const MainScreen(),
+      home: const AuthWrapper(),
     );
   }
 }
 
+class AuthWrapper extends StatefulWidget {
+  const AuthWrapper({super.key});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> {
+  final AuthService _authService = AuthService();
+  bool _isLoading = true;
+  bool _isHandlingSessionExpiry = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _authService.onSessionExpired = _onSessionExpired;
+    _checkAuth();
+  }
+
+  @override
+  void dispose() {
+    _authService.onSessionExpired = null;
+    super.dispose();
+  }
+
+  Future<void> _checkAuth() async {
+    await _authService.loadStoredSession();
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _onAuthStateChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _onSessionExpired() {
+    if (!mounted || _isHandlingSessionExpiry) return;
+
+    _isHandlingSessionExpiry = true;
+    setState(() {});
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Session expired. Please log in again.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      _isHandlingSessionExpiry = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: AppColors.surfaceWhite,
+        body: Center(
+          child: CircularProgressIndicator(
+            color: AppColors.primary,
+          ),
+        ),
+      );
+    }
+
+    if (_authService.isLoggedIn) {
+      return MainScreen(onLogout: _onAuthStateChanged);
+    }
+
+    return LoginScreen(onLoginSuccess: _onAuthStateChanged);
+  }
+}
+
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  final VoidCallback? onLogout;
+
+  const MainScreen({super.key, this.onLogout});
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -35,15 +118,21 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
-  // Keys to access screen states for refresh
   final _homeKey = GlobalKey<HomeScreenState>();
   final _historyKey = GlobalKey<HistoryScreenState>();
 
-  late final List<Widget> _screens = [
-    HomeScreen(key: _homeKey),
-    HistoryScreen(key: _historyKey),
-    const AddQuizScreen(),
-  ];
+  late final List<Widget> _screens;
+
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      HomeScreen(key: _homeKey),
+      HistoryScreen(key: _historyKey),
+      const AddQuizScreen(),
+      ProfileScreen(onLogout: () => widget.onLogout?.call()),
+    ];
+  }
 
   void _onTabSelected(int index) {
     final previousIndex = _currentIndex;
@@ -74,14 +163,12 @@ class _MainScreenState extends State<MainScreen> {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Logo from SVG asset
             SvgPicture.asset(
               'assets/images/logo.svg',
               width: AppIconSizes.appBarLogo,
               height: AppIconSizes.appBarLogo,
             ),
             const SizedBox(width: 10),
-            // Brand name
             Text(
               'Skilloper',
               style: TextStyle(
@@ -126,6 +213,11 @@ class _MainScreenState extends State<MainScreen> {
               icon: Icon(AppIcons.add),
               selectedIcon: Icon(AppIcons.addSelected),
               label: 'Add',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.person_outline),
+              selectedIcon: Icon(Icons.person),
+              label: 'Profile',
             ),
           ],
         ),

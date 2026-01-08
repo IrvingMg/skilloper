@@ -79,6 +79,7 @@ class AppIconSizes {
 
   // Large sizes for prominent icons
   static const double appBarLogo = 36.0;
+  static const double authLogo = 80.0;
   static const double quizCardNarrow = 44.0;
   static const double quizCardWide = 56.0;
 

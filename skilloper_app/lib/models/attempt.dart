@@ -32,7 +32,7 @@ enum AttemptStatus {
 /// Represents a summary of a quiz attempt (for history list)
 class AttemptSummary {
   final int id;
-  final String deviceId;
+  final int userId;
   final int quizId;
   final String quizTitle;
   final String quizType;
@@ -46,7 +46,7 @@ class AttemptSummary {
 
   const AttemptSummary({
     required this.id,
-    required this.deviceId,
+    required this.userId,
     required this.quizId,
     required this.quizTitle,
     required this.quizType,
@@ -62,7 +62,7 @@ class AttemptSummary {
   factory AttemptSummary.fromJson(Map<String, dynamic> json) {
     return AttemptSummary(
       id: json['id'] as int,
-      deviceId: json['device_id'] as String,
+      userId: json['user_id'] as int,
       quizId: json['quiz_id'] as int,
       quizTitle: json['quiz_title'] as String,
       quizType: json['quiz_type'] as String,
@@ -139,7 +139,7 @@ class AttemptAnswer {
 /// Represents a full quiz attempt with all answers
 class QuizAttempt {
   final int id;
-  final String deviceId;
+  final int userId;
   final int quizId;
   final String quizTitle;
   final String quizType;
@@ -154,7 +154,7 @@ class QuizAttempt {
 
   const QuizAttempt({
     required this.id,
-    required this.deviceId,
+    required this.userId,
     required this.quizId,
     required this.quizTitle,
     required this.quizType,
@@ -171,7 +171,7 @@ class QuizAttempt {
   factory QuizAttempt.fromJson(Map<String, dynamic> json) {
     return QuizAttempt(
       id: json['id'] as int,
-      deviceId: json['device_id'] as String,
+      userId: json['user_id'] as int,
       quizId: json['quiz_id'] as int,
       quizTitle: json['quiz_title'] as String,
       quizType: json['quiz_type'] as String,
@@ -200,27 +200,15 @@ class QuizAttempt {
 
 /// Request to start a new attempt
 class StartAttemptRequest {
-  final String deviceId;
   final int quizId;
-  final String quizTitle;
-  final String quizType;
-  final int totalCount;
 
   const StartAttemptRequest({
-    required this.deviceId,
     required this.quizId,
-    required this.quizTitle,
-    required this.quizType,
-    required this.totalCount,
   });
 
   Map<String, dynamic> toJson() {
     return {
-      'device_id': deviceId,
       'quiz_id': quizId,
-      'quiz_title': quizTitle,
-      'quiz_type': quizType,
-      'total_count': totalCount,
     };
   }
 }

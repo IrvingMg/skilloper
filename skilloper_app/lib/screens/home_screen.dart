@@ -3,7 +3,6 @@ import '../models/quiz.dart';
 import '../models/pagination.dart';
 import '../models/attempt.dart';
 import '../services/api_service.dart';
-import '../services/device_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
 import '../utils/date_formatter.dart';
@@ -21,7 +20,6 @@ class HomeScreen extends StatefulWidget {
 
 class HomeScreenState extends State<HomeScreen> {
   final ApiService _apiService = ApiService();
-  final DeviceService _deviceService = DeviceService();
 
   void refresh() {
     _loadQuizzes(refresh: true);
@@ -316,21 +314,12 @@ class HomeScreenState extends State<HomeScreen> {
     );
 
     try {
-      // Load quiz and create attempt in parallel
-      final quizFuture = _apiService.getQuiz(summary.id);
-      final deviceId = await _deviceService.getDeviceId();
+      // Fetch quiz first to prevent orphaned attempts if this fails
+      final quiz = await _apiService.getQuiz(summary.id);
 
-      final quiz = await quizFuture;
+      if (!mounted) return;
 
-      // Create the attempt (this checks concurrent session limits)
-      final request = StartAttemptRequest(
-        deviceId: deviceId,
-        quizId: summary.id,
-        quizTitle: summary.title,
-        quizType: summary.type,
-        totalCount: summary.questionCount,
-      );
-
+      final request = StartAttemptRequest(quizId: summary.id);
       final attempt = await _apiService.startAttempt(request);
 
       if (!mounted) return;

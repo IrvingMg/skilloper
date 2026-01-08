@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../models/attempt.dart';
 import '../models/pagination.dart';
 import '../services/api_service.dart';
-import '../services/device_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
 import '../utils/debouncer.dart';
@@ -22,13 +21,11 @@ class HistoryScreenState extends State<HistoryScreen> {
   void refresh() {
     _loadHistory(refresh: true);
   }
-  final DeviceService _deviceService = DeviceService();
   final ScrollController _scrollController = ScrollController();
   final Debouncer _searchDebouncer = Debouncer(delay: const Duration(milliseconds: 300));
 
   List<AttemptSummary> _attempts = [];
   PaginationMeta _pagination = PaginationMeta.initial();
-  String? _deviceId;
 
   bool _isInitialLoading = false;
   bool _isLoadingMore = false;
@@ -43,7 +40,7 @@ class HistoryScreenState extends State<HistoryScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
-    _initializeAndLoad();
+    _loadHistory(refresh: true);
   }
 
   @override
@@ -54,19 +51,6 @@ class HistoryScreenState extends State<HistoryScreen> {
     super.dispose();
   }
 
-  Future<void> _initializeAndLoad() async {
-    try {
-      _deviceId = await _deviceService.getDeviceId();
-      if (!mounted) return;
-      _loadHistory(refresh: true);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = 'Failed to initialize device ID';
-      });
-    }
-  }
-
   void _onScroll() {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
@@ -75,7 +59,7 @@ class HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _loadHistory({bool refresh = false}) async {
-    if (_isInitialLoading || _deviceId == null) return;
+    if (_isInitialLoading) return;
 
     setState(() {
       _isInitialLoading = true;
@@ -92,7 +76,6 @@ class HistoryScreenState extends State<HistoryScreen> {
 
     try {
       final result = await _apiService.getHistory(
-        _deviceId!,
         limit: 20,
         offset: 0,
         search: _searchQuery,
@@ -124,7 +107,7 @@ class HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _loadMore() async {
-    if (_isLoadingMore || !_pagination.hasMore || _isInitialLoading || _deviceId == null) return;
+    if (_isLoadingMore || !_pagination.hasMore || _isInitialLoading) return;
 
     setState(() {
       _isLoadingMore = true;
@@ -137,7 +120,6 @@ class HistoryScreenState extends State<HistoryScreen> {
 
     try {
       final result = await _apiService.getHistory(
-        _deviceId!,
         limit: _pagination.limit,
         offset: requestOffset,
         search: _searchQuery,

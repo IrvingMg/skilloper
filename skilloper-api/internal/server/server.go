@@ -8,6 +8,7 @@ import (
 
 	"github.com/irvingmg/skilloper/skilloper-api/internal/config"
 	"github.com/irvingmg/skilloper/skilloper-api/internal/handlers"
+	"github.com/irvingmg/skilloper/skilloper-api/internal/middleware"
 	"github.com/irvingmg/skilloper/skilloper-api/internal/services"
 )
 
@@ -17,6 +18,8 @@ type Server struct {
 	logger *zap.Logger
 	router *gin.Engine
 
+	authService    *services.AuthService
+	authHandler    *handlers.AuthHandler
 	quizHandler    *handlers.QuizHandler
 	attemptHandler *handlers.AttemptHandler
 	answerHandler  *handlers.AnswerHandler
@@ -45,7 +48,7 @@ func (s *Server) setupMiddleware() {
 		AllowOrigins:     s.config.AllowedOrigins,
 		AllowMethods:     s.config.AllowedMethods,
 		AllowHeaders:     s.config.AllowedHeaders,
-		AllowCredentials: true,
+		AllowCredentials: false, // Using Authorization headers, not cookies
 	}
 
 	s.router.Use(cors.New(corsConfig))
@@ -59,11 +62,13 @@ func (s *Server) setupMiddleware() {
 func (s *Server) setupServices() {
 	s.logger.Info("Setting up services and handlers")
 
+	s.authService = services.NewAuthService(s.db, s.config.JWTSecret, s.config.JWTExpiry, s.logger)
 	quizService := services.NewQuizService(s.db)
 	attemptService := services.NewAttemptService(s.db, s.logger)
 	answerService := services.NewAnswerService(s.db, s.logger)
 	healthService := services.NewHealthService()
 
+	s.authHandler = handlers.NewAuthHandler(s.authService, s.logger)
 	s.quizHandler = handlers.NewQuizHandler(quizService, s.logger)
 	s.attemptHandler = handlers.NewAttemptHandler(attemptService, s.logger)
 	s.answerHandler = handlers.NewAnswerHandler(answerService, s.logger)
@@ -75,20 +80,34 @@ func (s *Server) setupRoutes() {
 
 	api := s.router.Group("/api/v1")
 
-	api.GET("/quizzes/summaries", s.quizHandler.GetQuizSummaries)
-	api.POST("/quizzes", s.quizHandler.CreateQuiz)
-	api.GET("/quizzes/:id", s.quizHandler.GetQuiz)
-	api.PUT("/quizzes/:id", s.quizHandler.UpdateQuiz)
-	api.DELETE("/quizzes/:id", s.quizHandler.DeleteQuiz)
-
-	api.POST("/attempts", s.attemptHandler.CreateAttempt)
-	api.PATCH("/attempts/:id", s.attemptHandler.UpdateAttempt)
-	api.GET("/attempts", s.attemptHandler.GetAttempts)
-	api.GET("/attempts/:id", s.attemptHandler.GetAttempt)
-
-	api.POST("/answers", s.answerHandler.CreateAnswer)
-
 	api.GET("/health", s.healthHandler.HealthCheck)
+	api.POST("/users", s.authHandler.Register)
+	api.POST("/sessions", s.authHandler.Login)
+
+	// All other routes require authentication
+	protected := api.Group("")
+	protected.Use(middleware.AuthMiddleware(s.authService))
+	{
+		// Auth routes
+		protected.GET("/users/me", s.authHandler.GetCurrentUser)
+		protected.DELETE("/sessions", s.authHandler.Logout)
+
+		// Quiz routes
+		protected.GET("/quizzes/summaries", s.quizHandler.GetQuizSummaries)
+		protected.GET("/quizzes/:id", s.quizHandler.GetQuiz)
+		protected.POST("/quizzes", s.quizHandler.CreateQuiz)
+		protected.PUT("/quizzes/:id", s.quizHandler.UpdateQuiz)
+		protected.DELETE("/quizzes/:id", s.quizHandler.DeleteQuiz)
+
+		// Attempt routes
+		protected.POST("/attempts", s.attemptHandler.CreateAttempt)
+		protected.PATCH("/attempts/:id", s.attemptHandler.UpdateAttempt)
+		protected.GET("/attempts", s.attemptHandler.GetAttempts)
+		protected.GET("/attempts/:id", s.attemptHandler.GetAttempt)
+
+		// Answer routes
+		protected.POST("/answers", s.answerHandler.CreateAnswer)
+	}
 
 	s.logger.Info("Routes configured successfully")
 }

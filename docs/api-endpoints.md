@@ -2,6 +2,27 @@
 
 Base URL: `http://localhost:8080/api/v1`
 
+## Authentication
+
+The API uses JWT (JSON Web Token) authentication. After logging in, include the token in the `Authorization` header for protected endpoints.
+
+```
+Authorization: Bearer <token>
+```
+
+### Public Endpoints
+- `GET /health` - Health check
+- `POST /users` - Register
+- `POST /sessions` - Login
+
+### Protected Endpoints (require authentication)
+All other endpoints require a valid JWT token:
+- `GET /users/me` - Get current user
+- `DELETE /sessions` - Logout
+- All quiz endpoints (`/quizzes/*`)
+- All attempt endpoints (`/attempts/*`)
+- Answer validation (`POST /answers`)
+
 ## Endpoints
 
 ### System
@@ -9,6 +30,15 @@ Base URL: `http://localhost:8080/api/v1`
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/health` | Health check |
+
+### Authentication
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/users` | Create user account (register) |
+| `GET` | `/users/me` | Get current user info (protected) |
+| `POST` | `/sessions` | Create session (login) |
+| `DELETE` | `/sessions` | Destroy session (logout, protected) |
 
 ### Quizzes
 
@@ -20,13 +50,13 @@ Base URL: `http://localhost:8080/api/v1`
 | `PUT` | `/quizzes/{id}` | Update quiz |
 | `DELETE` | `/quizzes/{id}` | Delete quiz |
 
-### Quiz Attempts
+### Quiz Attempts (Protected)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `POST` | `/attempts` | Create a quiz attempt (in_progress status) |
 | `PATCH` | `/attempts/{id}` | Update attempt status (complete or abandon) |
-| `GET` | `/attempts` | Get paginated attempt history for a device |
+| `GET` | `/attempts` | Get paginated attempt history for current user |
 | `GET` | `/attempts/{id}` | Get specific attempt with answers |
 
 ### Answers (Practice Mode)
@@ -46,8 +76,6 @@ Both `/quizzes/summaries` and `/attempts` support pagination, filtering, and sor
 | `search` | string | "" | Search in title (case-insensitive) |
 | `type` | string | "" | Filter by type: `practice` or `exam` |
 | `sort` | string | `date_desc` | Sort order (see below) |
-
-**Note:** `/attempts` also requires `device_id` parameter.
 
 #### Sort Options
 
@@ -88,13 +116,70 @@ The app handles attempts differently based on quiz mode:
 curl http://localhost:8080/api/v1/health
 ```
 
+### Register User
+
+**Validation Requirements:**
+- Username: 6-30 characters, alphanumeric and underscore only (stored lowercase)
+- Password: 8-72 characters, must contain at least one uppercase letter, one lowercase letter, and one digit
+
+```bash
+curl -X POST http://localhost:8080/api/v1/users \
+  -H "Content-Type: application/json" \
+  -d '{"username": "john_doe", "password": "MyPassword123"}'
+```
+
+Response (includes token for immediate login):
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 1,
+    "username": "john_doe",
+    "created_at": "2025-01-15T10:00:00Z"
+  }
+}
+```
+
+### Login
+```bash
+curl -X POST http://localhost:8080/api/v1/sessions \
+  -H "Content-Type: application/json" \
+  -d '{"username": "john_doe", "password": "mypassword123"}'
+```
+
+Response:
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": 1,
+    "username": "john_doe",
+    "created_at": "2025-01-15T10:00:00Z"
+  }
+}
+```
+
+### Get Current User
+```bash
+curl http://localhost:8080/api/v1/users/me \
+  -H "Authorization: Bearer <token>"
+```
+
+### Logout
+```bash
+curl -X DELETE http://localhost:8080/api/v1/sessions \
+  -H "Authorization: Bearer <token>"
+```
+
 ### Get Quiz Summaries
 ```bash
 # Basic request (returns first 20 items)
-curl http://localhost:8080/api/v1/quizzes/summaries
+curl http://localhost:8080/api/v1/quizzes/summaries \
+  -H "Authorization: Bearer <token>"
 
 # With pagination and filters
-curl "http://localhost:8080/api/v1/quizzes/summaries?limit=10&offset=0&search=javascript&type=practice"
+curl "http://localhost:8080/api/v1/quizzes/summaries?limit=10&offset=0&search=javascript&type=practice" \
+  -H "Authorization: Bearer <token>"
 ```
 
 Response:
@@ -130,10 +215,12 @@ Use `POST /quizzes` with `multipart/form-data` Content-Type:
 ```bash
 # JSON file (simple or internal format)
 curl -X POST http://localhost:8080/api/v1/quizzes \
+  -H "Authorization: Bearer <token>" \
   -F "file=@quiz.json"
 
 # CSV file with metadata via query params
 curl -X POST "http://localhost:8080/api/v1/quizzes?title=My%20Quiz&type=practice" \
+  -H "Authorization: Bearer <token>" \
   -F "file=@questions.csv"
 ```
 
@@ -141,36 +228,37 @@ See [quiz-schema.md](quiz-schema.md) for all supported formats and limits.
 
 ### Get Specific Quiz
 ```bash
-curl http://localhost:8080/api/v1/quizzes/1
+curl http://localhost:8080/api/v1/quizzes/1 \
+  -H "Authorization: Bearer <token>"
 ```
 
 ### Update Quiz
 ```bash
 curl -X PUT http://localhost:8080/api/v1/quizzes/1 \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
   -d @updated-quiz.json
 ```
 
 ### Delete Quiz
 ```bash
-curl -X DELETE http://localhost:8080/api/v1/quizzes/1
+curl -X DELETE http://localhost:8080/api/v1/quizzes/1 \
+  -H "Authorization: Bearer <token>"
 ```
 
 ### Create Quiz Attempt
 ```bash
 curl -X POST http://localhost:8080/api/v1/attempts \
   -H "Content-Type: application/json" \
-  -d '{
-    "device_id": "550e8400-e29b-41d4-a716-446655440000",
-    "quiz_id": 1
-  }'
+  -H "Authorization: Bearer <token>" \
+  -d '{"quiz_id": 1}'
 ```
 
 Response:
 ```json
 {
   "id": 1,
-  "device_id": "550e8400-e29b-41d4-a716-446655440000",
+  "user_id": 1,
   "quiz_id": 1,
   "quiz_title": "JavaScript Basics",
   "quiz_type": "practice",
@@ -230,10 +318,12 @@ curl -X PATCH http://localhost:8080/api/v1/attempts/1 \
 ### Get Attempt History
 ```bash
 # Basic request (returns first 20 items)
-curl "http://localhost:8080/api/v1/attempts?device_id=550e8400-e29b-41d4-a716-446655440000"
+curl http://localhost:8080/api/v1/attempts \
+  -H "Authorization: Bearer <token>"
 
 # With pagination and filters
-curl "http://localhost:8080/api/v1/attempts?device_id=550e8400-e29b-41d4-a716-446655440000&limit=10&offset=0&search=javascript&type=exam"
+curl "http://localhost:8080/api/v1/attempts?limit=10&offset=0&search=javascript&type=exam" \
+  -H "Authorization: Bearer <token>"
 ```
 
 Response:
@@ -242,7 +332,7 @@ Response:
   "data": [
     {
       "id": 1,
-      "device_id": "550e8400-e29b-41d4-a716-446655440000",
+      "user_id": 1,
       "quiz_id": 1,
       "quiz_title": "JavaScript Basics",
       "quiz_type": "practice",
@@ -256,7 +346,7 @@ Response:
     },
     {
       "id": 2,
-      "device_id": "550e8400-e29b-41d4-a716-446655440000",
+      "user_id": 1,
       "quiz_id": 1,
       "quiz_title": "JavaScript Basics",
       "quiz_type": "exam",
@@ -285,7 +375,8 @@ Response:
 
 ### Get Specific Attempt
 ```bash
-curl http://localhost:8080/api/v1/attempts/1
+curl http://localhost:8080/api/v1/attempts/1 \
+  -H "Authorization: Bearer <token>"
 ```
 
 ### Submit Answer (Practice Mode)
@@ -296,11 +387,13 @@ Used in practice mode for immediate feedback after answering a question.
 # Single choice
 curl -X POST http://localhost:8080/api/v1/answers \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
   -d '{"question_id": 1, "user_answer": 2}'
 
 # Multiple choice
 curl -X POST http://localhost:8080/api/v1/answers \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
   -d '{"question_id": 1, "user_answers": [0, 2]}'
 ```
 
@@ -352,17 +445,26 @@ The API returns structured error responses:
 | `QUESTION_TEXT_REQUIRED` | Question text is missing |
 | `INVALID_CORRECT_ANSWER` | Answer index is out of range |
 | `ATTEMPT_NOT_FOUND` | Attempt with given ID doesn't exist |
-| `DEVICE_ID_REQUIRED` | Device ID query parameter is missing |
 | `INVALID_ATTEMPT_DATA` | Invalid data in attempt request (e.g., already completed) |
 | `INVALID_PAGINATION_PARAMS` | Invalid pagination parameters (e.g., invalid type filter) |
 | `QUESTION_NOT_FOUND` | Question with given ID doesn't exist |
 | `INVALID_QUESTION_ID` | Invalid question ID format |
 | `INVALID_ANSWER_DATA` | Missing user_answer or user_answers in request |
+| `INVALID_CREDENTIALS` | Login failed (wrong username or password) |
+| `USERNAME_TAKEN` | Username already exists |
+| `UNAUTHORIZED` | Missing or invalid authentication token |
+| `INVALID_TOKEN` | Token is invalid, expired, or has been revoked |
+| `WEAK_PASSWORD` | Password doesn't meet complexity requirements |
+| `ACCOUNT_LOCKED` | Account temporarily locked due to too many failed login attempts |
 
 ### HTTP Status Codes
 
 - `200` - Success
+- `201` - Created (user registration, session creation)
 - `400` - Bad Request (validation errors)
+- `401` - Unauthorized (missing/invalid token, invalid credentials)
 - `404` - Not Found
+- `409` - Conflict (username taken)
 - `422` - Unprocessable Entity (file validation)
+- `429` - Too Many Requests (account locked)
 - `500` - Internal Server Error

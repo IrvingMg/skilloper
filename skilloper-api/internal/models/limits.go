@@ -13,8 +13,6 @@ const (
 	MaxAlternativeQuestions = 10
 	MaxAlternativeOptions   = 20
 
-	MaxDeviceIDLength = 128
-
 	MaxConcurrentAttempts = 2
 	StaleAttemptHours     = 24
 

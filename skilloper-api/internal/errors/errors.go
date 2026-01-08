@@ -49,203 +49,246 @@ var (
 	ErrQuizNotFound = &AppError{
 		Type:    ErrTypeNotFound,
 		Code:    "QUIZ_NOT_FOUND",
-		Message: "quiz not found",
+		Message: "Quiz not found",
 	}
 
 	ErrQuizTitleRequired = &AppError{
 		Type:    ErrTypeValidation,
 		Code:    "QUIZ_TITLE_REQUIRED",
-		Message: "title is required",
+		Message: "Title is required",
 	}
 
 	ErrInvalidOptionsFormat = &AppError{
 		Type:    ErrTypeValidation,
 		Code:    "INVALID_OPTIONS_FORMAT",
-		Message: "invalid options format",
+		Message: "Invalid options format",
 	}
 
 	ErrInvalidQuizID = &AppError{
 		Type:    ErrTypeValidation,
 		Code:    "INVALID_QUIZ_ID",
-		Message: "invalid quiz ID",
+		Message: "Invalid quiz ID",
 	}
 
 	ErrInvalidJSONFormat = &AppError{
 		Type:    ErrTypeValidation,
 		Code:    "INVALID_JSON_FORMAT",
-		Message: "invalid JSON format",
+		Message: "Invalid JSON format",
 	}
 
 	ErrFileRequired = &AppError{
 		Type:    ErrTypeValidation,
 		Code:    "FILE_REQUIRED",
-		Message: "file is required for import",
+		Message: "File is required for import",
 	}
 
 	ErrFileOpenFailed = &AppError{
 		Type:    ErrTypeValidation,
 		Code:    "FILE_OPEN_FAILED",
-		Message: "failed to open uploaded file",
+		Message: "Failed to open uploaded file",
 	}
 
 	ErrFileReadFailed = &AppError{
 		Type:    ErrTypeValidation,
 		Code:    "FILE_READ_FAILED",
-		Message: "failed to read uploaded file",
+		Message: "Failed to read uploaded file",
 	}
 
 	// Question validation errors
 	ErrQuestionTextRequired = &AppError{
 		Type:    ErrTypeValidation,
 		Code:    "QUESTION_TEXT_REQUIRED",
-		Message: "question text is required",
+		Message: "Question text is required",
 	}
 
 	ErrInvalidQuestionType = &AppError{
 		Type:    ErrTypeValidation,
 		Code:    "INVALID_QUESTION_TYPE",
-		Message: "invalid question type",
+		Message: "Invalid question type",
 	}
 
 	ErrQuestionOptionsRequired = &AppError{
 		Type:    ErrTypeValidation,
 		Code:    "QUESTION_OPTIONS_REQUIRED",
-		Message: "question options are required",
+		Message: "Question options are required",
 	}
 
 	ErrTooManyOptions = &AppError{
 		Type:    ErrTypeValidation,
 		Code:    "TOO_MANY_OPTIONS",
-		Message: "too many options for question",
+		Message: "Too many options for question",
 	}
 
 	ErrMultipleChoiceAnswersRequired = &AppError{
 		Type:    ErrTypeValidation,
 		Code:    "MULTIPLE_CHOICE_ANSWERS_REQUIRED",
-		Message: "multiple choice questions require correct answers",
+		Message: "Multiple choice questions require correct answers",
 	}
 
 	ErrInvalidCorrectAnswer = &AppError{
 		Type:    ErrTypeValidation,
 		Code:    "INVALID_CORRECT_ANSWER",
-		Message: "invalid correct answer",
+		Message: "Invalid correct answer",
 	}
 
 	// Database operation errors
 	ErrFetchQuizzesFailed = &AppError{
 		Type:    ErrTypeDatabase,
 		Code:    "FETCH_QUIZZES_FAILED",
-		Message: "failed to fetch quizzes",
+		Message: "Failed to fetch quizzes",
 	}
 
 	ErrFetchQuizFailed = &AppError{
 		Type:    ErrTypeDatabase,
 		Code:    "FETCH_QUIZ_FAILED",
-		Message: "failed to fetch quiz",
+		Message: "Failed to fetch quiz",
 	}
 
 	ErrCreateQuizFailed = &AppError{
 		Type:    ErrTypeDatabase,
 		Code:    "CREATE_QUIZ_FAILED",
-		Message: "failed to create quiz",
+		Message: "Failed to create quiz",
 	}
 
 	ErrCreateQuestionFailed = &AppError{
 		Type:    ErrTypeDatabase,
 		Code:    "CREATE_QUESTION_FAILED",
-		Message: "failed to create question",
+		Message: "Failed to create question",
 	}
 
 	ErrUpdateQuizFailed = &AppError{
 		Type:    ErrTypeDatabase,
 		Code:    "UPDATE_QUIZ_FAILED",
-		Message: "failed to update quiz",
+		Message: "Failed to update quiz",
 	}
 
 	ErrDeleteQuestionsFailed = &AppError{
 		Type:    ErrTypeDatabase,
 		Code:    "DELETE_QUESTIONS_FAILED",
-		Message: "failed to delete questions",
+		Message: "Failed to delete questions",
 	}
 
 	ErrDeleteQuizFailed = &AppError{
 		Type:    ErrTypeDatabase,
 		Code:    "DELETE_QUIZ_FAILED",
-		Message: "failed to delete quiz",
+		Message: "Failed to delete quiz",
 	}
 
 	// Attempt errors
 	ErrAttemptNotFound = &AppError{
 		Type:    ErrTypeNotFound,
 		Code:    "ATTEMPT_NOT_FOUND",
-		Message: "attempt not found",
-	}
-
-	ErrDeviceIDRequired = &AppError{
-		Type:    ErrTypeValidation,
-		Code:    "DEVICE_ID_REQUIRED",
-		Message: "device ID is required",
+		Message: "Attempt not found",
 	}
 
 	ErrInvalidAttemptData = &AppError{
 		Type:    ErrTypeValidation,
 		Code:    "INVALID_ATTEMPT_DATA",
-		Message: "invalid attempt data",
+		Message: "Invalid attempt data",
 	}
 
 	ErrInvalidAttemptID = &AppError{
 		Type:    ErrTypeValidation,
 		Code:    "INVALID_ATTEMPT_ID",
-		Message: "invalid attempt ID",
+		Message: "Invalid attempt ID",
 	}
 
 	ErrCreateAttemptFailed = &AppError{
 		Type:    ErrTypeDatabase,
 		Code:    "CREATE_ATTEMPT_FAILED",
-		Message: "failed to create attempt",
+		Message: "Failed to create attempt",
 	}
 
 	ErrFetchAttemptsFailed = &AppError{
 		Type:    ErrTypeDatabase,
 		Code:    "FETCH_ATTEMPTS_FAILED",
-		Message: "failed to fetch attempts",
+		Message: "Failed to fetch attempts",
 	}
 
 	ErrFetchAttemptFailed = &AppError{
 		Type:    ErrTypeDatabase,
 		Code:    "FETCH_ATTEMPT_FAILED",
-		Message: "failed to fetch attempt",
+		Message: "Failed to fetch attempt",
 	}
 
 	ErrInvalidPaginationParams = &AppError{
 		Type:    ErrTypeValidation,
 		Code:    "INVALID_PAGINATION_PARAMS",
-		Message: "invalid pagination parameters",
+		Message: "Invalid pagination parameters",
 	}
 
 	// Question errors
 	ErrQuestionNotFound = &AppError{
 		Type:    ErrTypeNotFound,
 		Code:    "QUESTION_NOT_FOUND",
-		Message: "question not found",
+		Message: "Question not found",
 	}
 
 	ErrInvalidQuestionID = &AppError{
 		Type:    ErrTypeValidation,
 		Code:    "INVALID_QUESTION_ID",
-		Message: "invalid question ID",
+		Message: "Invalid question ID",
 	}
 
 	ErrFetchQuestionFailed = &AppError{
 		Type:    ErrTypeDatabase,
 		Code:    "FETCH_QUESTION_FAILED",
-		Message: "failed to fetch question",
+		Message: "Failed to fetch question",
 	}
 
 	ErrInvalidAnswerData = &AppError{
 		Type:    ErrTypeValidation,
 		Code:    "INVALID_ANSWER_DATA",
-		Message: "invalid answer data",
+		Message: "Invalid answer data",
+	}
+
+	// Auth errors
+	ErrInvalidCredentials = &AppError{
+		Type:    ErrTypeValidation,
+		Code:    "INVALID_CREDENTIALS",
+		Message: "Invalid username or password",
+	}
+
+	ErrUsernameTaken = &AppError{
+		Type:    ErrTypeValidation,
+		Code:    "USERNAME_TAKEN",
+		Message: "Username is already taken",
+	}
+
+	ErrUnauthorized = &AppError{
+		Type:    ErrTypeValidation,
+		Code:    "UNAUTHORIZED",
+		Message: "Unauthorized",
+	}
+
+	ErrInvalidToken = &AppError{
+		Type:    ErrTypeValidation,
+		Code:    "INVALID_TOKEN",
+		Message: "Invalid or expired token",
+	}
+
+	ErrInvalidUsername = &AppError{
+		Type:    ErrTypeValidation,
+		Code:    "INVALID_USERNAME",
+		Message: "Username must be 6-30 characters, alphanumeric and underscore only",
+	}
+
+	ErrInvalidPassword = &AppError{
+		Type:    ErrTypeValidation,
+		Code:    "INVALID_PASSWORD",
+		Message: "Password must be 8-72 characters",
+	}
+
+	ErrWeakPassword = &AppError{
+		Type:    ErrTypeValidation,
+		Code:    "WEAK_PASSWORD",
+		Message: "Password must contain at least one uppercase letter, one lowercase letter, and one digit",
+	}
+
+	ErrAccountLocked = &AppError{
+		Type:    ErrTypeValidation,
+		Code:    "ACCOUNT_LOCKED",
+		Message: "Account is temporarily locked due to too many failed login attempts. Please try again later",
 	}
 )
 
