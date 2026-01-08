@@ -65,18 +65,6 @@ func (s *AttemptService) Start(userID uint, req models.StartAttemptRequest) (*mo
 			s.logger.Warn("Failed to clean up stale attempts", zap.Error(err))
 		}
 
-		var inProgressCount int64
-		if err := tx.Model(&models.QuizAttempt{}).
-			Where("user_id = ? AND quiz_id = ? AND status = ?",
-				userID, req.QuizID, models.AttemptStatusInProgress).
-			Count(&inProgressCount).Error; err != nil {
-			return err
-		}
-		if inProgressCount >= models.MaxConcurrentAttempts {
-			return apperrors.NewValidationError("TOO_MANY_ATTEMPTS",
-				"too many in-progress attempts for this quiz - please wait or try again later")
-		}
-
 		var existingCount int64
 		if err := tx.Model(&models.QuizAttempt{}).
 			Where("user_id = ? AND quiz_id = ?", userID, req.QuizID).
