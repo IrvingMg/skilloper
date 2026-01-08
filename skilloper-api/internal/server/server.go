@@ -90,6 +90,9 @@ func (s *Server) setupRoutes() {
 	{
 		// Auth routes
 		protected.GET("/users/me", s.authHandler.GetCurrentUser)
+		protected.PUT("/users/me/password", s.authHandler.UpdatePassword)
+		protected.POST("/users/me/history-clearance", s.authHandler.ResetHistory)
+		protected.POST("/users/me/deletion", s.authHandler.DeleteAccount)
 		protected.DELETE("/sessions", s.authHandler.Logout)
 
 		// Quiz routes

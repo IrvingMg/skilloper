@@ -9,11 +9,13 @@ import 'api_config.dart';
 class User {
   final int id;
   final String username;
+  final bool isAdmin;
   final DateTime createdAt;
 
   const User({
     required this.id,
     required this.username,
+    required this.isAdmin,
     required this.createdAt,
   });
 
@@ -21,6 +23,7 @@ class User {
     return User(
       id: json['id'] as int,
       username: json['username'] as String,
+      isAdmin: json['is_admin'] as bool? ?? false,
       createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
@@ -307,6 +310,90 @@ class AuthService {
   void _debugLog(String message) {
     if (kDebugMode) {
       print('AuthService: $message');
+    }
+  }
+
+  Future<void> updatePassword(String currentPassword, String newPassword) async {
+    await _acquireLock();
+    try {
+      final response = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}/users/me/password'),
+        headers: getAuthHeaders(),
+        body: json.encode({
+          'current_password': currentPassword,
+          'new_password': newPassword,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        final newToken = data['token'] as String?;
+        if (newToken == null) {
+          throw const AuthException('Password updated but no new token received');
+        }
+        _token = newToken;
+        await _secureStorage.write(key: _tokenKey, value: _token);
+        return;
+      } else {
+        final error = _parseError(response);
+        throw AuthException(error.message, code: error.code);
+      }
+    } catch (e) {
+      if (e is AuthException) rethrow;
+      throw AuthException('Failed to update password: $e');
+    } finally {
+      _releaseLock();
+    }
+  }
+
+  Future<int> resetHistory(String password) async {
+    await _acquireLock();
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/users/me/history-clearance'),
+        headers: getAuthHeaders(),
+        body: json.encode({'password': password}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        return data['deleted_count'] as int;
+      } else {
+        final error = _parseError(response);
+        throw AuthException(error.message, code: error.code);
+      }
+    } catch (e) {
+      if (e is AuthException) rethrow;
+      throw AuthException('Failed to reset history: $e');
+    } finally {
+      _releaseLock();
+    }
+  }
+
+  Future<void> deleteAccount(String password) async {
+    await _acquireLock();
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}/users/me/deletion'),
+        headers: getAuthHeaders(),
+        body: json.encode({'password': password}),
+      );
+
+      if (response.statusCode == 200) {
+        _token = null;
+        _currentUser = null;
+        await _secureStorage.delete(key: _tokenKey);
+        await _secureStorage.delete(key: _userKey);
+        return;
+      } else {
+        final error = _parseError(response);
+        throw AuthException(error.message, code: error.code);
+      }
+    } catch (e) {
+      if (e is AuthException) rethrow;
+      throw AuthException('Failed to delete account: $e');
+    } finally {
+      _releaseLock();
     }
   }
 }

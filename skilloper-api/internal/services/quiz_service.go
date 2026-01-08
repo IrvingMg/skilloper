@@ -111,7 +111,7 @@ func (s *QuizService) GetByID(id uint) (*models.QuizResponse, error) {
 	return &response, nil
 }
 
-func (s *QuizService) GetByIDWithAnswers(id uint) (*models.QuizResponseWithAnswers, error) {
+func (s *QuizService) GetByIDWithAnswers(id uint, userID uint, isAdmin bool) (*models.QuizResponseWithAnswers, error) {
 	var quiz models.Quiz
 	result := s.db.Preload("Questions").First(&quiz, id)
 	if result.Error != nil {
@@ -121,11 +121,15 @@ func (s *QuizService) GetByIDWithAnswers(id uint) (*models.QuizResponseWithAnswe
 		return nil, apperrors.ErrFetchQuizFailed
 	}
 
+	if !isAdmin && quiz.UserID != userID {
+		return nil, apperrors.ErrNotQuizOwner
+	}
+
 	response := s.convertToResponseWithAnswers(quiz)
 	return &response, nil
 }
 
-func (s *QuizService) Create(req models.CreateQuizRequest) (*models.QuizResponse, error) {
+func (s *QuizService) Create(req models.CreateQuizRequest, userID uint) (*models.QuizResponse, error) {
 	if req.Title == "" {
 		return nil, apperrors.ErrQuizTitleRequired
 	}
@@ -159,6 +163,7 @@ func (s *QuizService) Create(req models.CreateQuizRequest) (*models.QuizResponse
 	}
 
 	quiz := models.Quiz{
+		UserID:      userID,
 		Title:       req.Title,
 		Description: req.Description,
 		Type:        req.Type,
@@ -182,7 +187,7 @@ func (s *QuizService) Create(req models.CreateQuizRequest) (*models.QuizResponse
 	return &response, nil
 }
 
-func (s *QuizService) Update(id uint, req models.CreateQuizRequest) (*models.QuizResponse, error) {
+func (s *QuizService) Update(id uint, req models.CreateQuizRequest, userID uint, isAdmin bool) (*models.QuizResponse, error) {
 	if req.Title == "" {
 		return nil, apperrors.ErrQuizTitleRequired
 	}
@@ -224,6 +229,10 @@ func (s *QuizService) Update(id uint, req models.CreateQuizRequest) (*models.Qui
 			return apperrors.ErrFetchQuizFailed
 		}
 
+		if !isAdmin && quiz.UserID != userID {
+			return apperrors.ErrNotQuizOwner
+		}
+
 		quiz.Title = req.Title
 		quiz.Description = req.Description
 		quiz.Type = req.Type
@@ -263,25 +272,37 @@ func (s *QuizService) Update(id uint, req models.CreateQuizRequest) (*models.Qui
 	return &response, nil
 }
 
-func (s *QuizService) Delete(id uint) error {
-	result := s.db.Where("quiz_id = ?", id).Delete(&models.Question{})
-	if result.Error != nil {
-		return apperrors.ErrDeleteQuestionsFailed
+func (s *QuizService) Delete(id uint, userID uint, isAdmin bool) error {
+	var quiz models.Quiz
+	if err := s.db.First(&quiz, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return apperrors.ErrQuizNotFound
+		}
+		return apperrors.ErrFetchQuizFailed
 	}
 
-	result = s.db.Delete(&models.Quiz{}, id)
-	if result.Error != nil {
+	if !isAdmin && quiz.UserID != userID {
+		return apperrors.ErrNotQuizOwner
+	}
+
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("quiz_id = ?", id).Delete(&models.Question{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Delete(&quiz).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
 		return apperrors.ErrDeleteQuizFailed
-	}
-
-	if result.RowsAffected == 0 {
-		return apperrors.ErrQuizNotFound
 	}
 
 	return nil
 }
 
-func (s *QuizService) ImportFromFile(file *multipart.FileHeader, csvMeta ...CSVMetadata) (*models.QuizSummary, error) {
+func (s *QuizService) ImportFromFile(file *multipart.FileHeader, csvMeta CSVMetadata, userID uint) (*models.QuizSummary, error) {
 	if file.Size > models.MaxImportFileSize {
 		return nil, apperrors.NewValidationError("FILE_TOO_LARGE", "file exceeds 10MB limit")
 	}
@@ -298,13 +319,11 @@ func (s *QuizService) ImportFromFile(file *multipart.FileHeader, csvMeta ...CSVM
 	}
 
 	metadata := ParserMetadata{
-		Filename: file.Filename,
-	}
-	if len(csvMeta) > 0 {
-		metadata.Title = csvMeta[0].Title
-		metadata.Description = csvMeta[0].Description
-		metadata.Type = csvMeta[0].Type
-		metadata.MaxOptions = csvMeta[0].MaxOptions
+		Filename:    file.Filename,
+		Title:       csvMeta.Title,
+		Description: csvMeta.Description,
+		Type:        csvMeta.Type,
+		MaxOptions:  csvMeta.MaxOptions,
 	}
 
 	registry := NewParserRegistry()
@@ -325,7 +344,7 @@ func (s *QuizService) ImportFromFile(file *multipart.FileHeader, csvMeta ...CSVM
 		}
 	}
 
-	quizResponse, err := s.Create(*req)
+	quizResponse, err := s.Create(*req, userID)
 	if err != nil {
 		return nil, err
 	}

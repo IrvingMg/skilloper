@@ -14,6 +14,7 @@ const (
 	BearerPrefix        = "Bearer "
 	UserIDKey           = "user_id"
 	UsernameKey         = "username"
+	IsAdminKey          = "is_admin"
 )
 
 func AuthMiddleware(authService *services.AuthService) gin.HandlerFunc {
@@ -47,6 +48,7 @@ func AuthMiddleware(authService *services.AuthService) gin.HandlerFunc {
 
 		c.Set(UserIDKey, claims.UserID)
 		c.Set(UsernameKey, claims.Username)
+		c.Set(IsAdminKey, claims.IsAdmin)
 
 		c.Next()
 	}
@@ -74,4 +76,16 @@ func GetUsername(c *gin.Context) string {
 		return ""
 	}
 	return name
+}
+
+func IsAdmin(c *gin.Context) bool {
+	isAdmin, exists := c.Get(IsAdminKey)
+	if !exists {
+		return false
+	}
+	admin, ok := isAdmin.(bool)
+	if !ok {
+		return false
+	}
+	return admin
 }

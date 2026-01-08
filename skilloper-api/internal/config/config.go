@@ -16,6 +16,8 @@ type Config struct {
 	AllowedHeaders []string
 	JWTSecret      string
 	JWTExpiry      time.Duration
+	AdminUsername  string
+	AdminPassword  string
 }
 
 // Load loads configuration from environment variables with defaults
@@ -28,6 +30,8 @@ func Load() *Config {
 		AllowedHeaders: []string{"Origin", "Content-Type", "Authorization"},
 		JWTSecret:      requireEnv("JWT_SECRET"),
 		JWTExpiry:      parseJWTExpiry(),
+		AdminUsername:  getEnv("ADMIN_USERNAME", "admin_user"),
+		AdminPassword:  getEnv("ADMIN_PASSWORD", "Admin123"),
 	}
 }
 

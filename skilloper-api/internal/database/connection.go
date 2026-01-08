@@ -1,19 +1,24 @@
 package database
 
 import (
+	"errors"
+	"time"
+
 	"go.uber.org/zap"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
 	"github.com/irvingmg/skilloper/skilloper-api/internal/config"
+	apperrors "github.com/irvingmg/skilloper/skilloper-api/internal/errors"
 	"github.com/irvingmg/skilloper/skilloper-api/internal/models"
 )
 
-// New creates a new database connection and runs migrations
 func New(cfg *config.Config, logger *zap.Logger) (*gorm.DB, error) {
 	logger.Info("Connecting to database", zap.String("path", cfg.DatabasePath))
 
-	db, err := gorm.Open(sqlite.Open(cfg.DatabasePath), &gorm.Config{})
+	dsn := cfg.DatabasePath + "?_foreign_keys=on"
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	if err != nil {
 		logger.Error("Failed to connect to database", zap.Error(err))
 		return nil, err
@@ -33,11 +38,16 @@ func New(cfg *config.Config, logger *zap.Logger) (*gorm.DB, error) {
 		return nil, err
 	}
 
+	if err := ensureAdminUser(db, cfg, logger); err != nil {
+		logger.Error("Failed to ensure admin user", zap.Error(err))
+		return nil, err
+	}
+
 	var count int64
 	db.Model(&models.Quiz{}).Count(&count)
 	if count == 0 {
 		logger.Info("Database is empty, seeding sample data")
-		if err := seedSampleData(db, logger); err != nil {
+		if err := seedSampleData(db, cfg, logger); err != nil {
 			logger.Error("Failed to seed sample data", zap.Error(err))
 			return nil, err
 		}
@@ -47,4 +57,60 @@ func New(cfg *config.Config, logger *zap.Logger) (*gorm.DB, error) {
 
 	logger.Info("Database initialized successfully")
 	return db, nil
+}
+
+func ensureAdminUser(db *gorm.DB, cfg *config.Config, logger *zap.Logger) error {
+	if !models.ValidateUsername(cfg.AdminUsername) {
+		logger.Error("Invalid ADMIN_USERNAME",
+			zap.String("username", cfg.AdminUsername),
+			zap.String("requirement", "6-30 chars, alphanumeric and underscore only"))
+		return apperrors.ErrInvalidAdminUsername
+	}
+
+	if !models.ValidatePassword(cfg.AdminPassword) {
+		logger.Error("Invalid ADMIN_PASSWORD",
+			zap.String("requirement", "8-72 chars with uppercase, lowercase, and digit"))
+		return apperrors.ErrInvalidAdminPassword
+	}
+
+	normalizedUsername := models.NormalizeUsername(cfg.AdminUsername)
+
+	var existingUser models.User
+	err := db.Where("username = ?", normalizedUsername).First(&existingUser).Error
+	if err == nil {
+		if !existingUser.IsAdmin {
+			now := time.Now()
+			if err := db.Model(&existingUser).Updates(map[string]any{
+				"is_admin":              true,
+				"tokens_invalidated_at": now,
+			}).Error; err != nil {
+				return err
+			}
+			logger.Info("Updated existing user to admin", zap.String("username", normalizedUsername))
+		} else {
+			logger.Info("Admin user already exists", zap.String("username", normalizedUsername))
+		}
+		return nil
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(cfg.AdminPassword), models.BcryptCost)
+	if err != nil {
+		return err
+	}
+
+	adminUser := models.User{
+		Username:     normalizedUsername,
+		PasswordHash: string(hashedPassword),
+		IsAdmin:      true,
+	}
+
+	if err := db.Create(&adminUser).Error; err != nil {
+		return err
+	}
+
+	logger.Info("Created admin user", zap.String("username", normalizedUsername))
+	return nil
 }

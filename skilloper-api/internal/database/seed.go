@@ -4,13 +4,22 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 
+	"github.com/irvingmg/skilloper/skilloper-api/internal/config"
 	"github.com/irvingmg/skilloper/skilloper-api/internal/models"
 )
 
-func seedSampleData(db *gorm.DB, logger *zap.Logger) error {
+func seedSampleData(db *gorm.DB, cfg *config.Config, logger *zap.Logger) error {
+	normalizedUsername := models.NormalizeUsername(cfg.AdminUsername)
+	var adminUser models.User
+	if err := db.Where("username = ?", normalizedUsername).First(&adminUser).Error; err != nil {
+		logger.Error("Admin user not found for quiz seeding", zap.String("username", normalizedUsername))
+		return err
+	}
+
 	// Practice mode quiz with immediate feedback
 	practiceQuiz := models.Quiz{
-		Title:       "Go Fundamentals - Practice",
+		UserID:      adminUser.ID,
+		Title:       "Go Fundamentals",
 		Description: "Practice Go concepts with immediate feedback",
 		Type:        "practice",
 		MaxOptions:  4, // Limit to 4 options per question
@@ -51,7 +60,8 @@ func seedSampleData(db *gorm.DB, logger *zap.Logger) error {
 
 	// Exam mode quiz - Python
 	examQuiz := models.Quiz{
-		Title:       "Python Assessment - Exam",
+		UserID:      adminUser.ID,
+		Title:       "Python Assessment",
 		Description: "Test your Python knowledge in exam mode",
 		Type:        "exam",
 		MaxOptions:  4, // Limit to 4 options per question
@@ -86,28 +96,29 @@ func seedSampleData(db *gorm.DB, logger *zap.Logger) error {
 
 	// Mixed question types quiz - JavaScript
 	mixedQuiz := models.Quiz{
-		Title:       "JavaScript Mixed Types - Practice",
+		UserID:      adminUser.ID,
+		Title:       "JavaScript Mixed Types",
 		Description: "Practice JavaScript with both single-choice and multiple-choice questions",
 		Type:        "practice",
 		MaxOptions:  3, // Limit to 3 options per question for this one
 		Questions: []models.Question{
 			{
-				QuestionType:   models.QuestionTypeMultipleChoice,
-				QuestionText:   "Which of the following are valid JavaScript data types?",
-				Options:        `["undefined", "bigint", "string"]`,
+				QuestionType:       models.QuestionTypeMultipleChoice,
+				QuestionText:       "Which of the following are valid JavaScript data types?",
+				Options:            `["undefined", "bigint", "string"]`,
 				AlternativeOptions: `["number", "boolean", "object", "function", "symbol"]`,
-				CorrectAnswers: `[0, 1, 2]`, // 0-based: All are valid (options 0, 1, 2)
-				Explanation:    "All listed options are valid JavaScript data types. JavaScript has primitive types (string, number, boolean, undefined, symbol, bigint) and non-primitive types (object, function).",
+				CorrectAnswers:     `[0, 1, 2]`, // 0-based: All are valid (options 0, 1, 2)
+				Explanation:        "All listed options are valid JavaScript data types. JavaScript has primitive types (string, number, boolean, undefined, symbol, bigint) and non-primitive types (object, function).",
 			},
 			{
-				QuestionType:   models.QuestionTypeMultipleChoice,
-				QuestionText:   "Which methods can be used to iterate over an array in JavaScript?",
-				Code:           "const arr = [1, 2, 3, 4, 5];",
-				Language:       "javascript",
-				Options:        `["for loop", "forEach()", "map()"]`,
+				QuestionType:       models.QuestionTypeMultipleChoice,
+				QuestionText:       "Which methods can be used to iterate over an array in JavaScript?",
+				Code:               "const arr = [1, 2, 3, 4, 5];",
+				Language:           "javascript",
+				Options:            `["for loop", "forEach()", "map()"]`,
 				AlternativeOptions: `["filter()", "reduce()", "for...of", "while loop"]`,
-				CorrectAnswers: `[0, 1, 2]`, // 0-based: for loop, forEach, map can iterate (options 0, 1, 2)
-				Explanation:    "for loop, forEach(), map(), for...of, and while loop can all be used to iterate over arrays. filter() and reduce() transform data rather than just iterate.",
+				CorrectAnswers:     `[0, 1, 2]`, // 0-based: for loop, forEach, map can iterate (options 0, 1, 2)
+				Explanation:        "for loop, forEach(), map(), for...of, and while loop can all be used to iterate over arrays. filter() and reduce() transform data rather than just iterate.",
 			},
 			{
 				QuestionType:  models.QuestionTypeSingleChoice,
@@ -117,20 +128,20 @@ func seedSampleData(db *gorm.DB, logger *zap.Logger) error {
 				Explanation:   "False. JavaScript is dynamically typed, meaning variable types are determined at runtime rather than compile time.",
 			},
 			{
-				QuestionType:  models.QuestionTypeSingleChoice,
-				QuestionText:  "What does 'this' refer to in a regular function in JavaScript?",
-				Options:       `["The function itself", "The global object (window in browsers)", "undefined"]`,
+				QuestionType:       models.QuestionTypeSingleChoice,
+				QuestionText:       "What does 'this' refer to in a regular function in JavaScript?",
+				Options:            `["The function itself", "The global object (window in browsers)", "undefined"]`,
 				AlternativeOptions: `["The parent object", "The window object", "null"]`,
-				CorrectAnswer: 1,
-				Explanation:   "In a regular function call, 'this' refers to the global object (window in browsers, global in Node.js) in non-strict mode, or undefined in strict mode.",
+				CorrectAnswer:      1,
+				Explanation:        "In a regular function call, 'this' refers to the global object (window in browsers, global in Node.js) in non-strict mode, or undefined in strict mode.",
 			},
 			{
-				QuestionType:   models.QuestionTypeMultipleChoice,
-				QuestionText:   "Which statements about JavaScript closures are true?",
-				Options:        `["Closures have access to outer function variables", "Closures can modify outer function variables", "Closures prevent garbage collection of outer variables"]`,
+				QuestionType:       models.QuestionTypeMultipleChoice,
+				QuestionText:       "Which statements about JavaScript closures are true?",
+				Options:            `["Closures have access to outer function variables", "Closures can modify outer function variables", "Closures prevent garbage collection of outer variables"]`,
 				AlternativeOptions: `["Closures are created every time a function is called", "Closures are only available in ES6+", "Closures improve performance"]`,
-				CorrectAnswers: `[0, 1, 2]`, // All three are true
-				Explanation:    "Closures have access to and can modify outer function variables, and they prevent garbage collection of referenced outer variables. Closures are created when functions are defined, not called, and have been available since early JavaScript versions.",
+				CorrectAnswers:     `[0, 1, 2]`, // All three are true
+				Explanation:        "Closures have access to and can modify outer function variables, and they prevent garbage collection of referenced outer variables. Closures are created when functions are defined, not called, and have been available since early JavaScript versions.",
 			},
 		},
 	}

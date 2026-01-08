@@ -10,6 +10,8 @@ const (
 	ErrTypeValidation ErrorType = "validation"
 	// Not found errors
 	ErrTypeNotFound ErrorType = "not_found"
+	// Authorization errors
+	ErrTypeAuthorization ErrorType = "authorization"
 	// Internal server errors
 	ErrTypeInternal ErrorType = "internal"
 	// Database errors
@@ -50,6 +52,12 @@ var (
 		Type:    ErrTypeNotFound,
 		Code:    "QUIZ_NOT_FOUND",
 		Message: "Quiz not found",
+	}
+
+	ErrNotQuizOwner = &AppError{
+		Type:    ErrTypeAuthorization,
+		Code:    "NOT_QUIZ_OWNER",
+		Message: "You don't have permission to modify this quiz",
 	}
 
 	ErrQuizTitleRequired = &AppError{
@@ -289,6 +297,30 @@ var (
 		Type:    ErrTypeValidation,
 		Code:    "ACCOUNT_LOCKED",
 		Message: "Account is temporarily locked due to too many failed login attempts. Please try again later",
+	}
+
+	ErrAdminSelfDeletion = &AppError{
+		Type:    ErrTypeValidation,
+		Code:    "ADMIN_SELF_DELETION",
+		Message: "Admin users cannot delete their own account",
+	}
+
+	ErrInvalidAdminUsername = &AppError{
+		Type:    ErrTypeValidation,
+		Code:    "INVALID_ADMIN_USERNAME",
+		Message: "ADMIN_USERNAME must be 6-30 chars, alphanumeric and underscore only",
+	}
+
+	ErrInvalidAdminPassword = &AppError{
+		Type:    ErrTypeValidation,
+		Code:    "INVALID_ADMIN_PASSWORD",
+		Message: "ADMIN_PASSWORD must be 8-72 chars with uppercase, lowercase, and digit",
+	}
+
+	ErrSamePassword = &AppError{
+		Type:    ErrTypeValidation,
+		Code:    "SAME_PASSWORD",
+		Message: "New password must be different from current password",
 	}
 )
 

@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 
 	apperrors "github.com/irvingmg/skilloper/skilloper-api/internal/errors"
+	"github.com/irvingmg/skilloper/skilloper-api/internal/middleware"
 	"github.com/irvingmg/skilloper/skilloper-api/internal/models"
 	"github.com/irvingmg/skilloper/skilloper-api/internal/services"
 )
@@ -40,6 +41,9 @@ func (h *QuizHandler) handleError(c *gin.Context, err error, operation string) {
 		case apperrors.ErrTypeNotFound:
 			h.logger.Warn("Resource not found", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
 			c.JSON(http.StatusNotFound, gin.H{"error": appErr.Message, "code": appErr.Code})
+		case apperrors.ErrTypeAuthorization:
+			h.logger.Warn("Authorization error", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
+			c.JSON(http.StatusForbidden, gin.H{"error": appErr.Message, "code": appErr.Code})
 		case apperrors.ErrTypeDatabase, apperrors.ErrTypeInternal:
 			h.logger.Error("Internal error", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error", "code": appErr.Code})
@@ -96,9 +100,11 @@ func (h *QuizHandler) GetQuiz(c *gin.Context) {
 	includeAnswers := c.Query("view") == ViewModeEdit
 
 	if includeAnswers {
+		userID := middleware.GetUserID(c)
+		isAdmin := middleware.IsAdmin(c)
 		h.logger.Info("Fetching quiz with answers for edit mode", zap.Int("id", id))
 
-		quiz, err := h.service.GetByIDWithAnswers(uint(id))
+		quiz, err := h.service.GetByIDWithAnswers(uint(id), userID, isAdmin)
 		if err != nil {
 			h.handleError(c, err, "fetch_quiz")
 			return
@@ -127,10 +133,11 @@ func (h *QuizHandler) GetQuiz(c *gin.Context) {
 
 // CreateQuiz handles POST /quizzes
 func (h *QuizHandler) CreateQuiz(c *gin.Context) {
+	userID := middleware.GetUserID(c)
 	contentType := c.ContentType()
 
 	if contentType == "multipart/form-data" || c.Request.MultipartForm != nil {
-		h.handleImport(c)
+		h.handleImport(c, userID)
 		return
 	}
 
@@ -144,7 +151,7 @@ func (h *QuizHandler) CreateQuiz(c *gin.Context) {
 
 	h.logger.Info("Creating quiz", zap.String("title", req.Title), zap.String("type", req.Type))
 
-	quiz, err := h.service.Create(req)
+	quiz, err := h.service.Create(req, userID)
 	if err != nil {
 		h.handleError(c, err, "create_quiz")
 		return
@@ -156,6 +163,8 @@ func (h *QuizHandler) CreateQuiz(c *gin.Context) {
 
 // UpdateQuiz handles PUT /quizzes/:id
 func (h *QuizHandler) UpdateQuiz(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	isAdmin := middleware.IsAdmin(c)
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		h.handleError(c, apperrors.ErrInvalidQuizID, "parse_quiz_id")
@@ -170,7 +179,7 @@ func (h *QuizHandler) UpdateQuiz(c *gin.Context) {
 		return
 	}
 
-	quiz, err := h.service.Update(uint(id), req)
+	quiz, err := h.service.Update(uint(id), req, userID, isAdmin)
 	if err != nil {
 		h.handleError(c, err, "update_quiz")
 		return
@@ -182,6 +191,8 @@ func (h *QuizHandler) UpdateQuiz(c *gin.Context) {
 
 // DeleteQuiz handles DELETE /quizzes/:id
 func (h *QuizHandler) DeleteQuiz(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	isAdmin := middleware.IsAdmin(c)
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		h.handleError(c, apperrors.ErrInvalidQuizID, "parse_quiz_id")
@@ -190,7 +201,7 @@ func (h *QuizHandler) DeleteQuiz(c *gin.Context) {
 
 	h.logger.Info("Deleting quiz", zap.Int("id", id))
 
-	err = h.service.Delete(uint(id))
+	err = h.service.Delete(uint(id), userID, isAdmin)
 	if err != nil {
 		h.handleError(c, err, "delete_quiz")
 		return
@@ -200,7 +211,7 @@ func (h *QuizHandler) DeleteQuiz(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-func (h *QuizHandler) handleImport(c *gin.Context) {
+func (h *QuizHandler) handleImport(c *gin.Context, userID uint) {
 	h.logger.Info("Importing quiz from file")
 
 	file, err := c.FormFile("file")
@@ -241,7 +252,7 @@ func (h *QuizHandler) handleImport(c *gin.Context) {
 		csvMeta.MaxOptions = n
 	}
 
-	quiz, err := h.service.ImportFromFile(file, csvMeta)
+	quiz, err := h.service.ImportFromFile(file, csvMeta, userID)
 	if err != nil {
 		h.handleError(c, err, "import_quiz")
 		return

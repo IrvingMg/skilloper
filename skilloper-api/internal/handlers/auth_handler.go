@@ -103,7 +103,6 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 	username := middleware.GetUsername(c)
 
-	// Extract and blacklist the token
 	authHeader := c.GetHeader("Authorization")
 	if strings.HasPrefix(authHeader, "Bearer ") {
 		token := strings.TrimPrefix(authHeader, "Bearer ")
@@ -113,6 +112,10 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 					zap.Uint("user_id", userID),
 					zap.Error(err))
 			}
+		} else {
+			h.logger.Warn("Failed to get token expiry for blacklisting",
+				zap.Uint("user_id", userID),
+				zap.Error(err))
 		}
 	}
 
@@ -134,4 +137,74 @@ func (h *AuthHandler) GetCurrentUser(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, user)
+}
+
+// UpdatePassword handles PUT /users/me/password
+func (h *AuthHandler) UpdatePassword(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+
+	var req models.UpdatePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.handleError(c, apperrors.ErrInvalidJSONFormat, "parse_update_password")
+		return
+	}
+
+	token, err := h.service.UpdatePassword(userID, req)
+	if err != nil {
+		h.handleError(c, err, "update_password")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Password updated successfully",
+		"token":   token,
+	})
+}
+
+// ResetHistory handles POST /users/me/history-clearance
+func (h *AuthHandler) ResetHistory(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+
+	var req models.PasswordConfirmRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.handleError(c, apperrors.ErrInvalidJSONFormat, "parse_reset_history")
+		return
+	}
+
+	deletedCount, err := h.service.ResetUserHistory(userID, req.Password)
+	if err != nil {
+		h.handleError(c, err, "reset_history")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":       "Quiz history cleared successfully",
+		"deleted_count": deletedCount,
+	})
+}
+
+// DeleteAccount handles POST /users/me/deletion
+func (h *AuthHandler) DeleteAccount(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+
+	var req models.PasswordConfirmRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.handleError(c, apperrors.ErrInvalidJSONFormat, "parse_delete_account")
+		return
+	}
+
+	if err := h.service.DeleteAccount(userID, req.Password); err != nil {
+		h.handleError(c, err, "delete_account")
+		return
+	}
+
+	authHeader := c.GetHeader("Authorization")
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		token := strings.TrimPrefix(authHeader, "Bearer ")
+		if expiry, err := h.service.GetTokenExpiry(token); err == nil {
+			_ = h.service.BlacklistToken(token, expiry)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Account deleted successfully"})
 }

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/golang-jwt/jwt/v5"
 	"go.uber.org/zap"
@@ -17,16 +16,26 @@ import (
 	"github.com/irvingmg/skilloper/skilloper-api/internal/models"
 )
 
-const bcryptCost = 12
-
 var (
 	// Dummy hash for timing attack prevention (hash of empty string)
-	dummyHash, _ = bcrypt.GenerateFromPassword([]byte(""), bcryptCost)
+	dummyHash, _ = bcrypt.GenerateFromPassword([]byte(""), models.BcryptCost)
 )
+
+// isDuplicateKeyError checks if the error is a unique constraint violation
+// Works with both SQLite and PostgreSQL
+func isDuplicateKeyError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	return strings.Contains(errStr, "UNIQUE constraint failed") || // SQLite
+		strings.Contains(errStr, "duplicate key value violates unique constraint") // PostgreSQL
+}
 
 type Claims struct {
 	UserID   uint   `json:"user_id"`
 	Username string `json:"username"`
+	IsAdmin  bool   `json:"is_admin"`
 	jwt.RegisteredClaims
 }
 
@@ -60,7 +69,7 @@ func (s *AuthService) Register(req models.RegisterRequest) (*models.LoginRespons
 		return nil, err
 	}
 
-	normalizedUsername := strings.ToLower(req.Username)
+	normalizedUsername := models.NormalizeUsername(req.Username)
 
 	var existingUser models.User
 	result := s.db.Where("username = ?", normalizedUsername).First(&existingUser)
@@ -73,7 +82,7 @@ func (s *AuthService) Register(req models.RegisterRequest) (*models.LoginRespons
 		return nil, apperrors.NewDatabaseError("USER_LOOKUP_FAILED", "Failed to check username", result.Error)
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcryptCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), models.BcryptCost)
 	if err != nil {
 		return nil, apperrors.NewInternalError("PASSWORD_HASH_FAILED", "Failed to hash password", err)
 	}
@@ -84,9 +93,7 @@ func (s *AuthService) Register(req models.RegisterRequest) (*models.LoginRespons
 	}
 
 	if err := s.db.Create(&user).Error; err != nil {
-		// Handle unique constraint violation (race condition)
-		if strings.Contains(err.Error(), "UNIQUE constraint failed") ||
-			strings.Contains(err.Error(), "duplicate key") {
+		if isDuplicateKeyError(err) {
 			return nil, apperrors.ErrUsernameTaken
 		}
 		return nil, apperrors.NewDatabaseError("USER_CREATE_FAILED", "Failed to create user", err)
@@ -106,18 +113,18 @@ func (s *AuthService) Register(req models.RegisterRequest) (*models.LoginRespons
 		User: models.UserResponse{
 			ID:        user.ID,
 			Username:  user.Username,
+			IsAdmin:   user.IsAdmin,
 			CreatedAt: user.CreatedAt,
 		},
 	}, nil
 }
 
 func (s *AuthService) Login(req models.LoginRequest) (*models.LoginResponse, error) {
-	normalizedUsername := strings.ToLower(req.Username)
+	normalizedUsername := models.NormalizeUsername(req.Username)
 
 	var user models.User
 	result := s.db.Where("username = ?", normalizedUsername).First(&user)
 
-	// Check if account is locked
 	if result.Error == nil && user.LockedUntil != nil && time.Now().Before(*user.LockedUntil) {
 		s.logger.Warn("Login attempt on locked account",
 			zap.String("username", normalizedUsername),
@@ -125,19 +132,16 @@ func (s *AuthService) Login(req models.LoginRequest) (*models.LoginResponse, err
 		return nil, apperrors.ErrAccountLocked
 	}
 
-	// Always perform password comparison to prevent timing attacks
 	hashToCompare := dummyHash
 	if result.Error == nil {
 		hashToCompare = []byte(user.PasswordHash)
 	}
 
 	if err := bcrypt.CompareHashAndPassword(hashToCompare, []byte(req.Password)); err != nil || result.Error != nil {
-		// Log failed attempt
 		if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, apperrors.NewDatabaseError("USER_LOOKUP_FAILED", "Failed to lookup user", result.Error)
 		}
 
-		// Track failed attempts for existing users
 		if result.Error == nil {
 			s.recordFailedAttempt(&user)
 		}
@@ -149,7 +153,6 @@ func (s *AuthService) Login(req models.LoginRequest) (*models.LoginResponse, err
 		return nil, apperrors.ErrInvalidCredentials
 	}
 
-	// Reset failed attempts on successful login
 	if user.FailedAttempts > 0 || user.LockedUntil != nil {
 		s.db.Model(&user).Updates(map[string]any{
 			"failed_attempts": 0,
@@ -171,6 +174,7 @@ func (s *AuthService) Login(req models.LoginRequest) (*models.LoginResponse, err
 		User: models.UserResponse{
 			ID:        user.ID,
 			Username:  user.Username,
+			IsAdmin:   user.IsAdmin,
 			CreatedAt: user.CreatedAt,
 		},
 	}, nil
@@ -197,7 +201,6 @@ func (s *AuthService) recordFailedAttempt(user *models.User) {
 }
 
 func (s *AuthService) ValidateToken(tokenString string) (*Claims, error) {
-	// Check if token is blacklisted
 	if s.isTokenBlacklisted(tokenString) {
 		return nil, apperrors.ErrInvalidToken
 	}
@@ -218,6 +221,22 @@ func (s *AuthService) ValidateToken(tokenString string) (*Claims, error) {
 		return nil, apperrors.ErrInvalidToken
 	}
 
+	if claims.IssuedAt == nil {
+		return nil, apperrors.ErrInvalidToken
+	}
+
+	var user models.User
+	if err := s.db.Select("tokens_invalidated_at").First(&user, claims.UserID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, apperrors.ErrInvalidToken
+		}
+		s.logger.Warn("Failed to check token invalidation", zap.Error(err))
+	} else if user.TokensInvalidatedAt != nil {
+		if claims.IssuedAt.Time.Before(*user.TokensInvalidatedAt) {
+			return nil, apperrors.ErrInvalidToken
+		}
+	}
+
 	return claims, nil
 }
 
@@ -229,9 +248,8 @@ func (s *AuthService) BlacklistToken(tokenString string, expiresAt time.Time) er
 		ExpiresAt: expiresAt,
 	}
 
-	// Ignore duplicate key errors (token already blacklisted)
 	if err := s.db.Create(&blacklist).Error; err != nil {
-		if !strings.Contains(err.Error(), "UNIQUE constraint failed") {
+		if !isDuplicateKeyError(err) {
 			return err
 		}
 	}
@@ -270,6 +288,7 @@ func (s *AuthService) GetUserByID(id uint) (*models.UserResponse, error) {
 	return &models.UserResponse{
 		ID:        user.ID,
 		Username:  user.Username,
+		IsAdmin:   user.IsAdmin,
 		CreatedAt: user.CreatedAt,
 	}, nil
 }
@@ -279,6 +298,7 @@ func (s *AuthService) generateToken(user models.User) (string, error) {
 	claims := Claims{
 		UserID:   user.ID,
 		Username: user.Username,
+		IsAdmin:  user.IsAdmin,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(now.Add(s.jwtExpiry)),
 			IssuedAt:  jwt.NewNumericDate(now),
@@ -314,10 +334,7 @@ func (s *AuthService) GetTokenExpiry(tokenString string) (time.Time, error) {
 }
 
 func (s *AuthService) validateUsername(username string) error {
-	if len(username) < models.MinUsernameLength || len(username) > models.MaxUsernameLength {
-		return apperrors.ErrInvalidUsername
-	}
-	if !models.UsernameRegex.MatchString(username) {
+	if !models.ValidateUsername(username) {
 		return apperrors.ErrInvalidUsername
 	}
 	return nil
@@ -327,23 +344,186 @@ func (s *AuthService) validatePassword(password string) error {
 	if len(password) < models.MinPasswordLength || len(password) > models.MaxPasswordLength {
 		return apperrors.ErrInvalidPassword
 	}
-
-	// Check password complexity
-	var hasUpper, hasLower, hasDigit bool
-	for _, char := range password {
-		switch {
-		case unicode.IsUpper(char):
-			hasUpper = true
-		case unicode.IsLower(char):
-			hasLower = true
-		case unicode.IsDigit(char):
-			hasDigit = true
-		}
-	}
-
-	if !hasUpper || !hasLower || !hasDigit {
+	if !models.ValidatePasswordStrength(password) {
 		return apperrors.ErrWeakPassword
 	}
+	return nil
+}
+
+func (s *AuthService) getUserAndVerifyPassword(userID uint, password string, operation string) (*models.User, error) {
+	var user models.User
+	if err := s.db.First(&user, userID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, apperrors.NewNotFoundError("USER_NOT_FOUND", "User not found")
+		}
+		return nil, apperrors.NewDatabaseError("USER_LOOKUP_FAILED", "Failed to lookup user", err)
+	}
+
+	if user.LockedUntil != nil && time.Now().Before(*user.LockedUntil) {
+		s.logger.Warn(operation+": account locked",
+			zap.Uint("user_id", userID),
+			zap.Time("locked_until", *user.LockedUntil))
+		return nil, apperrors.ErrAccountLocked
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
+		s.recordFailedAttempt(&user)
+		s.logger.Warn(operation+": invalid password",
+			zap.Uint("user_id", userID),
+			zap.Int("failed_attempts", user.FailedAttempts))
+		return nil, apperrors.ErrInvalidCredentials
+	}
+
+	if user.FailedAttempts > 0 || user.LockedUntil != nil {
+		s.db.Model(&user).Updates(map[string]any{
+			"failed_attempts": 0,
+			"locked_until":    nil,
+		})
+	}
+
+	return &user, nil
+}
+
+func (s *AuthService) UpdatePassword(userID uint, req models.UpdatePasswordRequest) (string, error) {
+	if err := s.validatePassword(req.NewPassword); err != nil {
+		return "", err
+	}
+
+	if req.CurrentPassword == req.NewPassword {
+		return "", apperrors.ErrSamePassword
+	}
+
+	user, err := s.getUserAndVerifyPassword(userID, req.CurrentPassword, "Password update failed")
+	if err != nil {
+		return "", err
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), models.BcryptCost)
+	if err != nil {
+		return "", apperrors.NewInternalError("PASSWORD_HASH_FAILED", "Failed to hash password", err)
+	}
+
+	now := time.Now()
+	if err := s.db.Model(user).Updates(map[string]any{
+		"password_hash":         string(hashedPassword),
+		"tokens_invalidated_at": now,
+	}).Error; err != nil {
+		return "", apperrors.NewDatabaseError("PASSWORD_UPDATE_FAILED", "Failed to update password", err)
+	}
+
+	token, err := s.generateToken(*user)
+	if err != nil {
+		return "", err
+	}
+
+	s.logger.Info("Password updated successfully",
+		zap.Uint("user_id", userID),
+		zap.String("username", user.Username))
+
+	return token, nil
+}
+
+func (s *AuthService) ResetUserHistory(userID uint, password string) (int64, error) {
+	user, err := s.getUserAndVerifyPassword(userID, password, "Reset history failed")
+	if err != nil {
+		return 0, err
+	}
+
+	var deletedCount int64
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec(`
+			DELETE FROM attempt_answers
+			WHERE attempt_id IN (SELECT id FROM quiz_attempts WHERE user_id = ?)
+		`, userID).Error; err != nil {
+			return err
+		}
+
+		result := tx.Where("user_id = ?", userID).Delete(&models.QuizAttempt{})
+		if result.Error != nil {
+			return result.Error
+		}
+		deletedCount = result.RowsAffected
+
+		return nil
+	})
+
+	if err != nil {
+		return 0, apperrors.NewDatabaseError("RESET_HISTORY_FAILED", "Failed to reset quiz history", err)
+	}
+
+	s.logger.Info("Quiz history reset successfully",
+		zap.Uint("user_id", userID),
+		zap.String("username", user.Username),
+		zap.Int64("deleted_attempts", deletedCount))
+
+	return deletedCount, nil
+}
+
+func (s *AuthService) DeleteAccount(userID uint, password string) error {
+	user, err := s.getUserAndVerifyPassword(userID, password, "Account deletion failed")
+	if err != nil {
+		return err
+	}
+
+	if user.IsAdmin {
+		return apperrors.ErrAdminSelfDeletion
+	}
+
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec(`
+			DELETE FROM attempt_answers
+			WHERE attempt_id IN (
+				SELECT qa.id FROM quiz_attempts qa
+				JOIN quizzes q ON qa.quiz_id = q.id
+				WHERE q.user_id = ?
+			)
+		`, userID).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Exec(`
+			DELETE FROM quiz_attempts
+			WHERE quiz_id IN (SELECT id FROM quizzes WHERE user_id = ?)
+		`, userID).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Exec(`
+			DELETE FROM attempt_answers
+			WHERE attempt_id IN (SELECT id FROM quiz_attempts WHERE user_id = ?)
+		`, userID).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Where("user_id = ?", userID).Delete(&models.QuizAttempt{}).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Exec(`
+			DELETE FROM questions
+			WHERE quiz_id IN (SELECT id FROM quizzes WHERE user_id = ?)
+		`, userID).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Where("user_id = ?", userID).Delete(&models.Quiz{}).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Delete(user).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return apperrors.NewDatabaseError("DELETE_ACCOUNT_FAILED", "Failed to delete account", err)
+	}
+
+	s.logger.Info("Account deleted successfully",
+		zap.Uint("user_id", userID),
+		zap.String("username", user.Username))
 
 	return nil
 }
