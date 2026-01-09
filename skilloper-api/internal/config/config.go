@@ -42,6 +42,11 @@ type Config struct {
 	RateLimit      RateLimitConfig
 	Redis          RedisConfig
 	TLS            TLSConfig
+	StaticDir      string
+}
+
+func (c *Config) StaticServing() bool {
+	return c.StaticDir != ""
 }
 
 type RateLimitConfig struct {
@@ -100,6 +105,7 @@ func Load() *Config {
 		RateLimit:      parseRateLimitConfig(),
 		Redis:          parseRedisConfig(),
 		TLS:            parseTLSConfig(),
+		StaticDir:      getEnv("STATIC_DIR", ""),
 	}
 
 	if cfg.DBDriver != DBDriverSQLite && cfg.DBDriver != DBDriverPostgres {

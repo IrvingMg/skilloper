@@ -1,0 +1,45 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+*.md
+docs/
+
+# Local development
+*.log
+*.db
+.env
+.env.local
+
+# Flutter
+skilloper_app/build/
+skilloper_app/.dart_tool/
+skilloper_app/.packages
+skilloper_app/android/
+skilloper_app/ios/
+skilloper_app/linux/
+skilloper_app/macos/
+skilloper_app/windows/
+skilloper_app/test/
+
+# Build output
+build/
+
+# Go
+skilloper-api/skilloper.db
+skilloper-api/.env
+
+# Claude
+.claude/
+CLAUDE.md

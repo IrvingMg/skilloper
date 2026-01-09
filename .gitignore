@@ -1,5 +1,8 @@
 # Global Skilloper Project Ignores
 
+# Build output
+build/
+
 # Editor/IDE (global)
 .vscode/
 .idea/

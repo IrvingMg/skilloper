@@ -42,6 +42,8 @@ Copy `.env.example` to `.env` and configure:
 | `REDIS_KEY_PREFIX` | `skilloper` | Redis key prefix for rate limits |
 | `TLS_CERT_FILE` | - | Path to TLS certificate (enables HTTPS with TLS_KEY_FILE) |
 | `TLS_KEY_FILE` | - | Path to TLS private key (enables HTTPS with TLS_CERT_FILE) |
+| `LOG_LEVEL` | `info` | Logging level: `debug`, `info`, `warn`, `error` |
+| `STATIC_DIR` | - | Path to Flutter web build for static file serving (empty = disabled) |
 
 **Rate limit format:** `count-period` (e.g., `5-M` = 5 per minute). Periods: S (second), M (minute), H (hour), D (day). IP-only limits are automatically 3x the configured values.
 
@@ -66,14 +68,14 @@ APP_ENV=production \
 DB_DRIVER=postgres \
 DATABASE_URL="postgres://user:pass@host:5432/skilloper?sslmode=require" \
 JWT_SECRET="your-production-secret" \
-ADMIN_USERNAME="admin" \
+ADMIN_USERNAME="admin_user" \
 ADMIN_PASSWORD="SecurePass123!" \
 RATE_LIMIT_ENABLED=true \
 REDIS_URL="redis://localhost:6379" \
 TLS_CERT_FILE="/etc/letsencrypt/live/example.com/fullchain.pem" \
 TLS_KEY_FILE="/etc/letsencrypt/live/example.com/privkey.pem" \
 PORT=443 \
-./skilloper-api
+./app
 ```
 
 **TLS:** When both `TLS_CERT_FILE` and `TLS_KEY_FILE` are set, the server runs HTTPS. Omit both for HTTP. Setting only one will cause the server to exit with an error.
@@ -81,7 +83,7 @@ PORT=443 \
 ### Build
 
 ```bash
-go build -o skilloper-api
+go build -o app
 ```
 
 ## Database

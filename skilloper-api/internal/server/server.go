@@ -3,6 +3,9 @@ package server
 import (
 	"context"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -65,6 +68,7 @@ func (s *Server) Initialize() error {
 	}
 	s.setupServices()
 	s.setupRoutes()
+	s.setupStaticFiles()
 	return nil
 }
 
@@ -182,6 +186,82 @@ func (s *Server) Start() error {
 		}
 	}
 	return nil
+}
+
+func (s *Server) setupStaticFiles() {
+	if !s.config.StaticServing() {
+		s.logger.Info("Static file serving disabled")
+		return
+	}
+
+	staticDir := s.config.StaticDir
+	absStaticDir, err := filepath.Abs(staticDir)
+	if err != nil {
+		s.logger.Error("Failed to resolve static directory path",
+			zap.String("path", staticDir), zap.Error(err))
+		return
+	}
+
+	if _, err := os.Stat(absStaticDir); os.IsNotExist(err) {
+		s.logger.Warn("Static directory not found, skipping static file setup",
+			zap.String("path", absStaticDir))
+		return
+	}
+
+	s.logger.Info("Setting up static file serving", zap.String("directory", absStaticDir))
+	s.router.NoRoute(s.staticFileHandler(absStaticDir))
+}
+
+func (s *Server) staticFileHandler(absStaticDir string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		path := c.Request.URL.Path
+
+		if strings.HasPrefix(path, "/api/") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
+			return
+		}
+
+		cleanPath := strings.TrimPrefix(path, "/")
+		cleanPath = filepath.Clean(cleanPath)
+		filePath := filepath.Join(absStaticDir, cleanPath)
+
+		// Verify path is within static directory (catches traversal attempts)
+		relPath, err := filepath.Rel(absStaticDir, filePath)
+		if err != nil || strings.HasPrefix(relPath, "..") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
+			return
+		}
+
+		if info, err := os.Stat(filePath); err == nil && !info.IsDir() {
+			s.setCacheHeaders(c, path)
+			c.File(filePath)
+			return
+		}
+
+		if !strings.Contains(filepath.Base(path), ".") {
+			indexPath := filepath.Join(absStaticDir, "index.html")
+			c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+			c.File(indexPath)
+			return
+		}
+
+		c.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
+	}
+}
+
+func (s *Server) setCacheHeaders(c *gin.Context, path string) {
+	if path == "/" || path == "/index.html" {
+		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+		return
+	}
+
+	ext := filepath.Ext(path)
+	switch ext {
+	case ".js", ".css", ".woff2", ".woff", ".ttf", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".wasm":
+		c.Header("Cache-Control", "public, max-age=31536000, immutable")
+	default:
+		c.Header("Cache-Control", "public, max-age=3600")
+	}
 }
 
 func (s *Server) Shutdown() {

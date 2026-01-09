@@ -10,6 +10,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 
 	"github.com/irvingmg/skilloper/skilloper-api/internal/config"
 	apperrors "github.com/irvingmg/skilloper/skilloper-api/internal/errors"
@@ -30,7 +31,14 @@ func openConnection(cfg *config.Config, logger *zap.Logger) (*gorm.DB, error) {
 		return nil, fmt.Errorf("unsupported database driver: %s", cfg.DBDriver)
 	}
 
-	db, err := gorm.Open(dialector, &gorm.Config{})
+	gormLogLevel := gormlogger.Silent
+	if cfg.IsDevelopment() {
+		gormLogLevel = gormlogger.Info
+	}
+
+	db, err := gorm.Open(dialector, &gorm.Config{
+		Logger: gormlogger.Default.LogMode(gormLogLevel),
+	})
 	if err != nil {
 		logger.Error("Failed to connect to database", zap.Error(err))
 		return nil, err
