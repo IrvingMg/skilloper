@@ -16,7 +16,7 @@ install-deps:
 
 start-api:
 	@echo "Starting API server on http://localhost:8080"
-	cd skilloper-api && go run main.go
+	cd skilloper-api && APP_ENV=development go run main.go
 
 start-app:
 	@echo "Starting Flutter app on http://localhost:3001"
@@ -28,7 +28,7 @@ start:
 	@echo "App: http://localhost:3001"
 	@echo "Logs: api.log and app.log"
 	@echo "Run 'make stop' to stop both services"
-	cd skilloper-api && nohup go run main.go > ../api.log 2>&1 &
+	cd skilloper-api && APP_ENV=development nohup go run main.go > ../api.log 2>&1 &
 	cd skilloper_app && nohup flutter run -d chrome --web-port 3001 > ../app.log 2>&1 &
 	@echo "Services started. Use 'make stop' to stop them."
 

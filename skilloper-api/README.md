@@ -6,106 +6,94 @@ Go REST API backend for the Skilloper platform.
 
 - Go 1.24+
 - Git (for cloning)
+- PostgreSQL (for production) or SQLite (for development)
 
-## Setup
+## Quick Start
+
+```bash
+# From repo root
+make install-deps  # Install dependencies
+cp skilloper-api/.env.example skilloper-api/.env
+# Edit .env with your values
+make start-api     # Start API server
+```
+
+## Configuration
+
+Copy `.env.example` to `.env` and configure:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `APP_ENV` | - | Set to `development` to load .env file |
+| `PORT` | `8080` | Server port |
+| `DB_DRIVER` | `sqlite` | Database driver (`sqlite` or `postgres`) |
+| `DATABASE_PATH` | `skilloper.db` | SQLite file path |
+| `DATABASE_URL` | - | PostgreSQL connection URL (required when DB_DRIVER=postgres) |
+| `JWT_SECRET` | **Required** | Secret key for signing JWT tokens |
+| `JWT_EXPIRY` | `24` | Token expiry time in hours |
+| `ADMIN_USERNAME` | **Required** | Admin username (6-30 chars) |
+| `ADMIN_PASSWORD` | **Required** | Admin password (8-72 chars) |
+| `ALLOWED_ORIGINS` | localhost:3000,3001 | Comma-separated CORS origins |
+
+## Development
 
 ### Using Makefile (Recommended)
 
 ```bash
-# From project root
+# From repo root
 make help          # See all available commands
-make install-deps  # Install dependencies
-make start-api     # Start API server
+make start-api     # Start API server (sets APP_ENV=development)
+make start         # Start both API and Flutter app
+make stop          # Stop all services
 ```
 
 ### Manual Setup
 
 ```bash
-# Navigate to API directory
 cd skilloper-api
+cp .env.example .env
+# Edit .env with your values
+APP_ENV=development go run main.go
 
-# Install dependencies
-go mod tidy
-
-# Run in development mode
-go run main.go
+# With auto-restart (install air first)
+APP_ENV=development air
 ```
 
-**Server runs on:** `http://localhost:8080`
+## Production
 
+### With PostgreSQL
 
-## How to Run
-
-### Development Mode
 ```bash
-# Standard run
-go run main.go
-
-# With custom port
-PORT=9000 go run main.go
-
-# With custom database
-DATABASE_PATH=custom.db go run main.go
-
-# With auto-restart (install air first: go install github.com/cosmtrek/air@latest)
-air
-```
-
-### Production Mode
-```bash
-# Build binary
-go build -o skilloper-api
-
-# Run binary
+APP_ENV=production \
+DB_DRIVER=postgres \
+DATABASE_URL="postgres://user:pass@host:5432/skilloper?sslmode=require" \
+JWT_SECRET="your-production-secret" \
+ADMIN_USERNAME="admin" \
+ADMIN_PASSWORD="SecurePass123!" \
 ./skilloper-api
-
-# Run with environment variables
-PORT=8080 DATABASE_PATH=production.db ./skilloper-api
 ```
 
-## Configuration
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `8080` | Server port |
-| `DATABASE_PATH` | `skilloper.db` | SQLite database file path |
-| `ALLOWED_ORIGINS` | http://localhost:3000,3001 + 127.0.0.1 variants | Comma-separated CORS origins |
-| `JWT_SECRET` | **Required** | Secret key for signing JWT tokens (min 32 chars recommended) |
-| `JWT_EXPIRY` | `24` | Token expiry time in hours |
-
-### Authentication Setup
-
-The API requires JWT authentication. Set `JWT_SECRET` before running:
+### Build
 
 ```bash
-# Development
-export JWT_SECRET="your-development-secret-key-min-32-chars"
-go run main.go
+go build -o skilloper-api
 ```
 
-**Note:** The server will exit immediately if `JWT_SECRET` is not set.
+## Database
+
+- **Development:** SQLite (auto-created as `skilloper.db`)
+- **Production:** PostgreSQL (with connection pooling: 25 max, 10 idle)
+- **Schema:** Auto-migrated on startup using GORM
 
 ## API Reference
 
 - **[API Endpoints](../docs/api-endpoints.md)** - Complete endpoint reference
 - **[Quiz Schema](../docs/quiz-schema.md)** - Quiz import formats
 
-## Database
-
-- **Type:** SQLite
-- **File:** `skilloper.db` (auto-created)
-- **Schema:** Auto-migrated on startup using GORM
-
-
 ## Testing
 
 ```bash
-# Run all tests
-go test ./...
-
-# Run tests with coverage
-go test -cover ./...
-
-# Run specific package tests
-go test ./internal/services/
+go test ./...              # Run all tests
+go test -cover ./...       # With coverage
+go test ./internal/services/  # Specific package
 ```

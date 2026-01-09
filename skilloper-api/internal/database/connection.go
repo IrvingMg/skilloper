@@ -2,10 +2,12 @@ package database
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
@@ -14,13 +16,47 @@ import (
 	"github.com/irvingmg/skilloper/skilloper-api/internal/models"
 )
 
-func New(cfg *config.Config, logger *zap.Logger) (*gorm.DB, error) {
-	logger.Info("Connecting to database", zap.String("path", cfg.DatabasePath))
+func openConnection(cfg *config.Config, logger *zap.Logger) (*gorm.DB, error) {
+	var dialector gorm.Dialector
 
-	dsn := cfg.DatabasePath + "?_foreign_keys=on"
-	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
+	switch cfg.DBDriver {
+	case config.DBDriverPostgres:
+		logger.Info("Connecting to PostgreSQL database")
+		dialector = postgres.Open(cfg.DatabaseURL)
+	case config.DBDriverSQLite:
+		logger.Info("Connecting to SQLite database", zap.String("path", cfg.DatabasePath))
+		dialector = sqlite.Open(cfg.DatabasePath + "?_foreign_keys=on")
+	default:
+		return nil, fmt.Errorf("unsupported database driver: %s", cfg.DBDriver)
+	}
+
+	db, err := gorm.Open(dialector, &gorm.Config{})
 	if err != nil {
 		logger.Error("Failed to connect to database", zap.Error(err))
+		return nil, err
+	}
+
+	if cfg.DBDriver == config.DBDriverPostgres {
+		sqlDB, err := db.DB()
+		if err != nil {
+			logger.Error("Failed to get underlying DB connection", zap.Error(err))
+			return nil, err
+		}
+		sqlDB.SetMaxOpenConns(25)
+		sqlDB.SetMaxIdleConns(10)
+		sqlDB.SetConnMaxLifetime(30 * time.Minute)
+		sqlDB.SetConnMaxIdleTime(5 * time.Minute)
+		logger.Info("PostgreSQL connection pool configured",
+			zap.Int("max_open", 25),
+			zap.Int("max_idle", 10))
+	}
+
+	return db, nil
+}
+
+func New(cfg *config.Config, logger *zap.Logger) (*gorm.DB, error) {
+	db, err := openConnection(cfg, logger)
+	if err != nil {
 		return nil, err
 	}
 
