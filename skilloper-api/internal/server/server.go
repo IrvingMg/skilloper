@@ -41,11 +41,15 @@ type Server struct {
 }
 
 func New(cfg *config.Config, db *gorm.DB, logger *zap.Logger) *Server {
+	if cfg.IsProduction() {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
 	return &Server{
 		config: cfg,
 		db:     db,
 		logger: logger,
-		router: gin.Default(),
+		router: gin.New(),
 	}
 }
 
@@ -61,6 +65,8 @@ func (s *Server) Initialize() error {
 
 func (s *Server) setupMiddleware() {
 	s.logger.Info("Setting up middleware")
+
+	s.router.Use(gin.Recovery())
 
 	corsConfig := cors.Config{
 		AllowOrigins:     s.config.AllowedOrigins,
