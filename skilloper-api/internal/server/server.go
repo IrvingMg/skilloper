@@ -45,11 +45,16 @@ func New(cfg *config.Config, db *gorm.DB, logger *zap.Logger) *Server {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
+	router := gin.New()
+	if err := router.SetTrustedProxies(nil); err != nil {
+		logger.Fatal("Failed to set trusted proxies", zap.Error(err))
+	}
+
 	return &Server{
 		config: cfg,
 		db:     db,
 		logger: logger,
-		router: gin.New(),
+		router: router,
 	}
 }
 
@@ -159,13 +164,22 @@ func (s *Server) Start() error {
 		IdleTimeout:       idleTimeout,
 	}
 
-	s.logger.Info("Server starting",
-		zap.String("port", s.config.Port),
-		zap.String("health_check_url", "http://localhost:"+s.config.Port+"/api/v1/health"),
-	)
-
-	if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		return err
+	if s.config.TLS.Enabled() {
+		s.logger.Info("Server starting with TLS",
+			zap.String("port", s.config.Port),
+			zap.String("cert_file", s.config.TLS.CertFile),
+		)
+		if err := s.httpServer.ListenAndServeTLS(s.config.TLS.CertFile, s.config.TLS.KeyFile); err != nil && err != http.ErrServerClosed {
+			return err
+		}
+	} else {
+		s.logger.Info("Server starting",
+			zap.String("port", s.config.Port),
+			zap.String("health_check", "/api/v1/health"),
+		)
+		if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			return err
+		}
 	}
 	return nil
 }

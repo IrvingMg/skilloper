@@ -40,6 +40,8 @@ Copy `.env.example` to `.env` and configure:
 | `RATE_LIMIT_API` | `120-M` | API rate limit per authenticated user |
 | `REDIS_URL` | - | Redis URL (required when rate limiting enabled) |
 | `REDIS_KEY_PREFIX` | `skilloper` | Redis key prefix for rate limits |
+| `TLS_CERT_FILE` | - | Path to TLS certificate (enables HTTPS with TLS_KEY_FILE) |
+| `TLS_KEY_FILE` | - | Path to TLS private key (enables HTTPS with TLS_CERT_FILE) |
 
 **Rate limit format:** `count-period` (e.g., `5-M` = 5 per minute). Periods: S (second), M (minute), H (hour), D (day). IP-only limits are automatically 3x the configured values.
 
@@ -57,7 +59,7 @@ make stop          # Stop all services
 
 ## Production
 
-### With PostgreSQL and Rate Limiting
+### With PostgreSQL, Rate Limiting, and TLS
 
 ```bash
 APP_ENV=production \
@@ -68,8 +70,13 @@ ADMIN_USERNAME="admin" \
 ADMIN_PASSWORD="SecurePass123!" \
 RATE_LIMIT_ENABLED=true \
 REDIS_URL="redis://localhost:6379" \
+TLS_CERT_FILE="/etc/letsencrypt/live/example.com/fullchain.pem" \
+TLS_KEY_FILE="/etc/letsencrypt/live/example.com/privkey.pem" \
+PORT=443 \
 ./skilloper-api
 ```
+
+**TLS:** When both `TLS_CERT_FILE` and `TLS_KEY_FILE` are set, the server runs HTTPS. Omit both for HTTP. Setting only one will cause the server to exit with an error.
 
 ### Build
 

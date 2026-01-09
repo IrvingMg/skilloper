@@ -41,6 +41,7 @@ type Config struct {
 	AdminPassword  string
 	RateLimit      RateLimitConfig
 	Redis          RedisConfig
+	TLS            TLSConfig
 }
 
 type RateLimitConfig struct {
@@ -53,6 +54,15 @@ type RateLimitConfig struct {
 type RedisConfig struct {
 	URL       string
 	KeyPrefix string
+}
+
+type TLSConfig struct {
+	CertFile string
+	KeyFile  string
+}
+
+func (t TLSConfig) Enabled() bool {
+	return t.CertFile != "" && t.KeyFile != ""
 }
 
 // IsProduction returns true if running in production environment
@@ -89,6 +99,7 @@ func Load() *Config {
 		AdminPassword:  adminPassword,
 		RateLimit:      parseRateLimitConfig(),
 		Redis:          parseRedisConfig(),
+		TLS:            parseTLSConfig(),
 	}
 
 	if cfg.DBDriver != DBDriverSQLite && cfg.DBDriver != DBDriverPostgres {
@@ -185,5 +196,29 @@ func parseRedisConfig() RedisConfig {
 	return RedisConfig{
 		URL:       getEnv("REDIS_URL", ""),
 		KeyPrefix: getEnv("REDIS_KEY_PREFIX", "skilloper"),
+	}
+}
+
+// parseTLSConfig parses TLS configuration
+func parseTLSConfig() TLSConfig {
+	certFile := getEnv("TLS_CERT_FILE", "")
+	keyFile := getEnv("TLS_KEY_FILE", "")
+
+	if (certFile != "" && keyFile == "") || (certFile == "" && keyFile != "") {
+		log.Fatal("Both TLS_CERT_FILE and TLS_KEY_FILE must be set together, or neither")
+	}
+
+	if certFile != "" && keyFile != "" {
+		if _, err := os.Stat(certFile); os.IsNotExist(err) {
+			log.Fatalf("TLS certificate file not found: %s", certFile)
+		}
+		if _, err := os.Stat(keyFile); os.IsNotExist(err) {
+			log.Fatalf("TLS key file not found: %s", keyFile)
+		}
+	}
+
+	return TLSConfig{
+		CertFile: certFile,
+		KeyFile:  keyFile,
 	}
 }
