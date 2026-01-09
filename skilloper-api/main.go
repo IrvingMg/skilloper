@@ -1,6 +1,10 @@
 package main
 
 import (
+	"os"
+	"os/signal"
+	"syscall"
+
 	"go.uber.org/zap"
 
 	"github.com/irvingmg/skilloper/skilloper-api/internal/config"
@@ -28,7 +32,16 @@ func main() {
 	}
 
 	srv := server.New(cfg, db, log)
-	srv.Initialize()
+	if err := srv.Initialize(); err != nil {
+		log.Fatal("Failed to initialize server", zap.Error(err))
+	}
+
+	go func() {
+		quit := make(chan os.Signal, 1)
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+		<-quit
+		srv.Shutdown()
+	}()
 
 	log.Info("Starting server")
 	if err := srv.Start(); err != nil {

@@ -456,6 +456,7 @@ The API returns structured error responses:
 | `INVALID_TOKEN` | Token is invalid, expired, or has been revoked |
 | `WEAK_PASSWORD` | Password doesn't meet complexity requirements |
 | `ACCOUNT_LOCKED` | Account temporarily locked due to too many failed login attempts |
+| `RATE_LIMIT_EXCEEDED` | Too many requests, try again later |
 
 ### HTTP Status Codes
 
@@ -466,5 +467,45 @@ The API returns structured error responses:
 - `404` - Not Found
 - `409` - Conflict (username taken)
 - `422` - Unprocessable Entity (file validation)
-- `429` - Too Many Requests (account locked)
+- `429` - Too Many Requests (rate limit exceeded or account locked)
 - `500` - Internal Server Error
+
+## Rate Limiting
+
+When rate limiting is enabled, the API enforces request limits to prevent abuse.
+
+### Rate Limits (Default)
+
+| Endpoint | Limit | Key |
+|----------|-------|-----|
+| `POST /sessions` (login) | 5/min | IP + username |
+| `POST /users` (register) | 3/min | IP + username |
+| All authenticated endpoints | 120/min | User ID |
+
+IP-only limits (3x the above values) also apply to login/register to prevent username rotation attacks.
+
+### Rate Limit Headers
+
+All responses include rate limit information:
+
+```
+X-RateLimit-Limit: 5
+X-RateLimit-Remaining: 3
+X-RateLimit-Reset: 1704825600
+```
+
+### Rate Limit Exceeded Response (429)
+
+```json
+{
+  "error": "Too many requests. Please try again later.",
+  "code": "RATE_LIMIT_EXCEEDED"
+}
+```
+
+Headers on 429 responses:
+```
+Retry-After: 45
+```
+
+The `Retry-After` header indicates seconds until the limit resets.

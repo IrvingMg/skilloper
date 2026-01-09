@@ -1,6 +1,10 @@
 package server
 
 import (
+	"context"
+	"net/http"
+	"time"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -12,12 +16,22 @@ import (
 	"github.com/irvingmg/skilloper/skilloper-api/internal/services"
 )
 
-type Server struct {
-	config *config.Config
-	db     *gorm.DB
-	logger *zap.Logger
-	router *gin.Engine
+const (
+	shutdownTimeout   = 5 * time.Second
+	readHeaderTimeout = 5 * time.Second
+	readTimeout       = 30 * time.Second
+	writeTimeout      = 30 * time.Second
+	idleTimeout       = 120 * time.Second
+)
 
+type Server struct {
+	config     *config.Config
+	db         *gorm.DB
+	logger     *zap.Logger
+	router     *gin.Engine
+	httpServer *http.Server
+
+	rateLimiters   *middleware.RateLimiters
 	authService    *services.AuthService
 	authHandler    *handlers.AuthHandler
 	quizHandler    *handlers.QuizHandler
@@ -35,10 +49,14 @@ func New(cfg *config.Config, db *gorm.DB, logger *zap.Logger) *Server {
 	}
 }
 
-func (s *Server) Initialize() {
+func (s *Server) Initialize() error {
 	s.setupMiddleware()
+	if err := s.setupRateLimiters(); err != nil {
+		return err
+	}
 	s.setupServices()
 	s.setupRoutes()
+	return nil
 }
 
 func (s *Server) setupMiddleware() {
@@ -57,6 +75,15 @@ func (s *Server) setupMiddleware() {
 		zap.Strings("allowed_origins", s.config.AllowedOrigins),
 		zap.Strings("allowed_methods", s.config.AllowedMethods),
 	)
+}
+
+func (s *Server) setupRateLimiters() error {
+	rateLimiters, err := middleware.NewRateLimiters(s.config.RateLimit, s.config.Redis, s.logger)
+	if err != nil {
+		return err
+	}
+	s.rateLimiters = rateLimiters
+	return nil
 }
 
 func (s *Server) setupServices() {
@@ -81,12 +108,13 @@ func (s *Server) setupRoutes() {
 	api := s.router.Group("/api/v1")
 
 	api.GET("/health", s.healthHandler.HealthCheck)
-	api.POST("/users", s.authHandler.Register)
-	api.POST("/sessions", s.authHandler.Login)
+	api.POST("/users", s.rateLimiters.Register, s.authHandler.Register)
+	api.POST("/sessions", s.rateLimiters.Login, s.authHandler.Login)
 
 	// All other routes require authentication
 	protected := api.Group("")
 	protected.Use(middleware.AuthMiddleware(s.authService))
+	protected.Use(s.rateLimiters.API)
 	{
 		// Auth routes
 		protected.GET("/users/me", s.authHandler.GetCurrentUser)
@@ -116,10 +144,41 @@ func (s *Server) setupRoutes() {
 }
 
 func (s *Server) Start() error {
+	s.httpServer = &http.Server{
+		Addr:              ":" + s.config.Port,
+		Handler:           s.router,
+		ReadHeaderTimeout: readHeaderTimeout,
+		ReadTimeout:       readTimeout,
+		WriteTimeout:      writeTimeout,
+		IdleTimeout:       idleTimeout,
+	}
+
 	s.logger.Info("Server starting",
 		zap.String("port", s.config.Port),
 		zap.String("health_check_url", "http://localhost:"+s.config.Port+"/api/v1/health"),
 	)
 
-	return s.router.Run(":" + s.config.Port)
+	if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		return err
+	}
+	return nil
+}
+
+func (s *Server) Shutdown() {
+	s.logger.Info("Shutting down server")
+
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+
+	if s.httpServer != nil {
+		if err := s.httpServer.Shutdown(ctx); err != nil {
+			s.logger.Error("HTTP server shutdown error", zap.Error(err))
+		}
+	}
+
+	if s.rateLimiters != nil {
+		s.rateLimiters.Close()
+	}
+
+	s.logger.Info("Server shutdown complete")
 }

@@ -5,8 +5,8 @@ Go REST API backend for the Skilloper platform.
 ## Prerequisites
 
 - Go 1.24+
-- Git (for cloning)
 - PostgreSQL (for production) or SQLite (for development)
+- Redis (optional, required when rate limiting is enabled)
 
 ## Quick Start
 
@@ -34,6 +34,14 @@ Copy `.env.example` to `.env` and configure:
 | `ADMIN_USERNAME` | **Required** | Admin username (6-30 chars) |
 | `ADMIN_PASSWORD` | **Required** | Admin password (8-72 chars) |
 | `ALLOWED_ORIGINS` | localhost:3000,3001 | Comma-separated CORS origins |
+| `RATE_LIMIT_ENABLED` | `false` | Enable rate limiting (requires Redis) |
+| `RATE_LIMIT_LOGIN` | `5-M` | Login rate limit per IP:username |
+| `RATE_LIMIT_REGISTER` | `3-M` | Register rate limit per IP:username |
+| `RATE_LIMIT_API` | `120-M` | API rate limit per authenticated user |
+| `REDIS_URL` | - | Redis URL (required when rate limiting enabled) |
+| `REDIS_KEY_PREFIX` | `skilloper` | Redis key prefix for rate limits |
+
+**Rate limit format:** `count-period` (e.g., `5-M` = 5 per minute). Periods: S (second), M (minute), H (hour), D (day). IP-only limits are automatically 3x the configured values.
 
 ## Development
 
@@ -47,21 +55,9 @@ make start         # Start both API and Flutter app
 make stop          # Stop all services
 ```
 
-### Manual Setup
-
-```bash
-cd skilloper-api
-cp .env.example .env
-# Edit .env with your values
-APP_ENV=development go run main.go
-
-# With auto-restart (install air first)
-APP_ENV=development air
-```
-
 ## Production
 
-### With PostgreSQL
+### With PostgreSQL and Rate Limiting
 
 ```bash
 APP_ENV=production \
@@ -70,6 +66,8 @@ DATABASE_URL="postgres://user:pass@host:5432/skilloper?sslmode=require" \
 JWT_SECRET="your-production-secret" \
 ADMIN_USERNAME="admin" \
 ADMIN_PASSWORD="SecurePass123!" \
+RATE_LIMIT_ENABLED=true \
+REDIS_URL="redis://localhost:6379" \
 ./skilloper-api
 ```
 

@@ -39,6 +39,20 @@ type Config struct {
 	JWTExpiry      time.Duration
 	AdminUsername  string
 	AdminPassword  string
+	RateLimit      RateLimitConfig
+	Redis          RedisConfig
+}
+
+type RateLimitConfig struct {
+	Enabled      bool
+	LoginRate    string
+	RegisterRate string
+	APIRate      string
+}
+
+type RedisConfig struct {
+	URL       string
+	KeyPrefix string
 }
 
 // IsProduction returns true if running in production environment
@@ -73,6 +87,8 @@ func Load() *Config {
 		JWTExpiry:      parseJWTExpiry(),
 		AdminUsername:  adminUsername,
 		AdminPassword:  adminPassword,
+		RateLimit:      parseRateLimitConfig(),
+		Redis:          parseRedisConfig(),
 	}
 
 	if cfg.DBDriver != DBDriverSQLite && cfg.DBDriver != DBDriverPostgres {
@@ -143,4 +159,31 @@ func requireEnv(key string) string {
 		log.Fatalf("Required environment variable %s is not set", key)
 	}
 	return value
+}
+
+// getEnvBool gets an environment variable as boolean
+func getEnvBool(key string, defaultValue bool) bool {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	return strings.ToLower(value) == "true" || value == "1"
+}
+
+// parseRateLimitConfig parses rate limiting configuration
+func parseRateLimitConfig() RateLimitConfig {
+	return RateLimitConfig{
+		Enabled:      getEnvBool("RATE_LIMIT_ENABLED", false),
+		LoginRate:    getEnv("RATE_LIMIT_LOGIN", "5-M"),
+		RegisterRate: getEnv("RATE_LIMIT_REGISTER", "3-M"),
+		APIRate:      getEnv("RATE_LIMIT_API", "120-M"),
+	}
+}
+
+// parseRedisConfig parses Redis configuration
+func parseRedisConfig() RedisConfig {
+	return RedisConfig{
+		URL:       getEnv("REDIS_URL", ""),
+		KeyPrefix: getEnv("REDIS_KEY_PREFIX", "skilloper"),
+	}
 }
