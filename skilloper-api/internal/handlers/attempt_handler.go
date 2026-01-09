@@ -52,7 +52,7 @@ func (h *AttemptHandler) handleError(c *gin.Context, err error, operation string
 // CreateAttempt handles POST /attempts
 func (h *AttemptHandler) CreateAttempt(c *gin.Context) {
 	userID := middleware.GetUserID(c)
-	h.logger.Info("Creating new quiz attempt", zap.Uint("user_id", userID))
+	h.logger.Debug("Creating new quiz attempt", zap.Uint("user_id", userID))
 
 	var req models.StartAttemptRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -60,7 +60,7 @@ func (h *AttemptHandler) CreateAttempt(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Creating attempt",
+	h.logger.Debug("Creating attempt",
 		zap.Uint("user_id", userID),
 		zap.Uint("quiz_id", req.QuizID))
 
@@ -70,7 +70,7 @@ func (h *AttemptHandler) CreateAttempt(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Successfully created attempt",
+	h.logger.Debug("Successfully created attempt",
 		zap.Uint("id", attempt.ID),
 		zap.Uint("user_id", attempt.UserID))
 	c.JSON(http.StatusCreated, attempt)
@@ -91,7 +91,7 @@ func (h *AttemptHandler) UpdateAttempt(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Updating quiz attempt", zap.Uint("user_id", userID), zap.Int("id", id), zap.String("status", string(req.Status)))
+	h.logger.Debug("Updating quiz attempt", zap.Uint("user_id", userID), zap.Int("id", id), zap.String("status", string(req.Status)))
 
 	attempt, err := h.service.Update(userID, uint(id), req)
 	if err != nil {
@@ -99,7 +99,7 @@ func (h *AttemptHandler) UpdateAttempt(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Successfully updated attempt",
+	h.logger.Debug("Successfully updated attempt",
 		zap.Int("id", id),
 		zap.String("status", string(attempt.Status)))
 	c.JSON(http.StatusOK, attempt)
@@ -119,7 +119,7 @@ func (h *AttemptHandler) GetAttempts(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Fetching attempts for user",
+	h.logger.Debug("Fetching attempts for user",
 		zap.Uint("user_id", userID),
 		zap.Int("limit", params.Limit),
 		zap.Int("offset", params.Offset),
@@ -132,7 +132,7 @@ func (h *AttemptHandler) GetAttempts(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Successfully fetched attempts",
+	h.logger.Debug("Successfully fetched attempts",
 		zap.Uint("user_id", userID),
 		zap.Int("count", len(result.Data)),
 		zap.Int("total", result.Pagination.TotalCount))
@@ -148,7 +148,7 @@ func (h *AttemptHandler) GetAttempt(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Fetching attempt", zap.Uint("user_id", userID), zap.Int("id", id))
+	h.logger.Debug("Fetching attempt", zap.Uint("user_id", userID), zap.Int("id", id))
 
 	attempt, err := h.service.GetByID(userID, uint(id))
 	if err != nil {
@@ -156,7 +156,7 @@ func (h *AttemptHandler) GetAttempt(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Successfully fetched attempt",
+	h.logger.Debug("Successfully fetched attempt",
 		zap.Int("id", id),
 		zap.String("quiz_title", attempt.QuizTitle))
 	c.JSON(http.StatusOK, attempt)

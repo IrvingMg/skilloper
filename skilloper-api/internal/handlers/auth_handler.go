@@ -101,7 +101,6 @@ func (h *AuthHandler) Login(c *gin.Context) {
 // Logout handles DELETE /sessions
 func (h *AuthHandler) Logout(c *gin.Context) {
 	userID := middleware.GetUserID(c)
-	username := middleware.GetUsername(c)
 
 	authHeader := c.GetHeader("Authorization")
 	if strings.HasPrefix(authHeader, "Bearer ") {
@@ -109,19 +108,16 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		if expiry, err := h.service.GetTokenExpiry(token); err == nil {
 			if err := h.service.BlacklistToken(token, expiry); err != nil {
 				h.logger.Warn("Failed to blacklist token",
-					zap.Uint("user_id", userID),
 					zap.Error(err))
 			}
 		} else {
 			h.logger.Warn("Failed to get token expiry for blacklisting",
-				zap.Uint("user_id", userID),
 				zap.Error(err))
 		}
 	}
 
-	h.logger.Info("User logged out",
-		zap.Uint("user_id", userID),
-		zap.String("username", username))
+	h.logger.Debug("User logged out",
+		zap.Uint("user_id", userID))
 
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
 }

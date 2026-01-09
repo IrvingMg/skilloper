@@ -59,7 +59,7 @@ func (h *QuizHandler) handleError(c *gin.Context, err error, operation string) {
 
 // GetQuizSummaries handles GET /quizzes/summaries
 func (h *QuizHandler) GetQuizSummaries(c *gin.Context) {
-	h.logger.Info("Fetching quiz summaries")
+	h.logger.Debug("Fetching quiz summaries")
 
 	var params models.PaginationParams
 	if err := c.ShouldBindQuery(&params); err != nil {
@@ -71,7 +71,7 @@ func (h *QuizHandler) GetQuizSummaries(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Pagination params",
+	h.logger.Debug("Pagination params",
 		zap.Int("limit", params.Limit),
 		zap.Int("offset", params.Offset),
 		zap.String("search", params.Search),
@@ -83,7 +83,7 @@ func (h *QuizHandler) GetQuizSummaries(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Successfully fetched quiz summaries",
+	h.logger.Debug("Successfully fetched quiz summaries",
 		zap.Int("count", len(result.Data)),
 		zap.Int("total", result.Pagination.TotalCount))
 	c.JSON(http.StatusOK, result)
@@ -102,7 +102,7 @@ func (h *QuizHandler) GetQuiz(c *gin.Context) {
 	if includeAnswers {
 		userID := middleware.GetUserID(c)
 		isAdmin := middleware.IsAdmin(c)
-		h.logger.Info("Fetching quiz with answers for edit mode", zap.Int("id", id))
+		h.logger.Debug("Fetching quiz with answers for edit mode", zap.Int("id", id))
 
 		quiz, err := h.service.GetByIDWithAnswers(uint(id), userID, isAdmin)
 		if err != nil {
@@ -110,14 +110,14 @@ func (h *QuizHandler) GetQuiz(c *gin.Context) {
 			return
 		}
 
-		h.logger.Info("Successfully fetched quiz with answers",
+		h.logger.Debug("Successfully fetched quiz with answers",
 			zap.Int("id", id),
 			zap.String("title", quiz.Title))
 		c.JSON(http.StatusOK, quiz)
 		return
 	}
 
-	h.logger.Info("Fetching quiz with dynamic shuffling", zap.Int("id", id))
+	h.logger.Debug("Fetching quiz with dynamic shuffling", zap.Int("id", id))
 
 	quiz, err := h.service.GetByID(uint(id))
 	if err != nil {
@@ -125,7 +125,7 @@ func (h *QuizHandler) GetQuiz(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Successfully fetched quiz with shuffling",
+	h.logger.Debug("Successfully fetched quiz with shuffling",
 		zap.Int("id", id),
 		zap.String("title", quiz.Title))
 	c.JSON(http.StatusOK, quiz)
@@ -141,7 +141,7 @@ func (h *QuizHandler) CreateQuiz(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Creating new quiz")
+	h.logger.Debug("Creating new quiz")
 
 	var req models.CreateQuizRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -149,7 +149,7 @@ func (h *QuizHandler) CreateQuiz(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Creating quiz", zap.String("title", req.Title), zap.String("type", req.Type))
+	h.logger.Debug("Creating quiz", zap.String("title", req.Title), zap.String("type", req.Type))
 
 	quiz, err := h.service.Create(req, userID)
 	if err != nil {
@@ -157,7 +157,7 @@ func (h *QuizHandler) CreateQuiz(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Successfully created quiz", zap.Uint("id", quiz.ID), zap.String("title", quiz.Title))
+	h.logger.Debug("Successfully created quiz", zap.Uint("id", quiz.ID), zap.String("title", quiz.Title))
 	c.JSON(http.StatusCreated, quiz)
 }
 
@@ -171,7 +171,7 @@ func (h *QuizHandler) UpdateQuiz(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Updating quiz", zap.Int("id", id))
+	h.logger.Debug("Updating quiz", zap.Int("id", id))
 
 	var req models.CreateQuizRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -185,7 +185,7 @@ func (h *QuizHandler) UpdateQuiz(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Successfully updated quiz", zap.Int("id", id), zap.String("title", quiz.Title))
+	h.logger.Debug("Successfully updated quiz", zap.Int("id", id), zap.String("title", quiz.Title))
 	c.JSON(http.StatusOK, quiz)
 }
 
@@ -199,7 +199,7 @@ func (h *QuizHandler) DeleteQuiz(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Deleting quiz", zap.Int("id", id))
+	h.logger.Debug("Deleting quiz", zap.Int("id", id))
 
 	err = h.service.Delete(uint(id), userID, isAdmin)
 	if err != nil {
@@ -207,12 +207,12 @@ func (h *QuizHandler) DeleteQuiz(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Successfully deleted quiz", zap.Int("id", id))
+	h.logger.Debug("Successfully deleted quiz", zap.Int("id", id))
 	c.Status(http.StatusNoContent)
 }
 
 func (h *QuizHandler) handleImport(c *gin.Context, userID uint) {
-	h.logger.Info("Importing quiz from file")
+	h.logger.Debug("Importing quiz from file")
 
 	file, err := c.FormFile("file")
 	if err != nil {
@@ -220,7 +220,7 @@ func (h *QuizHandler) handleImport(c *gin.Context, userID uint) {
 		return
 	}
 
-	h.logger.Info("Processing uploaded file", zap.String("filename", file.Filename), zap.Int64("size", file.Size))
+	h.logger.Debug("Processing uploaded file", zap.String("filename", file.Filename), zap.Int64("size", file.Size))
 
 	title := c.Query("title")
 	description := c.Query("description")
@@ -258,7 +258,7 @@ func (h *QuizHandler) handleImport(c *gin.Context, userID uint) {
 		return
 	}
 
-	h.logger.Info("Successfully imported quiz",
+	h.logger.Debug("Successfully imported quiz",
 		zap.String("filename", file.Filename),
 		zap.String("title", quiz.Title),
 		zap.Int("questions", quiz.QuestionCount))

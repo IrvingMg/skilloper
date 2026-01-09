@@ -60,7 +60,7 @@ func (h *AnswerHandler) CreateAnswer(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Validating answer for question", zap.Uint("question_id", req.QuestionID))
+	h.logger.Debug("Validating answer for question", zap.Uint("question_id", req.QuestionID))
 
 	result, err := h.service.ValidateAnswer(req)
 	if err != nil {
@@ -68,7 +68,7 @@ func (h *AnswerHandler) CreateAnswer(c *gin.Context) {
 		return
 	}
 
-	h.logger.Info("Answer validated",
+	h.logger.Debug("Answer validated",
 		zap.Uint("question_id", req.QuestionID),
 		zap.Bool("is_correct", result.IsCorrect))
 	c.JSON(http.StatusOK, result)

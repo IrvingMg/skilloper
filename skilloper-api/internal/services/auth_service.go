@@ -57,14 +57,12 @@ func NewAuthService(db *gorm.DB, jwtSecret string, jwtExpiry time.Duration, logg
 
 func (s *AuthService) Register(req models.RegisterRequest) (*models.LoginResponse, error) {
 	if err := s.validateUsername(req.Username); err != nil {
-		s.logger.Warn("Registration failed: invalid username",
-			zap.String("username", req.Username),
+		s.logger.Debug("Registration failed: invalid username",
 			zap.String("reason", "validation_failed"))
 		return nil, err
 	}
 	if err := s.validatePassword(req.Password); err != nil {
-		s.logger.Warn("Registration failed: invalid password",
-			zap.String("username", req.Username),
+		s.logger.Debug("Registration failed: invalid password",
 			zap.String("reason", "password_validation_failed"))
 		return nil, err
 	}
@@ -74,8 +72,7 @@ func (s *AuthService) Register(req models.RegisterRequest) (*models.LoginRespons
 	var existingUser models.User
 	result := s.db.Where("username = ?", normalizedUsername).First(&existingUser)
 	if result.Error == nil {
-		s.logger.Warn("Registration failed: username taken",
-			zap.String("username", normalizedUsername))
+		s.logger.Debug("Registration failed: username taken")
 		return nil, apperrors.ErrUsernameTaken
 	}
 	if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -99,9 +96,8 @@ func (s *AuthService) Register(req models.RegisterRequest) (*models.LoginRespons
 		return nil, apperrors.NewDatabaseError("USER_CREATE_FAILED", "Failed to create user", err)
 	}
 
-	s.logger.Info("User registered successfully",
-		zap.Uint("user_id", user.ID),
-		zap.String("username", user.Username))
+	s.logger.Debug("User registered successfully",
+		zap.Uint("user_id", user.ID))
 
 	token, err := s.generateToken(user)
 	if err != nil {
@@ -127,7 +123,7 @@ func (s *AuthService) Login(req models.LoginRequest) (*models.LoginResponse, err
 
 	if result.Error == nil && user.LockedUntil != nil && time.Now().Before(*user.LockedUntil) {
 		s.logger.Warn("Login attempt on locked account",
-			zap.String("username", normalizedUsername),
+			zap.Uint("user_id", user.ID),
 			zap.Time("locked_until", *user.LockedUntil))
 		return nil, apperrors.ErrAccountLocked
 	}
@@ -146,9 +142,7 @@ func (s *AuthService) Login(req models.LoginRequest) (*models.LoginResponse, err
 			s.recordFailedAttempt(&user)
 		}
 
-		s.logger.Warn("Login failed: invalid credentials",
-			zap.String("username", normalizedUsername),
-			zap.Bool("user_exists", result.Error == nil))
+		s.logger.Warn("Login failed: invalid credentials")
 
 		return nil, apperrors.ErrInvalidCredentials
 	}
@@ -165,9 +159,8 @@ func (s *AuthService) Login(req models.LoginRequest) (*models.LoginResponse, err
 		return nil, err
 	}
 
-	s.logger.Info("User logged in successfully",
-		zap.Uint("user_id", user.ID),
-		zap.String("username", user.Username))
+	s.logger.Debug("User logged in successfully",
+		zap.Uint("user_id", user.ID))
 
 	return &models.LoginResponse{
 		Token: token,
@@ -192,7 +185,6 @@ func (s *AuthService) recordFailedAttempt(user *models.User) {
 		updates["locked_until"] = lockUntil
 		s.logger.Warn("Account locked due to too many failed attempts",
 			zap.Uint("user_id", user.ID),
-			zap.String("username", user.Username),
 			zap.Int("failed_attempts", user.FailedAttempts),
 			zap.Time("locked_until", lockUntil))
 	}
@@ -360,17 +352,13 @@ func (s *AuthService) getUserAndVerifyPassword(userID uint, password string, ope
 	}
 
 	if user.LockedUntil != nil && time.Now().Before(*user.LockedUntil) {
-		s.logger.Warn(operation+": account locked",
-			zap.Uint("user_id", userID),
-			zap.Time("locked_until", *user.LockedUntil))
+		s.logger.Debug(operation + ": account locked")
 		return nil, apperrors.ErrAccountLocked
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
 		s.recordFailedAttempt(&user)
-		s.logger.Warn(operation+": invalid password",
-			zap.Uint("user_id", userID),
-			zap.Int("failed_attempts", user.FailedAttempts))
+		s.logger.Debug(operation + ": invalid password")
 		return nil, apperrors.ErrInvalidCredentials
 	}
 
@@ -416,15 +404,14 @@ func (s *AuthService) UpdatePassword(userID uint, req models.UpdatePasswordReque
 		return "", err
 	}
 
-	s.logger.Info("Password updated successfully",
-		zap.Uint("user_id", userID),
-		zap.String("username", user.Username))
+	s.logger.Debug("Password updated successfully",
+		zap.Uint("user_id", userID))
 
 	return token, nil
 }
 
 func (s *AuthService) ResetUserHistory(userID uint, password string) (int64, error) {
-	user, err := s.getUserAndVerifyPassword(userID, password, "Reset history failed")
+	_, err := s.getUserAndVerifyPassword(userID, password, "Reset history failed")
 	if err != nil {
 		return 0, err
 	}
@@ -451,9 +438,8 @@ func (s *AuthService) ResetUserHistory(userID uint, password string) (int64, err
 		return 0, apperrors.NewDatabaseError("RESET_HISTORY_FAILED", "Failed to reset quiz history", err)
 	}
 
-	s.logger.Info("Quiz history reset successfully",
+	s.logger.Debug("Quiz history reset successfully",
 		zap.Uint("user_id", userID),
-		zap.String("username", user.Username),
 		zap.Int64("deleted_attempts", deletedCount))
 
 	return deletedCount, nil
@@ -521,9 +507,8 @@ func (s *AuthService) DeleteAccount(userID uint, password string) error {
 		return apperrors.NewDatabaseError("DELETE_ACCOUNT_FAILED", "Failed to delete account", err)
 	}
 
-	s.logger.Info("Account deleted successfully",
-		zap.Uint("user_id", userID),
-		zap.String("username", user.Username))
+	s.logger.Debug("Account deleted successfully",
+		zap.Uint("user_id", userID))
 
 	return nil
 }

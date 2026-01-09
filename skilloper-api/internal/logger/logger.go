@@ -40,7 +40,7 @@ func New(config Config) (*zap.Logger, error) {
 func NewFromEnv() (*zap.Logger, error) {
 	config := Config{
 		Level:       getEnv("LOG_LEVEL", "info"),
-		Environment: getEnv("ENVIRONMENT", "development"),
+		Environment: getEnv("APP_ENV", "development"),
 	}
 
 	return New(config)

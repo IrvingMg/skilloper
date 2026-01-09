@@ -98,7 +98,6 @@ func New(cfg *config.Config, logger *zap.Logger) (*gorm.DB, error) {
 func ensureAdminUser(db *gorm.DB, cfg *config.Config, logger *zap.Logger) error {
 	if !models.ValidateUsername(cfg.AdminUsername) {
 		logger.Error("Invalid ADMIN_USERNAME",
-			zap.String("username", cfg.AdminUsername),
 			zap.String("requirement", "6-30 chars, alphanumeric and underscore only"))
 		return apperrors.ErrInvalidAdminUsername
 	}
@@ -122,9 +121,9 @@ func ensureAdminUser(db *gorm.DB, cfg *config.Config, logger *zap.Logger) error 
 			}).Error; err != nil {
 				return err
 			}
-			logger.Info("Updated existing user to admin", zap.String("username", normalizedUsername))
+			logger.Info("Updated existing user to admin")
 		} else {
-			logger.Info("Admin user already exists", zap.String("username", normalizedUsername))
+			logger.Info("Admin user already exists")
 		}
 		return nil
 	}
@@ -147,6 +146,6 @@ func ensureAdminUser(db *gorm.DB, cfg *config.Config, logger *zap.Logger) error 
 		return err
 	}
 
-	logger.Info("Created admin user", zap.String("username", normalizedUsername))
+	logger.Info("Created admin user")
 	return nil
 }

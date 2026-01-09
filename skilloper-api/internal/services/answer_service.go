@@ -43,7 +43,7 @@ func (s *AnswerService) ValidateAnswer(req models.CreateAnswerRequest) (*models.
 	if question.QuestionType == models.QuestionTypeMultipleChoice {
 		var correctAnswers []int
 		if err := json.Unmarshal([]byte(question.CorrectAnswers), &correctAnswers); err != nil {
-			s.logger.Warn("Failed to unmarshal correct answers",
+			s.logger.Debug("Failed to unmarshal correct answers",
 				zap.Uint("question_id", req.QuestionID),
 				zap.Error(err))
 			return nil, apperrors.ErrFetchQuestionFailed

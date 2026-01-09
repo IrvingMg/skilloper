@@ -23,11 +23,11 @@ func NewHealthHandler(service *services.HealthService, logger *zap.Logger) *Heal
 
 // HealthCheck handles GET /health
 func (h *HealthHandler) HealthCheck(c *gin.Context) {
-	h.logger.Info("Health check requested")
+	h.logger.Debug("Health check requested")
 
 	response := h.service.GetHealth()
 
-	h.logger.Info("Health check completed",
+	h.logger.Debug("Health check completed",
 		zap.String("status", response.Status),
 	)
 

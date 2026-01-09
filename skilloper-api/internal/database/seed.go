@@ -12,7 +12,7 @@ func seedSampleData(db *gorm.DB, cfg *config.Config, logger *zap.Logger) error {
 	normalizedUsername := models.NormalizeUsername(cfg.AdminUsername)
 	var adminUser models.User
 	if err := db.Where("username = ?", normalizedUsername).First(&adminUser).Error; err != nil {
-		logger.Error("Admin user not found for quiz seeding", zap.String("username", normalizedUsername))
+		logger.Error("Admin user not found for quiz seeding")
 		return err
 	}
 
