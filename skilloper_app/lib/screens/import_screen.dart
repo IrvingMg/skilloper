@@ -5,6 +5,7 @@ import '../models/quiz.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
+import '../widgets/numbered_step.dart';
 import 'import_help_screen.dart';
 
 class ImportScreen extends StatefulWidget {
@@ -671,7 +672,7 @@ class _ImportScreenState extends State<ImportScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Upload JSON or CSV files to add new quizzes',
+              'Upload a quiz file created from your study notes',
               style: TextStyle(
                 fontSize: 16,
                 color: AppColors.textTertiary,
@@ -684,6 +685,94 @@ class _ImportScreenState extends State<ImportScreen> {
               child: SingleChildScrollView(
                 child: Column(
                   children: [
+                    // Guidance Section
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryContainer.withValues(alpha: 0.5),
+                        borderRadius: AppRadius.lgAll,
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(
+                                Icons.auto_awesome,
+                                color: AppColors.primary,
+                                size: AppIconSizes.lg,
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                'No quiz file yet?',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Convert your notes with AI:',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const NumberedStep.compact(
+                            number: '1',
+                            text: 'Copy your study notes',
+                          ),
+                          const NumberedStep.compact(
+                            number: '2',
+                            text: 'Paste into ChatGPT with our prompt',
+                          ),
+                          const NumberedStep.compact(
+                            number: '3',
+                            text: 'Download and import the file',
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (context) =>
+                                        const ImportHelpScreen(),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(
+                                Icons.auto_awesome,
+                                size: AppIconSizes.sm,
+                                color: AppColors.primary,
+                              ),
+                              label: const Text('Get AI Prompt'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.primary,
+                                side: const BorderSide(
+                                  color: AppColors.primary,
+                                  width: 1.5,
+                                ),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
                     // Upload area
                     Container(
                       width: double.infinity,
@@ -818,64 +907,9 @@ class _ImportScreenState extends State<ImportScreen> {
                         ),
                       ),
 
+                    // Bottom padding
                     SizedBox(
-                      height: MediaQuery.of(context).size.height < 700
-                          ? 20
-                          : 32,
-                    ),
-
-                    // Requirements Card
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: AppRadius.lgAll,
-                        border: Border.all(color: AppColors.primary, width: 2),
-                      ),
-                      child: const Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.checklist_rtl,
-                                color: AppColors.primary,
-                                size: AppIconSizes.xxl,
-                              ),
-                              SizedBox(width: 12),
-                              Text(
-                                'File Requirements',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 16),
-                          _RequirementItem(
-                            icon: Icons.description_outlined,
-                            text:
-                                'JSON or CSV files following the format guide',
-                          ),
-                          SizedBox(height: 12),
-                          _RequirementItem(
-                            icon: Icons.file_present_outlined,
-                            text: 'Maximum file size: 10MB',
-                          ),
-                          SizedBox(height: 12),
-                          _RequirementItem(
-                            icon: Icons.flash_on_outlined,
-                            text: 'Files will be processed immediately',
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Bottom padding for small screens
-                    SizedBox(
-                      height: MediaQuery.of(context).size.height < 700 ? 20 : 0,
+                      height: MediaQuery.of(context).size.height < 700 ? 20 : 16,
                     ),
                   ],
                 ),
@@ -884,35 +918,6 @@ class _ImportScreenState extends State<ImportScreen> {
           ],
         ),
       ),
-    );
-  }
-}
-
-class _RequirementItem extends StatelessWidget {
-  final IconData icon;
-  final String text;
-
-  const _RequirementItem({required this.icon, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: AppColors.primary, size: AppIconSizes.lg),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 14,
-              height: 1.4,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

@@ -15,7 +15,9 @@ import 'create_quiz/create_quiz_screen.dart';
 import 'quiz_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final VoidCallback? onNavigateToAdd;
+
+  const HomeScreen({super.key, this.onNavigateToAdd});
 
   @override
   State<HomeScreen> createState() => HomeScreenState();
@@ -630,19 +632,23 @@ class HomeScreenState extends State<HomeScreen> {
                         Text(
                           _searchQuery.isNotEmpty || _typeFilter.isNotEmpty
                               ? 'No matches found'
-                              : 'No quizzes available',
+                              : 'No quizzes yet',
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                         const SizedBox(height: AppSpacing.sm),
-                        Text(
-                          _searchQuery.isNotEmpty || _typeFilter.isNotEmpty
-                              ? 'Try a different search or filter'
-                              : 'Upload some quizzes using the Add tab',
-                          style: const TextStyle(color: AppColors.textTertiary),
-                          textAlign: TextAlign.center,
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 32),
+                          child: Text(
+                            _searchQuery.isNotEmpty || _typeFilter.isNotEmpty
+                                ? 'Try a different search or filter'
+                                : 'Create quizzes from your study notes using ChatGPT or Claude',
+                            style:
+                                const TextStyle(color: AppColors.textTertiary),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                         if (_searchQuery.isNotEmpty ||
                             _typeFilter.isNotEmpty) ...[
@@ -657,6 +663,19 @@ class HomeScreenState extends State<HomeScreen> {
                               _loadQuizzes(refresh: true);
                             },
                             child: const Text('Clear filters'),
+                          ),
+                        ] else ...[
+                          const SizedBox(height: AppSpacing.xl),
+                          ElevatedButton.icon(
+                            onPressed: widget.onNavigateToAdd,
+                            icon: const Icon(Icons.add),
+                            label: const Text('Add Quiz'),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
+                            ),
                           ),
                         ],
                       ],

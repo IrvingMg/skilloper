@@ -27,7 +27,7 @@ class AddQuizScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Choose how you would like to add a quiz',
+                'Create from scratch or import from your study notes',
                 style: TextStyle(
                   fontSize: 16,
                   color: AppColors.textTertiary,
@@ -44,29 +44,37 @@ class AddQuizScreen extends StatelessWidget {
                     final isWide = constraints.maxWidth > 500;
 
                     if (isWide) {
-                      return Row(
+                      return Column(
                         children: [
                           Expanded(
-                            child: _OptionCard(
-                              icon: Icons.edit_note,
-                              title: 'Create',
-                              description:
-                                  'Build a quiz from scratch using the wizard',
-                              color: AppColors.primary,
-                              onTap: () => _navigateToCreate(context),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: _OptionCard(
+                                    icon: Icons.edit_note,
+                                    title: 'Create',
+                                    description:
+                                        'Build questions one at a time with the wizard',
+                                    color: AppColors.primary,
+                                    onTap: () => _navigateToCreate(context),
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: _OptionCard(
+                                    icon: Icons.upload_file,
+                                    title: 'Import',
+                                    description:
+                                        'Upload a quiz file created from your notes',
+                                    color: AppColors.info,
+                                    onTap: () => _navigateToImport(context),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: _OptionCard(
-                              icon: Icons.upload_file,
-                              title: 'Import',
-                              description:
-                                  'Upload a JSON or CSV file with questions',
-                              color: AppColors.info,
-                              onTap: () => _navigateToImport(context),
-                            ),
-                          ),
+                          const SizedBox(height: 16),
+                          const _TipBanner(),
                         ],
                       );
                     } else {
@@ -77,7 +85,7 @@ class AddQuizScreen extends StatelessWidget {
                               icon: Icons.edit_note,
                               title: 'Create',
                               description:
-                                  'Build a quiz from scratch using the wizard',
+                                  'Build questions one at a time with the wizard',
                               color: AppColors.primary,
                               onTap: () => _navigateToCreate(context),
                             ),
@@ -88,11 +96,13 @@ class AddQuizScreen extends StatelessWidget {
                               icon: Icons.upload_file,
                               title: 'Import',
                               description:
-                                  'Upload a JSON or CSV file with questions',
+                                  'Upload a quiz file created from your notes',
                               color: AppColors.info,
                               onTap: () => _navigateToImport(context),
                             ),
                           ),
+                          const SizedBox(height: 16),
+                          const _TipBanner(),
                         ],
                       );
                     }
@@ -185,6 +195,56 @@ class _OptionCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _TipBanner extends StatelessWidget {
+  const _TipBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.primaryContainer.withValues(alpha: 0.5),
+        borderRadius: AppRadius.lgAll,
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: 0.3),
+        ),
+      ),
+      child: const Row(
+        children: [
+          Icon(
+            Icons.lightbulb_outline,
+            color: AppColors.primary,
+            size: AppIconSizes.lg,
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: 'Tip: ',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  TextSpan(
+                    text:
+                        'Convert your study notes into quizzes using ChatGPT or Claude. Tap Import for instructions.',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
+              style: TextStyle(fontSize: 14),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -87,18 +87,6 @@ func New(cfg *config.Config, logger *zap.Logger) (*gorm.DB, error) {
 		return nil, err
 	}
 
-	var count int64
-	db.Model(&models.Quiz{}).Count(&count)
-	if count == 0 {
-		logger.Info("Database is empty, seeding sample data")
-		if err := seedSampleData(db, cfg, logger); err != nil {
-			logger.Error("Failed to seed sample data", zap.Error(err))
-			return nil, err
-		}
-	} else {
-		logger.Info("Database already contains data, skipping seed", zap.Int64("quiz_count", count))
-	}
-
 	logger.Info("Database initialized successfully")
 	return db, nil
 }
