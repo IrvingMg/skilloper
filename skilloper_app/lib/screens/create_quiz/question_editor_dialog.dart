@@ -31,6 +31,7 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
   late List<TextEditingController> _altOptionControllers;
   bool _isMultipleChoice = false;
   bool _showAdvanced = false;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -141,6 +142,7 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
       } else {
         _question.setSingleAnswer(answer);
       }
+      _errorMessage = null;
     });
   }
 
@@ -161,19 +163,21 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
     return _question.correctAnswers.contains(optionIndex + 1);
   }
 
+  void _clearError() {
+    if (_errorMessage != null) {
+      setState(() => _errorMessage = null);
+    }
+  }
+
   void _save() {
     _syncFromControllers();
     if (_question.isValid) {
       widget.onSave(_question);
       Navigator.pop(context);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Please complete all required fields'),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      setState(() {
+        _errorMessage = _question.validationError ?? 'Please complete all required fields';
+      });
     }
   }
 
@@ -216,6 +220,30 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                 ],
               ),
             ),
+            if (_errorMessage != null)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                color: AppColors.errorContainer,
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: AppColors.error, size: AppIconSizes.md),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: TextStyle(color: AppColors.error, fontSize: 13),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: AppIconSizes.md),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      onPressed: () => setState(() => _errorMessage = null),
+                    ),
+                  ],
+                ),
+              ),
             Flexible(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
@@ -230,6 +258,7 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                         border: OutlineInputBorder(),
                       ),
                       maxLines: 2,
+                      onChanged: (_) => _clearError(),
                     ),
                     const SizedBox(height: 20),
                     Row(
@@ -337,6 +366,7 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                                     vertical: 10,
                                   ),
                                 ),
+                                onChanged: (_) => _clearError(),
                               ),
                             ),
 

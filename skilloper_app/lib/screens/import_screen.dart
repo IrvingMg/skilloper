@@ -75,6 +75,7 @@ class _ImportScreenState extends State<ImportScreen> {
     final descriptionController = TextEditingController();
     String selectedType = 'practice';
     int maxOptions = 4;
+    String? errorMessage;
 
     try {
       return await showDialog<Map<String, dynamic>>(
@@ -109,6 +110,34 @@ class _ImportScreenState extends State<ImportScreen> {
                     color: AppColors.textSecondary,
                   ),
                 ),
+                if (errorMessage != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.errorContainer,
+                      borderRadius: AppRadius.smAll,
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline, color: AppColors.error, size: AppIconSizes.md),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            errorMessage!,
+                            style: TextStyle(color: AppColors.error, fontSize: 13),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: AppIconSizes.md),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: () => setDialogState(() => errorMessage = null),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 20),
 
                 // Title field
@@ -198,9 +227,7 @@ class _ImportScreenState extends State<ImportScreen> {
             ElevatedButton(
               onPressed: () {
                 if (titleController.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Title is required')),
-                  );
+                  setDialogState(() => errorMessage = 'Title is required');
                   return;
                 }
                 Navigator.pop(context, {
