@@ -101,6 +101,10 @@ go build -o app
 ## Testing
 
 ```bash
+# Using Makefile (from repo root)
+make test-api              # Run Go tests
+
+# Direct Go commands
 go test ./...              # Run all tests
 go test -cover ./...       # With coverage
 go test ./internal/services/  # Specific package

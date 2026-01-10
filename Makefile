@@ -1,5 +1,5 @@
 .PHONY: help start start-api start-app install-deps clean-all stop \
-        build build-app build-api run test \
+        build build-app build-api run test test-api test-app \
         build-docker run-docker stop-docker \
         verify verify-api verify-app fix fix-api fix-app
 
@@ -45,7 +45,9 @@ help:
 	@echo "  build        Build Flutter and Go with embedded static"
 	@echo "  build-app    Build Flutter web release"
 	@echo "  build-api    Build Go binary (API only, defaults to STATIC_MODE=none)"
-	@echo "  test         Run all tests"
+	@echo "  test         Run all tests (Go + Flutter)"
+	@echo "  test-api     Run Go tests only"
+	@echo "  test-app     Run Flutter tests only"
 	@echo ""
 	@echo "Production (local):"
 	@echo "  run          Build and run Go serving Flutter locally"
@@ -162,11 +164,17 @@ build: build-app
 	cd skilloper-api && CGO_ENABLED=1 go build -ldflags="-w -s" -o ../build/skilloper .
 	@echo "Build complete!"
 
-test:
+test-api:
 	@echo "Running Go tests..."
 	cd skilloper-api && go test -tags noembed ./...
+	@echo "Go tests passed!"
+
+test-app:
 	@echo "Running Flutter tests..."
 	cd skilloper_app && flutter test
+	@echo "Flutter tests passed!"
+
+test: test-api test-app
 	@echo "All tests passed!"
 
 # ==============================================================================

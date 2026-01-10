@@ -27,6 +27,14 @@ cp skilloper-api/.env.example skilloper-api/.env
 make start    # API on :8080, App on :3001
 ```
 
+### Testing
+
+```bash
+make test        # Run all tests (Go + Flutter)
+make test-api    # Run Go tests only
+make test-app    # Run Flutter tests only
+```
+
 ### Production
 
 ```bash

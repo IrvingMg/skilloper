@@ -62,7 +62,10 @@ flutter run -d ios
 # Hot reload (automatic in dev mode)
 # Just save files and see changes instantly
 
-# Run tests
+# Run tests (from repo root)
+make test-app
+
+# Or directly
 flutter test
 
 # Code analysis
