@@ -8,10 +8,7 @@ import '../widgets/summary_card.dart';
 class HistoryDetailScreen extends StatefulWidget {
   final int attemptId;
 
-  const HistoryDetailScreen({
-    super.key,
-    required this.attemptId,
-  });
+  const HistoryDetailScreen({required this.attemptId, super.key});
 
   @override
   State<HistoryDetailScreen> createState() => _HistoryDetailScreenState();
@@ -41,7 +38,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
         _attempt = attempt;
         _isLoading = false;
       });
-    } catch (e) {
+    } on Object catch (e) {
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -62,9 +59,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Attempt Details'),
-      ),
+      appBar: AppBar(title: const Text('Attempt Details')),
       body: _buildBody(),
     );
   }
@@ -99,10 +94,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
             const SizedBox(height: AppSpacing.lg),
             const Text(
               'Failed to load attempt details',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w500,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: AppSpacing.lg),
             ElevatedButton(
@@ -115,9 +107,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
     }
 
     if (_attempt == null) {
-      return const Center(
-        child: Text('No data available'),
-      );
+      return const Center(child: Text('No data available'));
     }
 
     return SingleChildScrollView(
@@ -159,7 +149,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Container(
-                  padding: EdgeInsets.symmetric(
+                  padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.md,
                     vertical: AppSpacing.xs,
                   ),
@@ -236,10 +226,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'Question Review',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
                   ),
                 ),
 
@@ -271,10 +258,7 @@ class _AnswerReviewCard extends StatelessWidget {
   final int questionNumber;
   final AttemptAnswer answer;
 
-  const _AnswerReviewCard({
-    required this.questionNumber,
-    required this.answer,
-  });
+  const _AnswerReviewCard({required this.questionNumber, required this.answer});
 
   @override
   Widget build(BuildContext context) {
@@ -285,7 +269,7 @@ class _AnswerReviewCard extends StatelessWidget {
           // Header
           Container(
             padding: AppSpacing.allLg,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: AppColors.surfaceVariant,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(AppRadius.lg),
@@ -297,12 +281,10 @@ class _AnswerReviewCard extends StatelessWidget {
               children: [
                 Text(
                   'Question $questionNumber',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
                 Container(
-                  padding: EdgeInsets.symmetric(
+                  padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.sm,
                     vertical: AppSpacing.xs,
                   ),
@@ -478,7 +460,7 @@ class _AnswerDisplay extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 12,
                     color: AppColors.textTertiary,
@@ -491,7 +473,7 @@ class _AnswerDisplay extends StatelessWidget {
                       padding: const EdgeInsets.only(bottom: AppSpacing.xs),
                       child: Text(
                         '${String.fromCharCode(65 + answerIndex)}. ${options[answerIndex]}',
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 15,
                           color: AppColors.textPrimary,
                           fontWeight: FontWeight.w500,

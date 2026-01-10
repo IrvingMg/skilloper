@@ -13,9 +13,9 @@ class Question {
     required this.id,
     required this.questionType,
     required this.question,
+    required this.options,
     this.code,
     this.language,
-    required this.options,
     this.correctAnswer,
     this.correctAnswers,
     this.explanation,
@@ -38,7 +38,6 @@ class Question {
       explanation: json['explanation'] as String?,
     );
   }
-
 
   bool get isMultipleChoice => questionType == 'multiple_choice';
   bool get isSingleChoice => questionType == 'single_choice';
@@ -128,10 +127,7 @@ class ImportResponse {
   final String message;
   final QuizSummary quiz;
 
-  const ImportResponse({
-    required this.message,
-    required this.quiz,
-  });
+  const ImportResponse({required this.message, required this.quiz});
 
   factory ImportResponse.fromJson(Map<String, dynamic> json) {
     return ImportResponse(
@@ -165,8 +161,8 @@ class QuestionResult {
 
   const QuestionResult({
     required this.question,
+    required this.isCorrect,
     this.userAnswer,
     this.userAnswers,
-    required this.isCorrect,
   });
 }

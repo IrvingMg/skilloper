@@ -45,7 +45,7 @@ type Question struct {
 type CreateQuizRequest struct {
 	Title       string            `json:"title"`
 	Description string            `json:"description"`
-	Type        string            `json:"type"` // "practice" or "exam"
+	Type        string            `json:"type"`                  // "practice" or "exam"
 	MaxOptions  int               `json:"max_options,omitempty"` // Optional, defaults to 4 if 0
 	Questions   []QuestionRequest `json:"questions"`
 }

@@ -1,9 +1,10 @@
-import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
+
+import '../models/quiz.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
-import '../models/quiz.dart';
 import 'import_help_screen.dart';
 
 class ImportScreen extends StatefulWidget {
@@ -27,7 +28,7 @@ class _ImportScreenState extends State<ImportScreen> {
 
   Future<void> _pickAndUploadFile() async {
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['json', 'csv'],
       );
@@ -41,7 +42,9 @@ class _ImportScreenState extends State<ImportScreen> {
             ? fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase()
             : '';
         if (!_allowedExtensions.contains(extension)) {
-          _handleError('Unsupported file type. Please select a JSON or CSV file.');
+          _handleError(
+            'Unsupported file type. Please select a JSON or CSV file.',
+          );
           return;
         }
 
@@ -56,7 +59,7 @@ class _ImportScreenState extends State<ImportScreen> {
           await _uploadFile(fileBytes, fileName);
         }
       }
-    } catch (e) {
+    } on Object catch (e) {
       if (mounted) {
         setState(() {
           _isUploading = false;
@@ -70,7 +73,10 @@ class _ImportScreenState extends State<ImportScreen> {
 
   Future<Map<String, dynamic>?> _showCsvMetadataDialog(String fileName) async {
     // Remove extension case-insensitively
-    final baseName = fileName.replaceFirst(RegExp(r'\.csv$', caseSensitive: false), '');
+    final baseName = fileName.replaceFirst(
+      RegExp(r'\.csv$', caseSensitive: false),
+      '',
+    );
     final titleController = TextEditingController(text: baseName);
     final descriptionController = TextEditingController();
     String selectedType = 'practice';
@@ -79,170 +85,182 @@ class _ImportScreenState extends State<ImportScreen> {
 
     try {
       return await showDialog<Map<String, dynamic>>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: AppRadius.lgAll,
-          ),
-          title: Row(
-            children: [
-              Icon(Icons.table_chart, color: AppColors.primary, size: AppIconSizes.xxxl),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text(
-                  'CSV Quiz Details',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            shape: const RoundedRectangleBorder(borderRadius: AppRadius.lgAll),
+            title: const Row(
               children: [
-                Text(
-                  'Enter quiz metadata for your CSV file',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textSecondary,
-                  ),
+                Icon(
+                  Icons.table_chart,
+                  color: AppColors.primary,
+                  size: AppIconSizes.xxxl,
                 ),
-                if (errorMessage != null) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: AppColors.errorContainer,
-                      borderRadius: AppRadius.smAll,
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.error_outline, color: AppColors.error, size: AppIconSizes.md),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            errorMessage!,
-                            style: TextStyle(color: AppColors.error, fontSize: 13),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close, size: AppIconSizes.md),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          onPressed: () => setDialogState(() => errorMessage = null),
-                        ),
-                      ],
-                    ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'CSV Quiz Details',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
                   ),
-                ],
-                const SizedBox(height: 20),
-
-                // Title field
-                TextField(
-                  controller: titleController,
-                  decoration: InputDecoration(
-                    labelText: 'Quiz Title *',
-                    hintText: 'Enter quiz title',
-                    border: OutlineInputBorder(
-                      borderRadius: AppRadius.smAll,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Description field
-                TextField(
-                  controller: descriptionController,
-                  decoration: InputDecoration(
-                    labelText: 'Description (optional)',
-                    hintText: 'Brief description of the quiz',
-                    border: OutlineInputBorder(
-                      borderRadius: AppRadius.smAll,
-                    ),
-                  ),
-                  maxLines: 2,
-                ),
-                const SizedBox(height: 16),
-
-                // Type selector
-                Text(
-                  'Quiz Type',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(
-                      value: 'practice',
-                      label: Text('Practice'),
-                      icon: Icon(Icons.school, size: AppIconSizes.md),
-                    ),
-                    ButtonSegment(
-                      value: 'exam',
-                      label: Text('Exam'),
-                      icon: Icon(Icons.assignment, size: AppIconSizes.md),
-                    ),
-                  ],
-                  selected: {selectedType},
-                  onSelectionChanged: (value) {
-                    setDialogState(() => selectedType = value.first);
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Max options
-                Text(
-                  'Max Options per Question: $maxOptions',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                Slider(
-                  value: maxOptions.toDouble(),
-                  min: 2,
-                  max: 8,
-                  divisions: 6,
-                  label: maxOptions.toString(),
-                  onChanged: (value) {
-                    setDialogState(() => maxOptions = value.round());
-                  },
                 ),
               ],
             ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Enter quiz metadata for your CSV file',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  if (errorMessage != null) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: const BoxDecoration(
+                        color: AppColors.errorContainer,
+                        borderRadius: AppRadius.smAll,
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.error_outline,
+                            color: AppColors.error,
+                            size: AppIconSizes.md,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              errorMessage!,
+                              style: const TextStyle(
+                                color: AppColors.error,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.close,
+                              size: AppIconSizes.md,
+                            ),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () =>
+                                setDialogState(() => errorMessage = null),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+
+                  // Title field
+                  TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(
+                      labelText: 'Quiz Title *',
+                      hintText: 'Enter quiz title',
+                      border: OutlineInputBorder(borderRadius: AppRadius.smAll),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Description field
+                  TextField(
+                    controller: descriptionController,
+                    decoration: const InputDecoration(
+                      labelText: 'Description (optional)',
+                      hintText: 'Brief description of the quiz',
+                      border: OutlineInputBorder(borderRadius: AppRadius.smAll),
+                    ),
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Type selector
+                  const Text(
+                    'Quiz Type',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(
+                        value: 'practice',
+                        label: Text('Practice'),
+                        icon: Icon(Icons.school, size: AppIconSizes.md),
+                      ),
+                      ButtonSegment(
+                        value: 'exam',
+                        label: Text('Exam'),
+                        icon: Icon(Icons.assignment, size: AppIconSizes.md),
+                      ),
+                    ],
+                    selected: {selectedType},
+                    onSelectionChanged: (value) {
+                      setDialogState(() => selectedType = value.first);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Max options
+                  Text(
+                    'Max Options per Question: $maxOptions',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  Slider(
+                    value: maxOptions.toDouble(),
+                    min: 2,
+                    max: 8,
+                    divisions: 6,
+                    label: maxOptions.toString(),
+                    onChanged: (value) {
+                      setDialogState(() => maxOptions = value.round());
+                    },
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, null),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  if (titleController.text.trim().isEmpty) {
+                    setDialogState(() => errorMessage = 'Title is required');
+                    return;
+                  }
+                  Navigator.pop(context, {
+                    'title': titleController.text.trim(),
+                    'description': descriptionController.text.trim(),
+                    'type': selectedType,
+                    'maxOptions': maxOptions,
+                  });
+                },
+                child: const Text('Import'),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, null),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (titleController.text.trim().isEmpty) {
-                  setDialogState(() => errorMessage = 'Title is required');
-                  return;
-                }
-                Navigator.pop(context, {
-                  'title': titleController.text.trim(),
-                  'description': descriptionController.text.trim(),
-                  'type': selectedType,
-                  'maxOptions': maxOptions,
-                });
-              },
-              child: const Text('Import'),
-            ),
-          ],
         ),
-      ),
-    );
+      );
     } finally {
       titleController.dispose();
       descriptionController.dispose();
@@ -263,10 +281,10 @@ class _ImportScreenState extends State<ImportScreen> {
       final importResponse = await _apiService.importQuiz(
         fileBytes,
         fileName,
-        title: metadata?['title'],
-        description: metadata?['description'],
-        type: metadata?['type'],
-        maxOptions: metadata?['maxOptions'],
+        title: metadata?['title'] as String?,
+        description: metadata?['description'] as String?,
+        type: metadata?['type'] as String?,
+        maxOptions: metadata?['maxOptions'] as int?,
       );
 
       if (!mounted) return;
@@ -281,7 +299,7 @@ class _ImportScreenState extends State<ImportScreen> {
         _showSuccessDialog(importResponse);
         _showSnackBar('Quiz imported successfully!', true);
       }
-    } catch (e) {
+    } on Object catch (e) {
       if (!mounted) return;
 
       setState(() {
@@ -297,18 +315,25 @@ class _ImportScreenState extends State<ImportScreen> {
   void _handleError(String errorMessage) {
     final errorInfo = _processErrorMessage(errorMessage);
 
-    if (errorInfo['shouldShowDialog']) {
-      _showErrorDialog(errorInfo['message']!, errorInfo['type']!);
+    if (errorInfo['shouldShowDialog'] as bool) {
+      _showErrorDialog(
+        errorInfo['message'] as String,
+        errorInfo['type'] as String,
+      );
     } else {
-      _showSnackBar(errorInfo['message']!, false);
+      _showSnackBar(errorInfo['message'] as String, false);
     }
   }
 
   Map<String, dynamic> _processErrorMessage(String errorMessage) {
     // Clean up the error message
     String cleanError = errorMessage;
-    if (cleanError.startsWith('Exception: Failed to upload file: Exception: ')) {
-      cleanError = cleanError.substring('Exception: Failed to upload file: Exception: '.length);
+    if (cleanError.startsWith(
+      'Exception: Failed to upload file: Exception: ',
+    )) {
+      cleanError = cleanError.substring(
+        'Exception: Failed to upload file: Exception: '.length,
+      );
     } else if (cleanError.startsWith('Exception: ')) {
       cleanError = cleanError.substring('Exception: '.length);
     } else if (cleanError.startsWith('ApiException: ')) {
@@ -317,7 +342,8 @@ class _ImportScreenState extends State<ImportScreen> {
 
     // Limit error message length to prevent performance issues with very long errors
     if (cleanError.length > _maxErrorDisplayLength) {
-      cleanError = '${cleanError.substring(0, _maxErrorDisplayLength)}... (truncated)';
+      cleanError =
+          '${cleanError.substring(0, _maxErrorDisplayLength)}... (truncated)';
     }
 
     // Use lowercase version for comparisons (single allocation)
@@ -327,27 +353,28 @@ class _ImportScreenState extends State<ImportScreen> {
     String errorType = 'generic';
     bool shouldShowDialog = false;
 
-    if (lowerError.contains('json') || lowerError.contains('invalid json format')) {
+    if (lowerError.contains('json') ||
+        lowerError.contains('invalid json format')) {
       errorType = 'json';
       shouldShowDialog = true;
     } else if (lowerError.contains('validation') ||
-               lowerError.contains('required') ||
-               lowerError.contains('invalid file format') ||
-               lowerError.contains('file validation failed')) {
+        lowerError.contains('required') ||
+        lowerError.contains('invalid file format') ||
+        lowerError.contains('file validation failed')) {
       errorType = 'validation';
       shouldShowDialog = true;
     } else if (lowerError.contains('file') &&
-               (lowerError.contains('large') || lowerError.contains('too large'))) {
+        (lowerError.contains('large') || lowerError.contains('too large'))) {
       errorType = 'file_size';
       shouldShowDialog = true;
     } else if (lowerError.contains('server') ||
-               lowerError.contains('500') ||
-               lowerError.contains('server error')) {
+        lowerError.contains('500') ||
+        lowerError.contains('server error')) {
       errorType = 'server';
       shouldShowDialog = false;
     } else if (lowerError.contains('network') ||
-               lowerError.contains('connection') ||
-               lowerError.contains('connect to api')) {
+        lowerError.contains('connection') ||
+        lowerError.contains('connect to api')) {
       errorType = 'network';
       shouldShowDialog = false;
     } else if (cleanError.length > _longErrorThreshold) {
@@ -392,17 +419,15 @@ class _ImportScreenState extends State<ImportScreen> {
   void _showErrorDialog(String errorMessage, String errorType) {
     final errorDetails = _getErrorDetails(errorType);
 
-    showDialog(
+    showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: AppRadius.lgAll,
-          ),
+          shape: const RoundedRectangleBorder(borderRadius: AppRadius.lgAll),
           title: Row(
             children: [
-              Icon(
+              const Icon(
                 Icons.error_outline,
                 color: AppColors.error,
                 size: AppIconSizes.xxxl,
@@ -425,7 +450,7 @@ class _ImportScreenState extends State<ImportScreen> {
             children: [
               Text(
                 errorDetails['subtitle']!,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 14,
                   color: AppColors.textSecondary,
                 ),
@@ -439,11 +464,13 @@ class _ImportScreenState extends State<ImportScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.errorContainer,
                   borderRadius: AppRadius.smAll,
-                  border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: AppColors.error.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Text(
                   errorMessage,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 13,
                     fontFamily: 'monospace',
                     color: AppColors.onErrorContainer,
@@ -466,7 +493,7 @@ class _ImportScreenState extends State<ImportScreen> {
               onPressed: () {
                 Navigator.of(context).pop();
                 Navigator.of(context).push(
-                  MaterialPageRoute(
+                  MaterialPageRoute<void>(
                     builder: (context) => const ImportHelpScreen(),
                   ),
                 );
@@ -480,28 +507,23 @@ class _ImportScreenState extends State<ImportScreen> {
   }
 
   void _showSuccessDialog(ImportResponse response) {
-    showDialog(
+    showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: AppRadius.lgAll,
-          ),
-          title: Row(
+          shape: const RoundedRectangleBorder(borderRadius: AppRadius.lgAll),
+          title: const Row(
             children: [
               Icon(
                 Icons.check_circle,
                 color: AppColors.success,
                 size: AppIconSizes.xxxl,
               ),
-              const SizedBox(width: 12),
-              const Text(
+              SizedBox(width: 12),
+              Text(
                 'Import Successful!',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -509,12 +531,9 @@ class _ImportScreenState extends State<ImportScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              const Text(
                 'Successfully imported quiz:',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
-                ),
+                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 16),
               Container(
@@ -522,7 +541,9 @@ class _ImportScreenState extends State<ImportScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.successContainer,
                   borderRadius: AppRadius.smAll,
-                  border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: AppColors.success.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -538,7 +559,7 @@ class _ImportScreenState extends State<ImportScreen> {
                       const SizedBox(height: 4),
                       Text(
                         response.quiz.description,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 14,
                           color: AppColors.textSecondary,
                         ),
@@ -547,7 +568,7 @@ class _ImportScreenState extends State<ImportScreen> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.quiz,
                           size: AppIconSizes.sm,
                           color: AppColors.textTertiary,
@@ -555,7 +576,7 @@ class _ImportScreenState extends State<ImportScreen> {
                         const SizedBox(width: 4),
                         Text(
                           '${response.quiz.questionCount} questions',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 14,
                             color: AppColors.textTertiary,
                           ),
@@ -568,7 +589,7 @@ class _ImportScreenState extends State<ImportScreen> {
                         const SizedBox(width: 4),
                         Text(
                           response.quiz.type.toUpperCase(),
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 14,
                             color: AppColors.textTertiary,
                             fontWeight: FontWeight.w500,
@@ -591,10 +612,9 @@ class _ImportScreenState extends State<ImportScreen> {
             ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                Navigator.of(context).pushNamedAndRemoveUntil(
-                  '/',
-                  (route) => false,
-                );
+                Navigator.of(
+                  context,
+                ).pushNamedAndRemoveUntil('/', (route) => false);
               },
               child: const Text('View Quizzes'),
             ),
@@ -620,9 +640,7 @@ class _ImportScreenState extends State<ImportScreen> {
         ),
         backgroundColor: isSuccess ? AppColors.success : AppColors.error,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: AppRadius.smAll,
-        ),
+        shape: const RoundedRectangleBorder(borderRadius: AppRadius.smAll),
         duration: const Duration(seconds: 3),
       ),
     );
@@ -637,15 +655,12 @@ class _ImportScreenState extends State<ImportScreen> {
           IconButton(
             onPressed: () {
               Navigator.of(context).push(
-                MaterialPageRoute(
+                MaterialPageRoute<void>(
                   builder: (context) => const ImportHelpScreen(),
                 ),
               );
             },
-            icon: Icon(
-              Icons.help_outline,
-              color: AppColors.primary,
-            ),
+            icon: const Icon(Icons.help_outline, color: AppColors.primary),
             tooltip: 'Import Help & Format Guide',
           ),
         ],
@@ -672,7 +687,9 @@ class _ImportScreenState extends State<ImportScreen> {
                     // Upload area
                     Container(
                       width: double.infinity,
-                      padding: EdgeInsets.all(MediaQuery.of(context).size.height < 700 ? 24 : 48),
+                      padding: EdgeInsets.all(
+                        MediaQuery.of(context).size.height < 700 ? 24 : 48,
+                      ),
                       decoration: BoxDecoration(
                         border: Border.all(
                           color: AppColors.outline,
@@ -686,12 +703,18 @@ class _ImportScreenState extends State<ImportScreen> {
                         children: [
                           Icon(
                             Icons.cloud_upload_outlined,
-                            size: MediaQuery.of(context).size.height < 700 ? 48 : 64,
+                            size: MediaQuery.of(context).size.height < 700
+                                ? 48
+                                : 64,
                             color: _isUploading
                                 ? AppColors.primary
                                 : AppColors.textDisabled,
                           ),
-                          SizedBox(height: MediaQuery.of(context).size.height < 700 ? 12 : 16),
+                          SizedBox(
+                            height: MediaQuery.of(context).size.height < 700
+                                ? 12
+                                : 16,
+                          ),
 
                           if (_isUploading)
                             const Column(
@@ -726,7 +749,12 @@ class _ImportScreenState extends State<ImportScreen> {
                                     fontSize: 14,
                                   ),
                                 ),
-                                SizedBox(height: MediaQuery.of(context).size.height < 700 ? 16 : 24),
+                                SizedBox(
+                                  height:
+                                      MediaQuery.of(context).size.height < 700
+                                      ? 16
+                                      : 24,
+                                ),
                                 ElevatedButton.icon(
                                   onPressed: _pickAndUploadFile,
                                   icon: const Icon(Icons.upload_file),
@@ -744,7 +772,11 @@ class _ImportScreenState extends State<ImportScreen> {
                       ),
                     ),
 
-                    SizedBox(height: MediaQuery.of(context).size.height < 700 ? 16 : 24),
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height < 700
+                          ? 16
+                          : 24,
+                    ),
 
                     // Message area
                     if (_message != null)
@@ -786,7 +818,11 @@ class _ImportScreenState extends State<ImportScreen> {
                         ),
                       ),
 
-                    SizedBox(height: MediaQuery.of(context).size.height < 700 ? 20 : 32),
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height < 700
+                          ? 20
+                          : 32,
+                    ),
 
                     // Requirements Card
                     Container(
@@ -794,12 +830,9 @@ class _ImportScreenState extends State<ImportScreen> {
                       decoration: BoxDecoration(
                         color: AppColors.surface,
                         borderRadius: AppRadius.lgAll,
-                        border: Border.all(
-                          color: AppColors.primary,
-                          width: 2,
-                        ),
+                        border: Border.all(color: AppColors.primary, width: 2),
                       ),
-                      child: Column(
+                      child: const Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
@@ -809,7 +842,7 @@ class _ImportScreenState extends State<ImportScreen> {
                                 color: AppColors.primary,
                                 size: AppIconSizes.xxl,
                               ),
-                              const SizedBox(width: 12),
+                              SizedBox(width: 12),
                               Text(
                                 'File Requirements',
                                 style: TextStyle(
@@ -820,17 +853,18 @@ class _ImportScreenState extends State<ImportScreen> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16),
+                          SizedBox(height: 16),
                           _RequirementItem(
                             icon: Icons.description_outlined,
-                            text: 'JSON or CSV files following the format guide',
+                            text:
+                                'JSON or CSV files following the format guide',
                           ),
-                          const SizedBox(height: 12),
+                          SizedBox(height: 12),
                           _RequirementItem(
                             icon: Icons.file_present_outlined,
                             text: 'Maximum file size: 10MB',
                           ),
-                          const SizedBox(height: 12),
+                          SizedBox(height: 12),
                           _RequirementItem(
                             icon: Icons.flash_on_outlined,
                             text: 'Files will be processed immediately',
@@ -840,7 +874,9 @@ class _ImportScreenState extends State<ImportScreen> {
                     ),
 
                     // Bottom padding for small screens
-                    SizedBox(height: MediaQuery.of(context).size.height < 700 ? 20 : 0),
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height < 700 ? 20 : 0,
+                    ),
                   ],
                 ),
               ),
@@ -856,26 +892,19 @@ class _RequirementItem extends StatelessWidget {
   final IconData icon;
   final String text;
 
-  const _RequirementItem({
-    required this.icon,
-    required this.text,
-  });
+  const _RequirementItem({required this.icon, required this.text});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          icon,
-          color: AppColors.primary,
-          size: AppIconSizes.lg,
-        ),
+        Icon(icon, color: AppColors.primary, size: AppIconSizes.lg),
         const SizedBox(width: 12),
         Expanded(
           child: Text(
             text,
-            style: TextStyle(
+            style: const TextStyle(
               color: AppColors.textPrimary,
               fontSize: 14,
               height: 1.4,

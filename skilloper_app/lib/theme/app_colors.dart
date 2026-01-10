@@ -6,11 +6,15 @@ class AppColors {
   AppColors._();
 
   // MARK: - Primary Brand Colors (Soft Violet)
-  static const Color primary = Color(0xFF6D5EF7); // Soft violet - main brand color
+  static const Color primary = Color(
+    0xFF6D5EF7,
+  ); // Soft violet - main brand color
   static const Color primaryLight = Color(0xFF7B6CFF); // Lighter violet
   static const Color primaryDark = Color(0xFF5B4BE6); // Darker for hover states
   static const Color primaryDeep = Color(0xFF4C3EDC); // Deepest for gradients
-  static const Color primaryDarkest = Color(0xFF3F32B8); // For text on light backgrounds
+  static const Color primaryDarkest = Color(
+    0xFF3F32B8,
+  ); // For text on light backgrounds
 
   // Primary container colors (lavender tints)
   static const Color primaryContainer = Color(0xFFEEE8FF); // Violet 100
@@ -20,8 +24,12 @@ class AppColors {
   // MARK: - Surface Colors (Lavender-tinted)
   static const Color surface = Color(0xFFFBFAFF); // Lavender-white background
   static const Color surfaceWhite = Color(0xFFFFFFFF); // Pure white for cards
-  static const Color surfaceContainer = Color(0xFFF4F1FF); // Container background
-  static const Color surfaceContainerHigh = Color(0xFFE8E3FF); // Higher emphasis container
+  static const Color surfaceContainer = Color(
+    0xFFF4F1FF,
+  ); // Container background
+  static const Color surfaceContainerHigh = Color(
+    0xFFE8E3FF,
+  ); // Higher emphasis container
 
   // Border colors (violet-tinted)
   static const Color outline = Color(0xFFE8E3FF); // Default border
@@ -62,8 +70,12 @@ class AppColors {
 
   // MARK: - Text Colors
   static const Color textPrimary = Color(0xFF111827); // Gray 900 - main text
-  static const Color textSecondary = Color(0xFF374151); // Gray 700 - secondary text
-  static const Color textTertiary = Color(0xFF6B7280); // Gray 500 - tertiary/meta
+  static const Color textSecondary = Color(
+    0xFF374151,
+  ); // Gray 700 - secondary text
+  static const Color textTertiary = Color(
+    0xFF6B7280,
+  ); // Gray 500 - tertiary/meta
   static const Color textDisabled = Color(0xFF9CA3AF); // Gray 400 - disabled
   static const Color textOnPrimary = Color(0xFFFFFFFF); // White text on primary
 
@@ -76,7 +88,9 @@ class AppColors {
   static const Color codeComment = Color(0xFF64748B); // Slate 500
 
   // MARK: - Achievement & Progress
-  static const Color achievement = Color(0xFFF6B34B); // Gold/orange for achievements
+  static const Color achievement = Color(
+    0xFFF6B34B,
+  ); // Gold/orange for achievements
   static const Color achievementContainer = Color(0xFFFEF3C7); // Light gold
   static const Color progress = Color(0xFF06B6D4); // Cyan for progress
   static const Color progressContainer = Color(0xFFCFFAFE); // Light cyan

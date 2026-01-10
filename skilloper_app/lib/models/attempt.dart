@@ -103,12 +103,12 @@ class AttemptAnswer {
     required this.questionId,
     required this.questionText,
     required this.questionType,
+    required this.options,
+    required this.isCorrect,
     this.userAnswer,
     this.userAnswers,
     this.correctAnswer,
     this.correctAnswers,
-    required this.options,
-    required this.isCorrect,
   });
 
   factory AttemptAnswer.fromJson(Map<String, dynamic> json) {
@@ -164,8 +164,8 @@ class QuizAttempt {
     required this.correctCount,
     required this.totalCount,
     required this.createdAt,
-    this.completedAt,
     required this.answers,
+    this.completedAt,
   });
 
   factory QuizAttempt.fromJson(Map<String, dynamic> json) {
@@ -184,7 +184,8 @@ class QuizAttempt {
       completedAt: json['completed_at'] != null
           ? DateTime.parse(json['completed_at'] as String)
           : null,
-      answers: (json['answers'] as List?)
+      answers:
+          (json['answers'] as List?)
               ?.map((a) => AttemptAnswer.fromJson(a as Map<String, dynamic>))
               .toList() ??
           [],
@@ -202,14 +203,10 @@ class QuizAttempt {
 class StartAttemptRequest {
   final int quizId;
 
-  const StartAttemptRequest({
-    required this.quizId,
-  });
+  const StartAttemptRequest({required this.quizId});
 
   Map<String, dynamic> toJson() {
-    return {
-      'quiz_id': quizId,
-    };
+    return {'quiz_id': quizId};
   }
 }
 
@@ -217,21 +214,17 @@ class StartAttemptRequest {
 class CompleteAttemptRequest {
   final List<UserAnswerRequest> answers;
 
-  const CompleteAttemptRequest({
-    required this.answers,
-  });
+  const CompleteAttemptRequest({required this.answers});
 
   Map<String, dynamic> toJson() {
-    return {
-      'answers': answers.map((a) => a.toJson()).toList(),
-    };
+    return {'answers': answers.map((a) => a.toJson()).toList()};
   }
 }
 
 /// User's answer to a single question - server will validate
 class UserAnswerRequest {
   final int questionId;
-  final int? userAnswer;      // For single_choice
+  final int? userAnswer; // For single_choice
   final List<int>? userAnswers; // For multiple_choice
 
   const UserAnswerRequest({
@@ -251,13 +244,10 @@ class UserAnswerRequest {
 
 /// Request to validate a single answer (practice mode)
 class ValidateAnswerRequest {
-  final int? userAnswer;      // For single_choice
+  final int? userAnswer; // For single_choice
   final List<int>? userAnswers; // For multiple_choice
 
-  const ValidateAnswerRequest({
-    this.userAnswer,
-    this.userAnswers,
-  });
+  const ValidateAnswerRequest({this.userAnswer, this.userAnswers});
 
   Map<String, dynamic> toJson() {
     return {
@@ -270,7 +260,7 @@ class ValidateAnswerRequest {
 /// Response from validating a single answer (practice mode)
 class ValidateAnswerResponse {
   final bool isCorrect;
-  final int? correctAnswer;       // For single_choice
+  final int? correctAnswer; // For single_choice
   final List<int>? correctAnswers; // For multiple_choice
 
   const ValidateAnswerResponse({

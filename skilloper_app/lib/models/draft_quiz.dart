@@ -28,11 +28,11 @@ class DraftQuestion {
     this.code = '',
     this.language = '',
     this.questionType = 'single_choice',
-  })  : alternativeQuestions = alternativeQuestions ?? [],
-        options = options ?? ['', ''],
-        alternativeOptions = alternativeOptions ?? [],
-        correctAnswers = correctAnswers ?? [],
-        alternativeAnswers = alternativeAnswers ?? [];
+  }) : alternativeQuestions = alternativeQuestions ?? [],
+       options = options ?? ['', ''],
+       alternativeOptions = alternativeOptions ?? [],
+       correctAnswers = correctAnswers ?? [],
+       alternativeAnswers = alternativeAnswers ?? [];
 
   /// Whether this is a multiple choice question
   bool get isMultipleChoice => questionType == QuestionTypes.multipleChoice;
@@ -78,7 +78,7 @@ class DraftQuestion {
         .where((e) => e.value.trim().isNotEmpty)
         .map((e) => e.key + 1)
         .toList();
-    if (!correctAnswers.every((a) => validOptions.contains(a))) {
+    if (!correctAnswers.every(validOptions.contains)) {
       return 'Invalid answer selection';
     }
     return null;
@@ -120,13 +120,15 @@ class DraftQuestion {
 
     // Remap correct answers to new 0-based indices
     final remappedAnswers = correctAnswers
-        .where((a) => indexMapping.containsKey(a))
+        .where(indexMapping.containsKey)
         .map((a) => indexMapping[a]!)
         .toList();
 
     // Safety check - should not happen if isValid was checked first
     if (remappedAnswers.isEmpty) {
-      throw StateError('No valid answers after remapping - call isValid before toJson');
+      throw StateError(
+        'No valid answers after remapping - call isValid before toJson',
+      );
     }
 
     final json = <String, dynamic>{
@@ -143,20 +145,23 @@ class DraftQuestion {
     }
 
     // Alternative texts
-    final nonEmptyAltQuestions =
-        alternativeQuestions.where((q) => q.trim().isNotEmpty).toList();
+    final nonEmptyAltQuestions = alternativeQuestions
+        .where((q) => q.trim().isNotEmpty)
+        .toList();
     if (nonEmptyAltQuestions.isNotEmpty) {
       json['alternative_questions'] = nonEmptyAltQuestions;
     }
 
-    final nonEmptyAltOptions =
-        alternativeOptions.where((o) => o.trim().isNotEmpty).toList();
+    final nonEmptyAltOptions = alternativeOptions
+        .where((o) => o.trim().isNotEmpty)
+        .toList();
     if (nonEmptyAltOptions.isNotEmpty) {
       json['alternative_options'] = nonEmptyAltOptions;
     }
 
-    final nonEmptyAltAnswers =
-        alternativeAnswers.where((a) => a.trim().isNotEmpty).toList();
+    final nonEmptyAltAnswers = alternativeAnswers
+        .where((a) => a.trim().isNotEmpty)
+        .toList();
     if (nonEmptyAltAnswers.isNotEmpty) {
       json['alternative_answers'] = nonEmptyAltAnswers;
     }
@@ -244,7 +249,7 @@ class DraftQuiz {
     description = q.description;
     type = q.type;
     maxOptions = q.maxOptions;
-    questions = q.questions.map((q) => DraftQuestion.fromQuestion(q)).toList();
+    questions = q.questions.map(DraftQuestion.fromQuestion).toList();
   }
 
   /// Check if quiz is valid for submission

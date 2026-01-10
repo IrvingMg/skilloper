@@ -224,7 +224,7 @@ func (s *AuthService) ValidateToken(tokenString string) (*Claims, error) {
 		}
 		s.logger.Warn("Failed to check token invalidation", zap.Error(err))
 	} else if user.TokensInvalidatedAt != nil {
-		if claims.IssuedAt.Time.Before(*user.TokensInvalidatedAt) {
+		if claims.IssuedAt.Before(*user.TokensInvalidatedAt) {
 			return nil, apperrors.ErrInvalidToken
 		}
 	}

@@ -52,13 +52,13 @@ class SearchFilterBar extends StatefulWidget {
   final ValueChanged<String>? onSortChanged;
 
   const SearchFilterBar({
-    super.key,
     required this.searchHint,
     required this.searchController,
     required this.onSearchChanged,
     required this.filterOptions,
     required this.selectedFilter,
     required this.onFilterChanged,
+    super.key,
     this.sortOptions,
     this.selectedSort,
     this.onSortChanged,
@@ -114,7 +114,11 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
     return SizedBox(
       width: 18,
       child: isSelected
-          ? const Icon(Icons.check, size: AppIconSizes.md, color: AppColors.primary)
+          ? const Icon(
+              Icons.check,
+              size: AppIconSizes.md,
+              color: AppColors.primary,
+            )
           : null,
     );
   }
@@ -160,20 +164,17 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                 horizontal: 16,
                 vertical: 12,
               ),
-              border: OutlineInputBorder(
+              border: const OutlineInputBorder(
                 borderRadius: AppRadius.smAll,
                 borderSide: BorderSide.none,
               ),
-              enabledBorder: OutlineInputBorder(
+              enabledBorder: const OutlineInputBorder(
                 borderRadius: AppRadius.smAll,
                 borderSide: BorderSide.none,
               ),
-              focusedBorder: OutlineInputBorder(
+              focusedBorder: const OutlineInputBorder(
                 borderRadius: AppRadius.smAll,
-                borderSide: const BorderSide(
-                  color: AppColors.primary,
-                  width: 1.5,
-                ),
+                borderSide: BorderSide(color: AppColors.primary, width: 1.5),
               ),
             ),
           ),
@@ -184,9 +185,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
         PopupMenuButton<String>(
           onSelected: widget.onFilterChanged,
           offset: const Offset(0, 45),
-          shape: RoundedRectangleBorder(
-            borderRadius: AppRadius.smAll,
-          ),
+          shape: const RoundedRectangleBorder(borderRadius: AppRadius.smAll),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
@@ -195,10 +194,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                   : AppColors.surfaceVariant,
               borderRadius: AppRadius.smAll,
               border: hasFilter
-                  ? Border.all(
-                      color: AppColors.primary,
-                      width: 1.5,
-                    )
+                  ? Border.all(color: AppColors.primary, width: 1.5)
                   : null,
             ),
             child: Row(
@@ -207,11 +203,9 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                 Icon(
                   Icons.filter_list,
                   size: AppIconSizes.lg,
-                  color: hasFilter
-                      ? AppColors.primary
-                      : AppColors.textTertiary,
+                  color: hasFilter ? AppColors.primary : AppColors.textTertiary,
                 ),
-                SizedBox(width: AppSpacing.xs + 2),
+                const SizedBox(width: AppSpacing.xs + 2),
                 Text(
                   _getSelectedFilterLabel(),
                   style: TextStyle(
@@ -226,9 +220,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                 Icon(
                   Icons.arrow_drop_down,
                   size: AppIconSizes.lg,
-                  color: hasFilter
-                      ? AppColors.primary
-                      : AppColors.textTertiary,
+                  color: hasFilter ? AppColors.primary : AppColors.textTertiary,
                 ),
               ],
             ),
@@ -259,17 +251,17 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
           ],
         ),
 
-        if (widget.sortOptions != null && widget.sortOptions!.isNotEmpty && widget.onSortChanged != null) ...[
+        if (widget.sortOptions != null &&
+            widget.sortOptions!.isNotEmpty &&
+            widget.onSortChanged != null) ...[
           const SizedBox(width: AppSpacing.sm),
           PopupMenuButton<String>(
             onSelected: widget.onSortChanged,
             offset: const Offset(0, 45),
-            shape: RoundedRectangleBorder(
-              borderRadius: AppRadius.smAll,
-            ),
+            shape: const RoundedRectangleBorder(borderRadius: AppRadius.smAll),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppColors.surfaceVariant,
                 borderRadius: AppRadius.smAll,
               ),
@@ -281,7 +273,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                     size: AppIconSizes.lg,
                     color: AppColors.textTertiary,
                   ),
-                  SizedBox(width: AppSpacing.xs + 2),
+                  const SizedBox(width: AppSpacing.xs + 2),
                   Text(
                     _getSelectedSortLabel(),
                     style: const TextStyle(
@@ -299,19 +291,24 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                 ],
               ),
             ),
-            itemBuilder: (context) => widget.sortOptions!.map(
-              (option) => PopupMenuItem<String>(
-                value: option.value,
-                child: Row(
-                  children: [
-                    _buildCheckIcon(widget.selectedSort == option.value ||
-                        (widget.selectedSort?.isEmpty ?? true) && option == widget.sortOptions!.first),
-                    const SizedBox(width: AppSpacing.sm),
-                    Text(option.label),
-                  ],
-                ),
-              ),
-            ).toList(),
+            itemBuilder: (context) => widget.sortOptions!
+                .map(
+                  (option) => PopupMenuItem<String>(
+                    value: option.value,
+                    child: Row(
+                      children: [
+                        _buildCheckIcon(
+                          widget.selectedSort == option.value ||
+                              (widget.selectedSort?.isEmpty ?? true) &&
+                                  option == widget.sortOptions!.first,
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Text(option.label),
+                      ],
+                    ),
+                  ),
+                )
+                .toList(),
           ),
         ],
       ],

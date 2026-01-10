@@ -4,11 +4,11 @@ import "testing"
 
 func TestPaginationParams_Validate(t *testing.T) {
 	tests := []struct {
-		name           string
-		params         PaginationParams
-		wantValid      bool
-		wantLimit      int
-		wantOffset     int
+		name       string
+		params     PaginationParams
+		wantValid  bool
+		wantLimit  int
+		wantOffset int
 	}{
 		{
 			name:       "zero limit defaults to 20",

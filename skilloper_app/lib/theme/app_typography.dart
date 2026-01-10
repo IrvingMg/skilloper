@@ -317,38 +317,30 @@ class AppTypography {
   // MARK: - Color Variants
 
   // Success variants
-  static TextStyle get successText => bodyMedium.copyWith(
-    color: AppColors.onSuccessContainer,
-  );
+  static TextStyle get successText =>
+      bodyMedium.copyWith(color: AppColors.onSuccessContainer);
 
-  static TextStyle get successLabel => labelMedium.copyWith(
-    color: AppColors.onSuccessContainer,
-  );
+  static TextStyle get successLabel =>
+      labelMedium.copyWith(color: AppColors.onSuccessContainer);
 
   // Error variants
-  static TextStyle get errorText => bodyMedium.copyWith(
-    color: AppColors.onErrorContainer,
-  );
+  static TextStyle get errorText =>
+      bodyMedium.copyWith(color: AppColors.onErrorContainer);
 
-  static TextStyle get errorLabel => labelMedium.copyWith(
-    color: AppColors.onErrorContainer,
-  );
+  static TextStyle get errorLabel =>
+      labelMedium.copyWith(color: AppColors.onErrorContainer);
 
   // Warning variants
-  static TextStyle get warningText => bodyMedium.copyWith(
-    color: AppColors.onWarningContainer,
-  );
+  static TextStyle get warningText =>
+      bodyMedium.copyWith(color: AppColors.onWarningContainer);
 
-  static TextStyle get warningLabel => labelMedium.copyWith(
-    color: AppColors.onWarningContainer,
-  );
+  static TextStyle get warningLabel =>
+      labelMedium.copyWith(color: AppColors.onWarningContainer);
 
   // Info variants
-  static TextStyle get infoText => bodyMedium.copyWith(
-    color: AppColors.onInfoContainer,
-  );
+  static TextStyle get infoText =>
+      bodyMedium.copyWith(color: AppColors.onInfoContainer);
 
-  static TextStyle get infoLabel => labelMedium.copyWith(
-    color: AppColors.onInfoContainer,
-  );
+  static TextStyle get infoLabel =>
+      labelMedium.copyWith(color: AppColors.onInfoContainer);
 }

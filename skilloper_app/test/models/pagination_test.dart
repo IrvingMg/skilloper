@@ -61,7 +61,7 @@ void main() {
 
     group('nextOffset', () {
       test('calculates offset + limit', () {
-        final meta = PaginationMeta(
+        const meta = PaginationMeta(
           limit: 20,
           offset: 40,
           totalCount: 100,
@@ -72,7 +72,7 @@ void main() {
       });
 
       test('works with zero offset', () {
-        final meta = PaginationMeta(
+        const meta = PaginationMeta(
           limit: 10,
           offset: 0,
           totalCount: 50,
@@ -83,7 +83,7 @@ void main() {
       });
 
       test('calculates correctly even when would exceed total', () {
-        final meta = PaginationMeta(
+        const meta = PaginationMeta(
           limit: 20,
           offset: 90,
           totalCount: 100,

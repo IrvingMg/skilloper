@@ -256,7 +256,11 @@ func (s *Server) embeddedFileHandler(staticFS fs.FS) gin.HandlerFunc {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
 			return
 		}
-		defer file.Close()
+		defer func() {
+			if err := file.Close(); err != nil {
+				s.logger.Warn("Failed to close embedded file", zap.Error(err))
+			}
+		}()
 
 		stat, err := file.Stat()
 		if err != nil || stat.IsDir() {
@@ -281,7 +285,9 @@ func (s *Server) embeddedFileHandler(staticFS fs.FS) gin.HandlerFunc {
 		}
 
 		if file, err := staticFS.Open(cleanPath); err == nil {
-			file.Close()
+			if closeErr := file.Close(); closeErr != nil {
+				s.logger.Warn("Failed to close static file", zap.Error(closeErr))
+			}
 			s.setCacheHeaders(c, path)
 			serveFile(c, cleanPath)
 			return

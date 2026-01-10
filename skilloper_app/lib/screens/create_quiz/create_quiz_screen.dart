@@ -98,7 +98,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
       if (mounted) {
         _showSuccessDialog(response);
       }
-    } catch (e) {
+    } on Object catch (e) {
       if (mounted) {
         _showErrorSnackBar(e.toString());
       }
@@ -113,17 +113,15 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
 
   void _showSuccessDialog(Map<String, dynamic> response) {
     final isEdit = _isEditMode;
-    showDialog(
+    showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: AppRadius.lgAll,
-          ),
+          shape: const RoundedRectangleBorder(borderRadius: AppRadius.lgAll),
           title: Row(
             children: [
-              Icon(
+              const Icon(
                 Icons.check_circle,
                 color: AppColors.success,
                 size: AppIconSizes.xxxl,
@@ -143,8 +141,10 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                isEdit ? 'Successfully updated quiz:' : 'Successfully created quiz:',
-                style: TextStyle(
+                isEdit
+                    ? 'Successfully updated quiz:'
+                    : 'Successfully created quiz:',
+                style: const TextStyle(
                   fontSize: 14,
                   color: AppColors.textSecondary,
                 ),
@@ -156,7 +156,8 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                   color: AppColors.successContainer,
                   borderRadius: AppRadius.smAll,
                   border: Border.all(
-                      color: AppColors.success.withValues(alpha: 0.3)),
+                    color: AppColors.success.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -172,7 +173,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                       const SizedBox(height: 4),
                       Text(
                         _draft.description,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 14,
                           color: AppColors.textSecondary,
                         ),
@@ -181,7 +182,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.quiz,
                           size: AppIconSizes.sm,
                           color: AppColors.textTertiary,
@@ -189,7 +190,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                         const SizedBox(width: 4),
                         Text(
                           '${_draft.questions.length} questions',
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 14,
                             color: AppColors.textTertiary,
                           ),
@@ -202,7 +203,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                         const SizedBox(width: 4),
                         Text(
                           _draft.type.toUpperCase(),
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 14,
                             color: AppColors.textTertiary,
                             fontWeight: FontWeight.w500,
@@ -232,7 +233,9 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
             ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                Navigator.of(context).pushNamedAndRemoveUntil('/', (r) => false);
+                Navigator.of(
+                  context,
+                ).pushNamedAndRemoveUntil('/', (r) => false);
               },
               child: const Text('View Quizzes'),
             ),
@@ -251,20 +254,24 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
       SnackBar(
         content: Row(
           children: [
-            Icon(Icons.error, color: AppColors.textOnPrimary, size: AppIconSizes.lg),
+            const Icon(
+              Icons.error,
+              color: AppColors.textOnPrimary,
+              size: AppIconSizes.lg,
+            ),
             const SizedBox(width: 8),
             Expanded(child: Text(message)),
           ],
         ),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.smAll),
+        shape: const RoundedRectangleBorder(borderRadius: AppRadius.smAll),
       ),
     );
   }
 
   void _addQuestion() {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => QuestionEditorDialog(
         maxOptions: _draft.maxOptions,
@@ -278,7 +285,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
   }
 
   void _editQuestion(int index) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => QuestionEditorDialog(
         question: _draft.questions[index],
@@ -293,12 +300,11 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
   }
 
   void _deleteQuestion(int index) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Question?'),
-        content:
-            const Text('Are you sure you want to delete this question?'),
+        content: const Text('Are you sure you want to delete this question?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -326,7 +332,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
         title: Text(_isEditMode ? 'Edit Quiz' : 'Create Quiz'),
         leading: IconButton(
           icon: const Icon(Icons.close),
-          onPressed: () => _showExitConfirmation(),
+          onPressed: _showExitConfirmation,
         ),
       ),
       body: Column(
@@ -347,7 +353,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
   Widget _buildStepIndicator() {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.surfaceWhite,
         border: Border(bottom: BorderSide(color: AppColors.outline)),
       ),
@@ -384,11 +390,17 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
               ),
               child: Center(
                 child: isActive && !isCurrent
-                    ? Icon(Icons.check, color: AppColors.textOnPrimary, size: AppIconSizes.md)
+                    ? const Icon(
+                        Icons.check,
+                        color: AppColors.textOnPrimary,
+                        size: AppIconSizes.md,
+                      )
                     : Text(
                         '${step + 1}',
                         style: TextStyle(
-                          color: isActive ? AppColors.textOnPrimary : AppColors.textDisabled,
+                          color: isActive
+                              ? AppColors.textOnPrimary
+                              : AppColors.textDisabled,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -399,7 +411,9 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
               label,
               style: TextStyle(
                 fontSize: 12,
-                color: isActive ? AppColors.textPrimary : AppColors.textTertiary,
+                color: isActive
+                    ? AppColors.textPrimary
+                    : AppColors.textTertiary,
                 fontWeight: isCurrent ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
@@ -442,7 +456,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
           style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 8),
-        Text(
+        const Text(
           'Enter basic information about your quiz',
           style: TextStyle(color: AppColors.textSecondary),
         ),
@@ -507,10 +521,12 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
         const SizedBox(height: 24),
 
         // Max options
-        const Text('Max Options per Question',
-            style: TextStyle(fontWeight: FontWeight.w600)),
+        const Text(
+          'Max Options per Question',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
         const SizedBox(height: 8),
-        Text(
+        const Text(
           'How many answer options each question can have (2-8)',
           style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
         ),
@@ -568,7 +584,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                 const SizedBox(height: 4),
                 Text(
                   '${_draft.validQuestionCount} of ${_draft.questions.length} questions valid',
-                  style: TextStyle(color: AppColors.textSecondary),
+                  style: const TextStyle(color: AppColors.textSecondary),
                 ),
               ],
             ),
@@ -588,17 +604,21 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
               border: Border.all(color: AppColors.outline),
               borderRadius: AppRadius.mdAll,
             ),
-            child: Center(
+            child: const Center(
               child: Column(
                 children: [
-                  Icon(Icons.quiz_outlined,
-                      size: 48, color: AppColors.textDisabled),
-                  const SizedBox(height: 12),
-                  const Text('No questions yet',
-                      style: TextStyle(fontSize: 16)),
-                  const SizedBox(height: 4),
-                  Text('Add your first question to get started',
-                      style: TextStyle(color: AppColors.textSecondary)),
+                  Icon(
+                    Icons.quiz_outlined,
+                    size: 48,
+                    color: AppColors.textDisabled,
+                  ),
+                  SizedBox(height: 12),
+                  Text('No questions yet', style: TextStyle(fontSize: 16)),
+                  SizedBox(height: 4),
+                  Text(
+                    'Add your first question to get started',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
                 ],
               ),
             ),
@@ -640,7 +660,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
           style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 8),
-        Text(
+        const Text(
           'Review your quiz before submitting',
           style: TextStyle(color: AppColors.textSecondary),
         ),
@@ -666,7 +686,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                   const SizedBox(width: 8),
                   Text(
                     _draft.type.toUpperCase(),
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: AppColors.primary,
                       fontWeight: FontWeight.w600,
                     ),
@@ -676,22 +696,30 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
               const SizedBox(height: 12),
               Text(
                 _draft.title.isEmpty ? 'Untitled Quiz' : _draft.title,
-                style:
-                    const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               if (_draft.description.isNotEmpty) ...[
                 const SizedBox(height: 4),
-                Text(_draft.description,
-                    style: TextStyle(color: AppColors.textSecondary)),
+                Text(
+                  _draft.description,
+                  style: const TextStyle(color: AppColors.textSecondary),
+                ),
               ],
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Icon(Icons.quiz, size: AppIconSizes.sm, color: AppColors.textTertiary),
+                  const Icon(
+                    Icons.quiz,
+                    size: AppIconSizes.sm,
+                    color: AppColors.textTertiary,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     '${_draft.questions.length} questions',
-                    style: TextStyle(color: AppColors.textTertiary),
+                    style: const TextStyle(color: AppColors.textTertiary),
                   ),
                 ],
               ),
@@ -701,8 +729,10 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
         const SizedBox(height: 24),
 
         // Questions preview
-        const Text('Questions Preview',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        const Text(
+          'Questions Preview',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
         const SizedBox(height: 12),
 
         ...List.generate(_draft.questions.length, (index) {
@@ -738,7 +768,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                       child: Center(
                         child: Text(
                           '${index + 1}',
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: AppColors.primary,
                             fontWeight: FontWeight.w600,
                             fontSize: 12,
@@ -758,7 +788,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                           const SizedBox(height: 4),
                           Text(
                             '${nonEmptyOptions.length} options • ${q.isMultipleChoice ? "Multiple choice" : "Single choice"}',
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 12,
                               color: AppColors.textTertiary,
                             ),
@@ -771,7 +801,9 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                       child: Icon(
                         q.isValid ? Icons.check_circle : Icons.warning,
                         size: AppIconSizes.lg,
-                        color: q.isValid ? AppColors.success : AppColors.warning,
+                        color: q.isValid
+                            ? AppColors.success
+                            : AppColors.warning,
                       ),
                     ),
                   ],
@@ -811,8 +843,11 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                               ),
                             ),
                             child: isCorrect
-                                ? Icon(Icons.check,
-                                    size: 12, color: AppColors.success)
+                                ? const Icon(
+                                    Icons.check,
+                                    size: 12,
+                                    color: AppColors.success,
+                                  )
                                 : null,
                           ),
                           const SizedBox(width: 8),
@@ -840,24 +875,27 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                 if (q.code.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     margin: const EdgeInsets.only(left: 36),
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: AppColors.codeBackground,
                       borderRadius: AppRadius.xsAll,
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.code,
-                            size: AppIconSizes.xs, color: AppColors.textTertiary),
+                        const Icon(
+                          Icons.code,
+                          size: AppIconSizes.xs,
+                          color: AppColors.textTertiary,
+                        ),
                         const SizedBox(width: 4),
                         Text(
-                          q.language.isNotEmpty
-                              ? q.language
-                              : 'Code snippet',
-                          style: TextStyle(
+                          q.language.isNotEmpty ? q.language : 'Code snippet',
+                          style: const TextStyle(
                             fontSize: 11,
                             color: AppColors.textTertiary,
                           ),
@@ -876,18 +914,18 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: AppColors.warningContainer,
               borderRadius: AppRadius.smAll,
             ),
             child: Row(
               children: [
-                Icon(Icons.warning, color: AppColors.warning),
+                const Icon(Icons.warning, color: AppColors.warning),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     _getValidationMessage(),
-                    style: TextStyle(color: AppColors.onWarningContainer),
+                    style: const TextStyle(color: AppColors.onWarningContainer),
                   ),
                 ),
               ],
@@ -901,8 +939,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
   String _getValidationMessage() {
     if (_draft.title.isEmpty) return 'Please enter a quiz title';
     if (_draft.questions.isEmpty) return 'Please add at least one question';
-    final invalidCount =
-        _draft.questions.where((q) => !q.isValid).length;
+    final invalidCount = _draft.questions.where((q) => !q.isValid).length;
     if (invalidCount > 0) {
       return '$invalidCount question(s) need to be completed';
     }
@@ -912,7 +949,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
   Widget _buildNavigationBar() {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.surfaceWhite,
         border: Border(top: BorderSide(color: AppColors.outline)),
       ),
@@ -934,10 +971,9 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
             )
           else
             ElevatedButton(
-              onPressed:
-                  _draft.isValid && !_isSubmitting ? _submitQuiz : null,
+              onPressed: _draft.isValid && !_isSubmitting ? _submitQuiz : null,
               child: _isSubmitting
-                  ? SizedBox(
+                  ? const SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(
@@ -958,12 +994,13 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
       return;
     }
 
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Discard Changes?'),
         content: const Text(
-            'You have unsaved changes. Are you sure you want to leave?'),
+          'You have unsaved changes. Are you sure you want to leave?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -1017,23 +1054,19 @@ class _TypeCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            QuizModeIcon(
-              isExamMode: isExamMode,
-              size: AppIconSizes.xxxl,
-            ),
+            QuizModeIcon(isExamMode: isExamMode, size: AppIconSizes.xxxl),
             const SizedBox(height: 8),
             Text(
               title,
               style: TextStyle(
                 fontWeight: FontWeight.w600,
-                color:
-                    isSelected ? AppColors.primary : AppColors.textPrimary,
+                color: isSelected ? AppColors.primary : AppColors.textPrimary,
               ),
             ),
             const SizedBox(height: 4),
             Text(
               description,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 12,
                 color: AppColors.textSecondary,
               ),
@@ -1052,11 +1085,11 @@ class _QuestionCard extends StatelessWidget {
   final VoidCallback onDelete;
 
   const _QuestionCard({
-    super.key,
     required this.index,
     required this.question,
     required this.onEdit,
     required this.onDelete,
+    super.key,
   });
 
   @override
@@ -1090,7 +1123,7 @@ class _QuestionCard extends StatelessWidget {
         ),
         subtitle: Text(
           '${question.options.where((o) => o.isNotEmpty).length} options • ${question.isMultipleChoice ? "Multiple" : "Single"} choice',
-          style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
+          style: const TextStyle(fontSize: 12, color: AppColors.textTertiary),
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1098,14 +1131,22 @@ class _QuestionCard extends StatelessWidget {
             if (!question.isValid)
               Tooltip(
                 message: question.validationError ?? 'Invalid',
-                child: Icon(Icons.warning, color: AppColors.warning, size: AppIconSizes.lg),
+                child: const Icon(
+                  Icons.warning,
+                  color: AppColors.warning,
+                  size: AppIconSizes.lg,
+                ),
               ),
             IconButton(
               icon: const Icon(Icons.edit_outlined, size: AppIconSizes.lg),
               onPressed: onEdit,
             ),
             IconButton(
-              icon: Icon(Icons.delete_outline, size: AppIconSizes.lg, color: AppColors.error),
+              icon: const Icon(
+                Icons.delete_outline,
+                size: AppIconSizes.lg,
+                color: AppColors.error,
+              ),
               onPressed: onDelete,
             ),
             const Icon(Icons.drag_handle),

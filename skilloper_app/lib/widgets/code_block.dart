@@ -9,24 +9,24 @@ class CodeBlock extends StatelessWidget {
   final String code;
   final String? language;
 
-  const CodeBlock({
-    super.key,
-    required this.code,
-    this.language,
-  });
+  const CodeBlock({required this.code, super.key, this.language});
 
   void _copyToClipboard(BuildContext context) {
     Clipboard.setData(ClipboardData(text: code));
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
+      const SnackBar(
         content: Row(
           children: [
-            Icon(Icons.check, color: AppColors.textOnPrimary, size: AppIconSizes.sm),
-            const SizedBox(width: AppSpacing.sm),
-            const Text('Code copied to clipboard'),
+            Icon(
+              Icons.check,
+              color: AppColors.textOnPrimary,
+              size: AppIconSizes.sm,
+            ),
+            SizedBox(width: AppSpacing.sm),
+            Text('Code copied to clipboard'),
           ],
         ),
-        duration: const Duration(seconds: 2),
+        duration: Duration(seconds: 2),
         backgroundColor: AppColors.success,
       ),
     );
@@ -103,26 +103,31 @@ class CodeBlock extends StatelessWidget {
       margin: AppSpacing.verticalSm,
       decoration: BoxDecoration(
         borderRadius: AppRadius.mdAll,
-        border: Border.all(
-          color: AppColors.outline,
-          width: 1,
-        ),
+        border: Border.all(color: AppColors.outline, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header with language badge and copy button
           Container(
-            padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm + 2),
-            decoration: BoxDecoration(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.sm + 2,
+            ),
+            decoration: const BoxDecoration(
               color: AppColors.surfaceContainerHigh,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.md)),
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(AppRadius.md),
+              ),
             ),
             child: Row(
               children: [
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
-                  decoration: BoxDecoration(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: AppSpacing.xs,
+                  ),
+                  decoration: const BoxDecoration(
                     color: AppColors.primaryContainer,
                     borderRadius: AppRadius.xsAll,
                   ),
@@ -134,10 +139,10 @@ class CodeBlock extends StatelessWidget {
                         size: AppIconSizes.xs,
                         color: AppColors.primary,
                       ),
-                      SizedBox(width: AppSpacing.xs + 2),
+                      const SizedBox(width: AppSpacing.xs + 2),
                       Text(
                         language?.toUpperCase() ?? 'CODE',
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: AppColors.onPrimaryContainer,
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -153,7 +158,7 @@ class CodeBlock extends StatelessWidget {
                   child: InkWell(
                     onTap: () => _copyToClipboard(context),
                     borderRadius: AppRadius.xsAll,
-                    child: Padding(
+                    child: const Padding(
                       padding: EdgeInsets.all(AppSpacing.xs + 2),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -163,7 +168,7 @@ class CodeBlock extends StatelessWidget {
                             size: AppIconSizes.xs,
                             color: AppColors.textTertiary,
                           ),
-                          const SizedBox(width: AppSpacing.xs),
+                          SizedBox(width: AppSpacing.xs),
                           Text(
                             'Copy',
                             style: TextStyle(
@@ -183,7 +188,9 @@ class CodeBlock extends StatelessWidget {
 
           // Code view - wrapped in Container with consistent background
           ClipRRect(
-            borderRadius: BorderRadius.vertical(bottom: Radius.circular(AppRadius.md)),
+            borderRadius: const BorderRadius.vertical(
+              bottom: Radius.circular(AppRadius.md),
+            ),
             child: Container(
               width: double.infinity,
               color: AppColors.codeBackground,

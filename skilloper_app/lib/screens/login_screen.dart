@@ -8,7 +8,7 @@ import 'register_screen.dart';
 class LoginScreen extends StatefulWidget {
   final VoidCallback onLoginSuccess;
 
-  const LoginScreen({super.key, required this.onLoginSuccess});
+  const LoginScreen({required this.onLoginSuccess, super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -60,10 +60,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _navigateToRegister() {
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => RegisterScreen(
-          onRegisterSuccess: widget.onLoginSuccess,
-        ),
+      MaterialPageRoute<void>(
+        builder: (context) =>
+            RegisterScreen(onRegisterSuccess: widget.onLoginSuccess),
       ),
     );
   }
@@ -94,10 +93,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 24),
                     Text(
                       'Welcome to Skilloper',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
@@ -118,7 +118,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         child: Text(
                           _errorMessage!,
-                          style: TextStyle(color: AppColors.onErrorContainer),
+                          style: const TextStyle(
+                            color: AppColors.onErrorContainer,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -147,7 +149,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                            _obscurePassword
+                                ? Icons.visibility
+                                : Icons.visibility_off,
                           ),
                           onPressed: () {
                             setState(() {

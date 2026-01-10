@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../models/attempt.dart';
 import '../models/pagination.dart';
@@ -21,8 +23,11 @@ class HistoryScreenState extends State<HistoryScreen> {
   void refresh() {
     _loadHistory(refresh: true);
   }
+
   final ScrollController _scrollController = ScrollController();
-  final Debouncer _searchDebouncer = Debouncer(delay: const Duration(milliseconds: 300));
+  final Debouncer _searchDebouncer = Debouncer(
+    delay: const Duration(milliseconds: 300),
+  );
 
   List<AttemptSummary> _attempts = [];
   PaginationMeta _pagination = PaginationMeta.initial();
@@ -84,11 +89,13 @@ class HistoryScreenState extends State<HistoryScreen> {
       );
 
       if (!mounted) return;
-      if (requestSearch != _searchQuery || requestType != _typeFilter || requestSort != _sortBy) {
+      if (requestSearch != _searchQuery ||
+          requestType != _typeFilter ||
+          requestSort != _sortBy) {
         setState(() {
           _isInitialLoading = false;
         });
-        _loadHistory(refresh: true);
+        unawaited(_loadHistory(refresh: true));
         return;
       }
 
@@ -97,7 +104,7 @@ class HistoryScreenState extends State<HistoryScreen> {
         _pagination = result.pagination;
         _isInitialLoading = false;
       });
-    } catch (e) {
+    } on Object catch (e) {
       if (!mounted) return;
       setState(() {
         _error = e.toString();
@@ -128,7 +135,9 @@ class HistoryScreenState extends State<HistoryScreen> {
       );
 
       if (!mounted) return;
-      if (requestSearch != _searchQuery || requestType != _typeFilter || requestSort != _sortBy) {
+      if (requestSearch != _searchQuery ||
+          requestType != _typeFilter ||
+          requestSort != _sortBy) {
         setState(() {
           _isLoadingMore = false;
         });
@@ -140,14 +149,14 @@ class HistoryScreenState extends State<HistoryScreen> {
         _pagination = result.pagination;
         _isLoadingMore = false;
       });
-    } catch (e) {
+    } on Object catch (e) {
       if (!mounted) return;
       setState(() {
         _isLoadingMore = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load more: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to load more: $e')));
     }
   }
 
@@ -177,7 +186,7 @@ class HistoryScreenState extends State<HistoryScreen> {
   void _viewAttemptDetails(AttemptSummary attempt) {
     Navigator.push(
       context,
-      MaterialPageRoute(
+      MaterialPageRoute<void>(
         builder: (context) => HistoryDetailScreen(attemptId: attempt.id),
       ),
     );
@@ -285,9 +294,7 @@ class HistoryScreenState extends State<HistoryScreen> {
                         const SizedBox(height: 8),
                         const Text(
                           'Make sure the API is running on localhost:8080',
-                          style: TextStyle(
-                            color: AppColors.textTertiary,
-                          ),
+                          style: TextStyle(color: AppColors.textTertiary),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 16),
@@ -327,12 +334,11 @@ class HistoryScreenState extends State<HistoryScreen> {
                           _searchQuery.isNotEmpty || _typeFilter.isNotEmpty
                               ? 'Try a different search or filter'
                               : 'Complete a quiz to see your results here',
-                          style: const TextStyle(
-                            color: AppColors.textTertiary,
-                          ),
+                          style: const TextStyle(color: AppColors.textTertiary),
                           textAlign: TextAlign.center,
                         ),
-                        if (_searchQuery.isNotEmpty || _typeFilter.isNotEmpty) ...[
+                        if (_searchQuery.isNotEmpty ||
+                            _typeFilter.isNotEmpty) ...[
                           const SizedBox(height: 16),
                           TextButton(
                             onPressed: () {
@@ -355,7 +361,8 @@ class HistoryScreenState extends State<HistoryScreen> {
                   child: ListView.separated(
                     controller: _scrollController,
                     itemCount: _attempts.length + (_isLoadingMore ? 1 : 0),
-                    separatorBuilder: (context, index) => const SizedBox(height: 12),
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 12),
                     itemBuilder: (context, index) {
                       if (index == _attempts.length) {
                         return const Padding(
@@ -400,13 +407,13 @@ class _AttemptListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isAbandoned = attempt.isAbandoned;
-    final displayColor = isAbandoned ? AppColors.textDisabled : _getScoreColor(attempt.score);
+    final displayColor = isAbandoned
+        ? AppColors.textDisabled
+        : _getScoreColor(attempt.score);
 
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: AppRadius.lgAll,
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: AppRadius.lgAll),
       child: InkWell(
         onTap: isAbandoned ? null : onTap,
         borderRadius: AppRadius.lgAll,
@@ -420,10 +427,7 @@ class _AttemptListItem extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: displayColor.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: displayColor,
-                    width: 2,
-                  ),
+                  border: Border.all(color: displayColor, width: 2),
                 ),
                 child: Center(
                   child: isAbandoned
@@ -469,7 +473,7 @@ class _AttemptListItem extends StatelessWidget {
                             horizontal: 6,
                             vertical: 3,
                           ),
-                          decoration: BoxDecoration(
+                          decoration: const BoxDecoration(
                             color: AppColors.surfaceContainerHigh,
                             borderRadius: AppRadius.xsAll,
                           ),
@@ -488,7 +492,7 @@ class _AttemptListItem extends StatelessWidget {
                             horizontal: 8,
                             vertical: 3,
                           ),
-                          decoration: BoxDecoration(
+                          decoration: const BoxDecoration(
                             color: AppColors.surfaceContainerHigh,
                             borderRadius: AppRadius.xsAll,
                           ),
@@ -508,7 +512,7 @@ class _AttemptListItem extends StatelessWidget {
 
                     Row(
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.check_circle_outline,
                           size: AppIconSizes.xs,
                           color: AppColors.textDisabled,

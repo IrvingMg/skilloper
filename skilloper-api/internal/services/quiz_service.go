@@ -311,7 +311,9 @@ func (s *QuizService) ImportFromFile(file *multipart.FileHeader, csvMeta CSVMeta
 	if err != nil {
 		return nil, apperrors.ErrFileOpenFailed
 	}
-	defer src.Close()
+	defer func() {
+		_ = src.Close()
+	}()
 
 	fileContent, err := io.ReadAll(io.LimitReader(src, models.MaxImportFileSize))
 	if err != nil {
@@ -529,7 +531,7 @@ func (vq *validatedQuestion) toQuestion(quizID uint) models.Question {
 }
 
 func (s *QuizService) convertToResponse(q models.Quiz) models.QuizResponse {
-	var questions []models.QuestionResponse
+	questions := make([]models.QuestionResponse, 0, len(q.Questions))
 
 	for _, question := range q.Questions {
 		options := parseOptionsJSON(question.Options)
@@ -578,7 +580,7 @@ func (s *QuizService) convertToResponse(q models.Quiz) models.QuizResponse {
 }
 
 func (s *QuizService) convertToResponseWithAnswers(q models.Quiz) models.QuizResponseWithAnswers {
-	var questions []models.QuestionResponseWithAnswers
+	questions := make([]models.QuestionResponseWithAnswers, 0, len(q.Questions))
 
 	for _, question := range q.Questions {
 		options := parseOptionsJSON(question.Options)

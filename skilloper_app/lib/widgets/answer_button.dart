@@ -17,16 +17,16 @@ class AnswerButton extends StatelessWidget {
   final VoidCallback onTap;
 
   const AnswerButton({
-    super.key,
     required this.index,
     required this.text,
     required this.isSelected,
     required this.isCorrect,
     required this.isIncorrect,
-    this.isCorrectButNotSelected = false,
     required this.isDisabled,
-    this.isMultipleChoice = false,
     required this.onTap,
+    super.key,
+    this.isCorrectButNotSelected = false,
+    this.isMultipleChoice = false,
   });
 
   @override
@@ -91,7 +91,10 @@ class AnswerButton extends StatelessWidget {
         borderRadius: AppRadius.mdAll,
         child: Container(
           width: double.infinity,
-          padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md + 2),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.md + 2,
+          ),
           decoration: BoxDecoration(
             color: backgroundColor,
             borderRadius: AppRadius.mdAll,
@@ -114,7 +117,7 @@ class AnswerButton extends StatelessWidget {
                 _buildLetterBadge(labelBackgroundColor, labelColor),
               ],
 
-              SizedBox(width: AppSpacing.md + 2),
+              const SizedBox(width: AppSpacing.md + 2),
 
               // Answer text
               Expanded(
@@ -145,10 +148,7 @@ class AnswerButton extends StatelessWidget {
     return Container(
       width: 28,
       height: 28,
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        shape: BoxShape.circle,
-      ),
+      decoration: BoxDecoration(color: backgroundColor, shape: BoxShape.circle),
       child: Center(
         child: Text(
           String.fromCharCode(65 + index), // A, B, C, D
@@ -167,8 +167,8 @@ class AnswerButton extends StatelessWidget {
     final Color checkboxBorder = isSelected
         ? fillColor
         : isCorrectButNotSelected
-            ? AppColors.success.withValues(alpha: 0.5)
-            : AppColors.textDisabled;
+        ? AppColors.success.withValues(alpha: 0.5)
+        : AppColors.textDisabled;
 
     // For "correct but not selected", no fill - just outlined
     final Color checkboxFill = isCorrectButNotSelected
@@ -181,10 +181,7 @@ class AnswerButton extends StatelessWidget {
       decoration: BoxDecoration(
         color: checkboxFill,
         borderRadius: AppRadius.xsAll,
-        border: Border.all(
-          color: checkboxBorder,
-          width: 2,
-        ),
+        border: Border.all(color: checkboxBorder, width: 2),
       ),
       child: showCheck
           ? Icon(

@@ -40,8 +40,5 @@ class PaginatedResponse<T> {
   final List<T> data;
   final PaginationMeta pagination;
 
-  const PaginatedResponse({
-    required this.data,
-    required this.pagination,
-  });
+  const PaginatedResponse({required this.data, required this.pagination});
 }

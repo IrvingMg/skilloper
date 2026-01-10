@@ -1,6 +1,7 @@
 .PHONY: help start start-api start-app install-deps clean-all stop \
         build build-app build-api run test \
-        build-docker run-docker stop-docker
+        build-docker run-docker stop-docker \
+        verify verify-api verify-app fix fix-api fix-app
 
 # Default environment variables (can be overridden: LOG_LEVEL=debug make start-api)
 APP_ENV ?= development
@@ -12,6 +13,9 @@ PORT ?= 8080
 # Docker variables
 DOCKER_IMAGE ?= skilloper
 DOCKER_TAG ?= latest
+
+# Go tools path
+GOBIN ?= $(shell go env GOPATH)/bin
 
 # Build variables
 API_URL ?= /api/v1
@@ -28,6 +32,14 @@ help:
 	@echo "  start-app    Start Flutter app only"
 	@echo "  install-deps Install dependencies"
 	@echo "  stop         Stop background processes"
+	@echo ""
+	@echo "Code Quality:"
+	@echo "  verify       Run all linting and analysis (Go + Flutter)"
+	@echo "  verify-api   Run Go linting (golangci-lint + govulncheck)"
+	@echo "  verify-app   Run Flutter analysis and format check"
+	@echo "  fix          Auto-fix all code (Go + Flutter)"
+	@echo "  fix-api      Auto-fix Go code (lint + format)"
+	@echo "  fix-app      Auto-fix Flutter code (lint + format)"
 	@echo ""
 	@echo "Build & Test:"
 	@echo "  build        Build Flutter and Go with embedded static"
@@ -60,6 +72,10 @@ install-deps:
 	@echo "Installing dependencies..."
 	cd skilloper-api && go mod tidy
 	cd skilloper_app && flutter pub get
+	@echo "Installing Go tools..."
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+	go install golang.org/x/vuln/cmd/govulncheck@latest
+	@echo "All dependencies installed!"
 
 start-api:
 	@echo "Starting API server on http://localhost:8080 (APP_ENV=$(APP_ENV), LOG_LEVEL=$(LOG_LEVEL))"
@@ -88,6 +104,41 @@ stop:
 	@pkill -f "build/skilloper-api" 2>/dev/null || true
 	@pkill -f "build/skilloper" 2>/dev/null || true
 	@echo "Services stopped."
+
+# ==============================================================================
+# Code Quality
+# ==============================================================================
+verify-api:
+	@echo "Running Go code quality checks..."
+	cd skilloper-api && $(GOBIN)/golangci-lint run ./...
+	@echo "Running govulncheck..."
+	cd skilloper-api && $(GOBIN)/govulncheck ./...
+	@echo "Go checks passed!"
+
+fix-api:
+	@echo "Fixing Go code..."
+	cd skilloper-api && $(GOBIN)/golangci-lint run --fix ./...
+	@echo "Go code fixed!"
+
+verify-app:
+	@echo "Running Flutter analysis..."
+	cd skilloper_app && dart analyze lib/ test/
+	@echo "Checking Dart formatting..."
+	cd skilloper_app && dart format --set-exit-if-changed lib/ test/
+	@echo "Flutter checks passed!"
+
+fix-app:
+	@echo "Fixing Flutter code..."
+	cd skilloper_app && dart fix --apply lib/
+	cd skilloper_app && dart fix --apply test/
+	cd skilloper_app && dart format lib/ test/
+	@echo "Flutter code fixed!"
+
+verify: verify-api verify-app
+	@echo "All checks passed!"
+
+fix: fix-api fix-app
+	@echo "All code fixed!"
 
 # ==============================================================================
 # Build

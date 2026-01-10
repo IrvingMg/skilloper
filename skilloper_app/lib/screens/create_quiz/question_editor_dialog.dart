@@ -10,10 +10,10 @@ class QuestionEditorDialog extends StatefulWidget {
   final void Function(DraftQuestion question) onSave;
 
   const QuestionEditorDialog({
+    required this.onSave,
     super.key,
     this.question,
     this.maxOptions = 8,
-    required this.onSave,
   });
 
   @override
@@ -41,8 +41,7 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
     _optionControllers = _question.options
         .map((o) => TextEditingController(text: o))
         .toList();
-    _explanationController =
-        TextEditingController(text: _question.explanation);
+    _explanationController = TextEditingController(text: _question.explanation);
     _codeController = TextEditingController(text: _question.code);
     _languageController = TextEditingController(text: _question.language);
     _altQuestionControllers = _question.alternativeQuestions
@@ -54,7 +53,8 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
     _isMultipleChoice = _question.isMultipleChoice;
 
     // Show advanced section if any advanced fields have content
-    _showAdvanced = _question.code.isNotEmpty ||
+    _showAdvanced =
+        _question.code.isNotEmpty ||
         _question.alternativeQuestions.isNotEmpty ||
         _question.alternativeOptions.isNotEmpty;
   }
@@ -62,16 +62,16 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
   @override
   void dispose() {
     _questionController.dispose();
-    for (var c in _optionControllers) {
+    for (final c in _optionControllers) {
       c.dispose();
     }
     _explanationController.dispose();
     _codeController.dispose();
     _languageController.dispose();
-    for (var c in _altQuestionControllers) {
+    for (final c in _altQuestionControllers) {
       c.dispose();
     }
-    for (var c in _altOptionControllers) {
+    for (final c in _altOptionControllers) {
       c.dispose();
     }
     super.dispose();
@@ -83,10 +83,12 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
     _question.explanation = _explanationController.text;
     _question.code = _codeController.text;
     _question.language = _languageController.text;
-    _question.alternativeQuestions =
-        _altQuestionControllers.map((c) => c.text).toList();
-    _question.alternativeOptions =
-        _altOptionControllers.map((c) => c.text).toList();
+    _question.alternativeQuestions = _altQuestionControllers
+        .map((c) => c.text)
+        .toList();
+    _question.alternativeOptions = _altOptionControllers
+        .map((c) => c.text)
+        .toList();
   }
 
   void _addOption() {
@@ -149,8 +151,9 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
   void _setMultipleChoice(bool value) {
     setState(() {
       _isMultipleChoice = value;
-      _question.questionType =
-          value ? QuestionTypes.multipleChoice : QuestionTypes.singleChoice;
+      _question.questionType = value
+          ? QuestionTypes.multipleChoice
+          : QuestionTypes.singleChoice;
       if (!value && _question.correctAnswers.length > 1) {
         // Keep only first answer when switching to single choice
         _question.correctAnswers = [_question.correctAnswers.first];
@@ -176,7 +179,8 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
       Navigator.pop(context);
     } else {
       setState(() {
-        _errorMessage = _question.validationError ?? 'Please complete all required fields';
+        _errorMessage =
+            _question.validationError ?? 'Please complete all required fields';
       });
     }
   }
@@ -187,7 +191,7 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
     final canAddOption = _optionControllers.length < widget.maxOptions;
 
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: AppRadius.lgAll),
+      shape: const RoundedRectangleBorder(borderRadius: AppRadius.lgAll),
       child: Container(
         width: MediaQuery.of(context).size.width * 0.9,
         constraints: const BoxConstraints(maxWidth: 600, maxHeight: 700),
@@ -198,12 +202,13 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.1),
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(AppRadius.lg),
+                ),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.quiz, color: AppColors.primary),
+                  const Icon(Icons.quiz, color: AppColors.primary),
                   const SizedBox(width: 12),
                   Text(
                     isEditing ? 'Edit Question' : 'Add Question',
@@ -223,16 +228,26 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
             if (_errorMessage != null)
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 color: AppColors.errorContainer,
                 child: Row(
                   children: [
-                    const Icon(Icons.error_outline, color: AppColors.error, size: AppIconSizes.md),
+                    const Icon(
+                      Icons.error_outline,
+                      color: AppColors.error,
+                      size: AppIconSizes.md,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _errorMessage!,
-                        style: TextStyle(color: AppColors.error, fontSize: 13),
+                        style: const TextStyle(
+                          color: AppColors.error,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                     IconButton(
@@ -263,8 +278,10 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                     const SizedBox(height: 20),
                     Row(
                       children: [
-                        const Text('Question Type:',
-                            style: TextStyle(fontWeight: FontWeight.w500)),
+                        const Text(
+                          'Question Type:',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
                         const SizedBox(width: 16),
                         ChoiceChip(
                           label: const Text('Single Choice'),
@@ -286,11 +303,13 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Options *',
-                                style: TextStyle(fontWeight: FontWeight.w500)),
+                            const Text(
+                              'Options *',
+                              style: TextStyle(fontWeight: FontWeight.w500),
+                            ),
                             Text(
                               'Max: ${widget.maxOptions} options',
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontSize: 11,
                                 color: AppColors.textTertiary,
                               ),
@@ -310,7 +329,7 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                       _isMultipleChoice
                           ? 'Select all correct answers'
                           : 'Select the correct answer',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
                       ),
@@ -347,8 +366,11 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                                   ),
                                 ),
                                 child: isSelected
-                                    ? Icon(Icons.check,
-                                        color: AppColors.textOnPrimary, size: AppIconSizes.md)
+                                    ? const Icon(
+                                        Icons.check,
+                                        color: AppColors.textOnPrimary,
+                                        size: AppIconSizes.md,
+                                      )
                                     : null,
                               ),
                             ),
@@ -373,8 +395,10 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                             // Remove button
                             if (_optionControllers.length > 2)
                               IconButton(
-                                icon: Icon(Icons.remove_circle_outline,
-                                    color: AppColors.error),
+                                icon: const Icon(
+                                  Icons.remove_circle_outline,
+                                  color: AppColors.error,
+                                ),
                                 onPressed: () => _removeOption(index),
                               ),
                           ],
@@ -397,10 +421,13 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
 
                     // Advanced options toggle
                     InkWell(
-                      onTap: () => setState(() => _showAdvanced = !_showAdvanced),
+                      onTap: () =>
+                          setState(() => _showAdvanced = !_showAdvanced),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            vertical: 12, horizontal: 16),
+                          vertical: 12,
+                          horizontal: 16,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.surface,
                           borderRadius: AppRadius.smAll,
@@ -415,10 +442,12 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                               color: AppColors.textSecondary,
                             ),
                             const SizedBox(width: 8),
-                            const Text('Advanced Options',
-                                style: TextStyle(fontWeight: FontWeight.w500)),
+                            const Text(
+                              'Advanced Options',
+                              style: TextStyle(fontWeight: FontWeight.w500),
+                            ),
                             const Spacer(),
-                            Text(
+                            const Text(
                               'Code, alternatives',
                               style: TextStyle(
                                 fontSize: 12,
@@ -435,8 +464,10 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                       const SizedBox(height: 16),
 
                       // Code snippet
-                      const Text('Code Snippet',
-                          style: TextStyle(fontWeight: FontWeight.w500)),
+                      const Text(
+                        'Code Snippet',
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
                       const SizedBox(height: 8),
                       Row(
                         children: [
@@ -449,7 +480,9 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                                 hintText: 'e.g., javascript',
                                 border: OutlineInputBorder(),
                                 contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 10),
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
                               ),
                             ),
                           ),
@@ -458,10 +491,10 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                       const SizedBox(height: 8),
                       TextField(
                         controller: _codeController,
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: 'Code',
                           hintText: 'Enter code snippet',
-                          border: const OutlineInputBorder(),
+                          border: OutlineInputBorder(),
                           filled: true,
                           fillColor: AppColors.codeBackground,
                         ),
@@ -477,8 +510,10 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Alternative Questions',
-                              style: TextStyle(fontWeight: FontWeight.w500)),
+                          const Text(
+                            'Alternative Questions',
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
                           TextButton.icon(
                             onPressed: _addAltQuestion,
                             icon: const Icon(Icons.add, size: AppIconSizes.md),
@@ -486,10 +521,12 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                           ),
                         ],
                       ),
-                      Text(
+                      const Text(
                         'Different ways to phrase the same question',
                         style: TextStyle(
-                            fontSize: 12, color: AppColors.textSecondary),
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       ...List.generate(_altQuestionControllers.length, (index) {
@@ -501,7 +538,8 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                                 child: TextField(
                                   controller: _altQuestionControllers[index],
                                   decoration: InputDecoration(
-                                    hintText: 'Alternative question ${index + 1}',
+                                    hintText:
+                                        'Alternative question ${index + 1}',
                                     border: const OutlineInputBorder(),
                                     contentPadding: const EdgeInsets.symmetric(
                                       horizontal: 12,
@@ -511,8 +549,10 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                                 ),
                               ),
                               IconButton(
-                                icon: Icon(Icons.remove_circle_outline,
-                                    color: AppColors.error),
+                                icon: const Icon(
+                                  Icons.remove_circle_outline,
+                                  color: AppColors.error,
+                                ),
                                 onPressed: () => _removeAltQuestion(index),
                               ),
                             ],
@@ -525,8 +565,10 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Alternative Options',
-                              style: TextStyle(fontWeight: FontWeight.w500)),
+                          const Text(
+                            'Alternative Options',
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
                           TextButton.icon(
                             onPressed: _addAltOption,
                             icon: const Icon(Icons.add, size: AppIconSizes.md),
@@ -534,10 +576,12 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                           ),
                         ],
                       ),
-                      Text(
+                      const Text(
                         'Additional distractor options for variety',
                         style: TextStyle(
-                            fontSize: 12, color: AppColors.textSecondary),
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       ...List.generate(_altOptionControllers.length, (index) {
@@ -559,8 +603,10 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                                 ),
                               ),
                               IconButton(
-                                icon: Icon(Icons.remove_circle_outline,
-                                    color: AppColors.error),
+                                icon: const Icon(
+                                  Icons.remove_circle_outline,
+                                  color: AppColors.error,
+                                ),
                                 onPressed: () => _removeAltOption(index),
                               ),
                             ],
@@ -574,7 +620,7 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
             ),
             Container(
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 border: Border(top: BorderSide(color: AppColors.outline)),
               ),
               child: Row(

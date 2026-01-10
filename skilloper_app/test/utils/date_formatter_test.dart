@@ -63,8 +63,9 @@ void main() {
       expect(result, isNot(contains('weeks ago')));
       // Verify it matches month abbreviation format
       expect(
-        RegExp(r'^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{1,2}$')
-            .hasMatch(result),
+        RegExp(
+          r'^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{1,2}$',
+        ).hasMatch(result),
         isTrue,
         reason: 'Expected format like "Nov 11", got "$result"',
       );

@@ -7,7 +7,7 @@ import '../theme/app_icons.dart';
 class RegisterScreen extends StatefulWidget {
   final VoidCallback onRegisterSuccess;
 
-  const RegisterScreen({super.key, required this.onRegisterSuccess});
+  const RegisterScreen({required this.onRegisterSuccess, super.key});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -97,10 +97,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 24),
                     Text(
                       'Create Account',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
+                      style: Theme.of(context).textTheme.headlineMedium
+                          ?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
@@ -121,7 +122,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         child: Text(
                           _errorMessage!,
-                          style: TextStyle(color: AppColors.onErrorContainer),
+                          style: const TextStyle(
+                            color: AppColors.onErrorContainer,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -132,7 +135,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Username',
                         prefixIcon: Icon(Icons.person_outline),
-                        helperText: '6-30 characters: letters, numbers, and underscores',
+                        helperText:
+                            '6-30 characters: letters, numbers, and underscores',
                       ),
                       textInputAction: TextInputAction.next,
                       autocorrect: false,
@@ -146,7 +150,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         if (value.trim().length > 30) {
                           return 'Username cannot exceed 30 characters';
                         }
-                        if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(value.trim())) {
+                        if (!RegExp(
+                          r'^[a-zA-Z0-9_]+$',
+                        ).hasMatch(value.trim())) {
                           return 'Only letters, numbers, and underscores are allowed';
                         }
                         return null;
@@ -158,10 +164,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       decoration: InputDecoration(
                         labelText: 'Password',
                         prefixIcon: const Icon(Icons.lock_outline),
-                        helperText: '8+ characters with uppercase, lowercase, and number',
+                        helperText:
+                            '8+ characters with uppercase, lowercase, and number',
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                            _obscurePassword
+                                ? Icons.visibility
+                                : Icons.visibility_off,
                           ),
                           onPressed: () {
                             setState(() {
@@ -179,13 +188,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         if (value.length < 8) {
                           return 'Password must be at least 8 characters long';
                         }
-                        if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                        if (!RegExp('[A-Z]').hasMatch(value)) {
                           return 'Password must contain at least one uppercase letter';
                         }
-                        if (!RegExp(r'[a-z]').hasMatch(value)) {
+                        if (!RegExp('[a-z]').hasMatch(value)) {
                           return 'Password must contain at least one lowercase letter';
                         }
-                        if (!RegExp(r'[0-9]').hasMatch(value)) {
+                        if (!RegExp('[0-9]').hasMatch(value)) {
                           return 'Password must contain at least one number';
                         }
                         return null;
@@ -199,11 +208,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
+                            _obscureConfirmPassword
+                                ? Icons.visibility
+                                : Icons.visibility_off,
                           ),
                           onPressed: () {
                             setState(() {
-                              _obscureConfirmPassword = !_obscureConfirmPassword;
+                              _obscureConfirmPassword =
+                                  !_obscureConfirmPassword;
                             });
                           },
                         ),
@@ -216,7 +228,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           return 'Please confirm your password';
                         }
                         if (value != _passwordController.text) {
-                          return 'Passwords don\'t match';
+                          return "Passwords don't match";
                         }
                         return null;
                       },
@@ -237,7 +249,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 16),
                     TextButton(
-                      onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
+                      onPressed: _isLoading
+                          ? null
+                          : () => Navigator.of(context).pop(),
                       child: const Text('Already have an account? Sign in'),
                     ),
                   ],

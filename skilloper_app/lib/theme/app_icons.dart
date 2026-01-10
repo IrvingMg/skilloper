@@ -21,11 +21,6 @@ class AppIcons {
   static const IconData upload = Icons.upload_outlined;
   static const IconData uploadSelected = Icons.upload;
 
-
-
-
-
-
   // MARK: - Programming Languages (for code blocks)
   static IconData getLanguageIcon(String? language) {
     switch (language?.toLowerCase()) {
@@ -84,11 +79,11 @@ class AppIconSizes {
   static const double quizCardWide = 56.0;
 
   // Semantic aliases for common contexts
-  static const double inline = xs;       // For inline text icons
-  static const double button = md;       // For button icons
-  static const double menu = lg;         // For menu/list item icons
-  static const double nav = xxl;         // For navigation icons
-  static const double header = xxxl;     // For section headers
+  static const double inline = xs; // For inline text icons
+  static const double button = md; // For button icons
+  static const double menu = lg; // For menu/list item icons
+  static const double nav = xxl; // For navigation icons
+  static const double header = xxxl; // For section headers
 }
 
 /// Icon themes for different contexts (Learning Platform Optimized)
@@ -107,8 +102,8 @@ class QuizModeIcon extends StatelessWidget {
   final double size;
 
   const QuizModeIcon({
-    super.key,
     required this.isExamMode,
+    super.key,
     this.size = AppIconSizes.lg,
   });
 

@@ -393,7 +393,7 @@ func (s *AttemptService) GetByID(userID uint, id uint) (*models.AttemptResponse,
 }
 
 func (s *AttemptService) convertToResponse(attempt models.QuizAttempt) models.AttemptResponse {
-	answers := []models.AttemptAnswerResponse{}
+	answers := make([]models.AttemptAnswerResponse, 0, len(attempt.Answers))
 
 	for _, answer := range attempt.Answers {
 		userAnswers := []int{}

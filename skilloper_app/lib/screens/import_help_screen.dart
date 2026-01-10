@@ -9,9 +9,7 @@ class ImportHelpScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Import Guide'),
-      ),
+      appBar: AppBar(title: const Text('Import Guide')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -28,12 +26,9 @@ class ImportHelpScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 4),
-            Text(
+            const Text(
               'Supported formats for importing quizzes',
-              style: TextStyle(
-                fontSize: 15,
-                color: AppColors.textTertiary,
-              ),
+              style: TextStyle(fontSize: 15, color: AppColors.textTertiary),
             ),
             const SizedBox(height: 24),
 
@@ -42,13 +37,21 @@ class ImportHelpScreen extends StatelessWidget {
               spacing: 8,
               children: [
                 Chip(
-                  avatar: Icon(Icons.data_object, size: AppIconSizes.sm, color: AppColors.primary),
+                  avatar: const Icon(
+                    Icons.data_object,
+                    size: AppIconSizes.sm,
+                    color: AppColors.primary,
+                  ),
                   label: const Text('JSON'),
                   backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                   side: BorderSide.none,
                 ),
                 Chip(
-                  avatar: Icon(Icons.table_chart, size: AppIconSizes.sm, color: AppColors.success),
+                  avatar: const Icon(
+                    Icons.table_chart,
+                    size: AppIconSizes.sm,
+                    color: AppColors.success,
+                  ),
                   label: const Text('CSV'),
                   backgroundColor: AppColors.success.withValues(alpha: 0.1),
                   side: BorderSide.none,
@@ -58,7 +61,7 @@ class ImportHelpScreen extends StatelessWidget {
             const SizedBox(height: 24),
 
             // JSON Section
-            _SectionHeader(icon: Icons.data_object, title: 'JSON Format'),
+            const _SectionHeader(icon: Icons.data_object, title: 'JSON Format'),
             const SizedBox(height: 12),
 
             // JSON Quiz Fields Table
@@ -105,7 +108,8 @@ class ImportHelpScreen extends StatelessWidget {
             // JSON Example
             _buildCodeBlock(
               title: 'Example',
-              code: '''{
+              code: '''
+{
   "title": "My Quiz",
   "type": "practice",
   "questions": [
@@ -122,12 +126,13 @@ class ImportHelpScreen extends StatelessWidget {
       "explanation": "2 and 4 are even"
     }
   ]
-}''',
+}
+''',
             ),
             const SizedBox(height: 32),
 
             // CSV Section
-            _SectionHeader(icon: Icons.table_chart, title: 'CSV Format'),
+            const _SectionHeader(icon: Icons.table_chart, title: 'CSV Format'),
             const SizedBox(height: 12),
 
             // CSV Columns Table
@@ -160,15 +165,19 @@ class ImportHelpScreen extends StatelessWidget {
             _buildInfoBox(
               icon: Icons.edit_note,
               title: 'Quiz Metadata',
-              content: 'You\'ll be prompted to enter title, type, and max options when importing',
+              content:
+                  "You'll be prompted to enter title, type, and max options when importing",
             ),
             const SizedBox(height: 32),
 
             // Answer Format Section
-            _SectionHeader(icon: Icons.check_circle_outline, title: 'Answer Format'),
+            const _SectionHeader(
+              icon: Icons.check_circle_outline,
+              title: 'Answer Format',
+            ),
             const SizedBox(height: 12),
 
-            Row(
+            const Row(
               children: [
                 Expanded(
                   child: _AnswerTypeCard(
@@ -178,7 +187,7 @@ class ImportHelpScreen extends StatelessWidget {
                     description: 'One correct answer',
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: 12),
                 Expanded(
                   child: _AnswerTypeCard(
                     type: 'Multiple Choice',
@@ -200,7 +209,7 @@ class ImportHelpScreen extends StatelessWidget {
                 label: const Text('View Full Examples'),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
+                  shape: const RoundedRectangleBorder(
                     borderRadius: AppRadius.mdAll,
                   ),
                 ),
@@ -220,7 +229,7 @@ class ImportHelpScreen extends StatelessWidget {
   }) {
     return Card(
       elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+      shape: const RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -228,7 +237,7 @@ class ImportHelpScreen extends StatelessWidget {
           children: [
             Text(
               title,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textSecondary,
@@ -243,48 +252,53 @@ class ImportHelpScreen extends StatelessWidget {
               },
               children: [
                 TableRow(
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     border: Border(
                       bottom: BorderSide(color: AppColors.outline),
                     ),
                   ),
                   children: headers
-                      .map((h) => Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Text(
-                              h,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textTertiary,
-                              ),
+                      .map(
+                        (h) => Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Text(
+                            h,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textTertiary,
                             ),
-                          ))
+                          ),
+                        ),
+                      )
                       .toList(),
                 ),
-                ...rows.map((row) => TableRow(
-                      children: row
-                          .asMap()
-                          .entries
-                          .map((e) => Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 6),
-                                child: Text(
-                                  e.value,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontFamily:
-                                        e.key == 0 ? 'monospace' : null,
-                                    fontWeight: e.key == 0
-                                        ? FontWeight.w500
-                                        : FontWeight.normal,
-                                    color: e.value == '✓'
-                                        ? AppColors.success
-                                        : AppColors.textPrimary,
-                                  ),
-                                ),
-                              ))
-                          .toList(),
-                    )),
+                ...rows.map(
+                  (row) => TableRow(
+                    children: row
+                        .asMap()
+                        .entries
+                        .map(
+                          (e) => Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 6),
+                            child: Text(
+                              e.value,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontFamily: e.key == 0 ? 'monospace' : null,
+                                fontWeight: e.key == 0
+                                    ? FontWeight.w500
+                                    : FontWeight.normal,
+                                color: e.value == '✓'
+                                    ? AppColors.success
+                                    : AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
               ],
             ),
           ],
@@ -300,21 +314,29 @@ class ImportHelpScreen extends StatelessWidget {
   }) {
     return Card(
       elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+      shape: const RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm + 2),
-            decoration: BoxDecoration(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.sm + 2,
+            ),
+            decoration: const BoxDecoration(
               color: AppColors.surfaceContainerHigh,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.md)),
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(AppRadius.md),
+              ),
             ),
             child: Row(
               children: [
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
-                  decoration: BoxDecoration(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: AppSpacing.xs,
+                  ),
+                  decoration: const BoxDecoration(
                     color: AppColors.primaryContainer,
                     borderRadius: AppRadius.xsAll,
                   ),
@@ -326,10 +348,10 @@ class ImportHelpScreen extends StatelessWidget {
                         size: AppIconSizes.xs,
                         color: AppColors.primary,
                       ),
-                      SizedBox(width: AppSpacing.xs + 2),
+                      const SizedBox(width: AppSpacing.xs + 2),
                       Text(
                         title.toUpperCase(),
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: AppColors.onPrimaryContainer,
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
@@ -343,7 +365,9 @@ class ImportHelpScreen extends StatelessWidget {
             ),
           ),
           ClipRRect(
-            borderRadius: BorderRadius.vertical(bottom: Radius.circular(AppRadius.md)),
+            borderRadius: const BorderRadius.vertical(
+              bottom: Radius.circular(AppRadius.md),
+            ),
             child: SizedBox(
               width: double.infinity,
               child: FlutterCodeView(
@@ -360,10 +384,7 @@ class ImportHelpScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRulesBox({
-    required String title,
-    required List<String> rules,
-  }) {
+  Widget _buildRulesBox({required String title, required List<String> rules}) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -376,11 +397,15 @@ class ImportHelpScreen extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.lightbulb_outline, size: AppIconSizes.md, color: AppColors.warning),
+              const Icon(
+                Icons.lightbulb_outline,
+                size: AppIconSizes.md,
+                color: AppColors.warning,
+              ),
               const SizedBox(width: 8),
               Text(
                 title,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: AppColors.warning,
@@ -389,25 +414,30 @@ class ImportHelpScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          ...rules.map((rule) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('• ', style: TextStyle(color: AppColors.textSecondary)),
-                    Expanded(
-                      child: Text(
-                        rule,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textSecondary,
-                          height: 1.3,
-                        ),
+          ...rules.map(
+            (rule) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '• ',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                  Expanded(
+                    child: Text(
+                      rule,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        height: 1.3,
                       ),
                     ),
-                  ],
-                ),
-              )),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -435,7 +465,7 @@ class ImportHelpScreen extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                     color: AppColors.primary,
@@ -443,7 +473,7 @@ class ImportHelpScreen extends StatelessWidget {
                 ),
                 Text(
                   content,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 12,
                     color: AppColors.textSecondary,
                   ),
@@ -457,7 +487,7 @@ class ImportHelpScreen extends StatelessWidget {
   }
 
   void _showFullExamples(BuildContext context) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Full Examples'),
@@ -469,11 +499,11 @@ class ImportHelpScreen extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TabBar(
+                const TabBar(
                   labelColor: AppColors.primary,
                   unselectedLabelColor: AppColors.textTertiary,
                   indicatorColor: AppColors.primary,
-                  tabs: const [
+                  tabs: [
                     Tab(text: 'JSON'),
                     Tab(text: 'CSV'),
                   ],
@@ -487,7 +517,8 @@ class ImportHelpScreen extends StatelessWidget {
                         child: ClipRRect(
                           borderRadius: AppRadius.smAll,
                           child: FlutterCodeView(
-                            source: '''{
+                            source: '''
+{
   "title": "JavaScript Basics",
   "description": "Test your JS knowledge",
   "type": "practice",
@@ -508,7 +539,8 @@ class ImportHelpScreen extends StatelessWidget {
       "explanation": "2 and 4 are even numbers"
     }
   ]
-}''',
+}
+''',
                             language: Languages.json,
                             themeType: ThemeType.github,
                             showLineNumbers: true,
@@ -533,7 +565,7 @@ class ImportHelpScreen extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
+                                  const Text(
                                     'CSV Structure',
                                     style: TextStyle(
                                       fontSize: 13,
@@ -542,10 +574,34 @@ class ImportHelpScreen extends StatelessWidget {
                                     ),
                                   ),
                                   const SizedBox(height: 12),
-                                  _buildCsvRow(['question', 'option1', 'option2', 'option3', 'option4', 'answer', 'expl.'], isHeader: true),
+                                  _buildCsvRow([
+                                    'question',
+                                    'option1',
+                                    'option2',
+                                    'option3',
+                                    'option4',
+                                    'answer',
+                                    'expl.',
+                                  ], isHeader: true),
                                   const Divider(height: 1),
-                                  _buildCsvRow(['What is 2+2?', '1', '2', '3', '4', '4', 'Math']),
-                                  _buildCsvRow(['Which even?', '1', '2', '3', '4', '"2,4"', 'Even #s']),
+                                  _buildCsvRow([
+                                    'What is 2+2?',
+                                    '1',
+                                    '2',
+                                    '3',
+                                    '4',
+                                    '4',
+                                    'Math',
+                                  ]),
+                                  _buildCsvRow([
+                                    'Which even?',
+                                    '1',
+                                    '2',
+                                    '3',
+                                    '4',
+                                    '"2,4"',
+                                    'Even #s',
+                                  ]),
                                 ],
                               ),
                             ),
@@ -554,11 +610,11 @@ class ImportHelpScreen extends StatelessWidget {
                             Container(
                               width: double.infinity,
                               padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
+                              decoration: const BoxDecoration(
                                 color: AppColors.codeBackground,
                                 borderRadius: AppRadius.smAll,
                               ),
-                              child: Column(
+                              child: const Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
@@ -568,7 +624,7 @@ class ImportHelpScreen extends StatelessWidget {
                                       color: AppColors.textTertiary,
                                     ),
                                   ),
-                                  const SizedBox(height: 8),
+                                  SizedBox(height: 8),
                                   SelectableText(
                                     'question,option1,option2,option3,option4,answer,explanation\n'
                                     '"What is 2+2?","1","2","3","4",4,"Basic math"\n'
@@ -617,7 +673,9 @@ class ImportHelpScreen extends StatelessWidget {
                 fontSize: isFirst ? 11 : 10,
                 fontFamily: 'monospace',
                 fontWeight: isHeader ? FontWeight.w600 : FontWeight.normal,
-                color: isHeader ? AppColors.textSecondary : AppColors.textPrimary,
+                color: isHeader
+                    ? AppColors.textSecondary
+                    : AppColors.textPrimary,
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -642,7 +700,7 @@ class _SectionHeader extends StatelessWidget {
         const SizedBox(width: 8),
         Text(
           title,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
@@ -680,7 +738,7 @@ class _AnswerTypeCard extends StatelessWidget {
         children: [
           Text(
             type,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
@@ -688,10 +746,7 @@ class _AnswerTypeCard extends StatelessWidget {
           ),
           Text(
             description,
-            style: TextStyle(
-              fontSize: 11,
-              color: AppColors.textTertiary,
-            ),
+            style: const TextStyle(fontSize: 11, color: AppColors.textTertiary),
           ),
           const SizedBox(height: 8),
           _buildExample('JSON', jsonExample),
@@ -709,22 +764,19 @@ class _AnswerTypeCard extends StatelessWidget {
           width: 36,
           child: Text(
             label,
-            style: TextStyle(
-              fontSize: 10,
-              color: AppColors.textTertiary,
-            ),
+            style: const TextStyle(fontSize: 10, color: AppColors.textTertiary),
           ),
         ),
         Expanded(
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: AppColors.codeBackground,
               borderRadius: AppRadius.xsAll,
             ),
             child: Text(
               value,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 11,
                 fontFamily: 'monospace',
                 color: AppColors.codeText,

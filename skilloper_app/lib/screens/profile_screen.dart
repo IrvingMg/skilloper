@@ -5,16 +5,16 @@ import '../theme/app_colors.dart';
 class ProfileScreen extends StatefulWidget {
   final VoidCallback onLogout;
 
-  const ProfileScreen({super.key, required this.onLogout});
+  const ProfileScreen({required this.onLogout, super.key});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  static final _upperCaseRegex = RegExp(r'[A-Z]');
-  static final _lowerCaseRegex = RegExp(r'[a-z]');
-  static final _digitRegex = RegExp(r'[0-9]');
+  static final _upperCaseRegex = RegExp('[A-Z]');
+  static final _lowerCaseRegex = RegExp('[a-z]');
+  static final _digitRegex = RegExp('[0-9]');
 
   final _authService = AuthService();
   bool _isLoading = false;
@@ -31,7 +31,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Column(
             children: [
               const SizedBox(height: 32),
-              CircleAvatar(
+              const CircleAvatar(
                 radius: 48,
                 backgroundColor: AppColors.primaryContainer,
                 child: Icon(
@@ -62,31 +62,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.outline.withValues(alpha: 0.2)),
+                  border: Border.all(
+                    color: AppColors.outline.withValues(alpha: 0.2),
+                  ),
                 ),
                 child: Column(
                   children: [
                     _buildOptionTile(
                       icon: Icons.lock_outline,
                       title: 'Change Password',
-                      onTap: _isLoading ? null : () => _showChangePasswordDialog(context),
+                      onTap: _isLoading
+                          ? null
+                          : () => _showChangePasswordDialog(context),
                     ),
-                    Divider(height: 1, color: AppColors.outline.withValues(alpha: 0.2)),
+                    Divider(
+                      height: 1,
+                      color: AppColors.outline.withValues(alpha: 0.2),
+                    ),
                     _buildOptionTile(
                       icon: Icons.history,
                       title: 'Reset Quiz History',
                       subtitle: 'Clear all your quiz attempts',
-                      onTap: _isLoading ? null : () => _showResetHistoryDialog(context),
+                      onTap: _isLoading
+                          ? null
+                          : () => _showResetHistoryDialog(context),
                     ),
-                    if (user?.isAdmin != true) ...[
-                      Divider(height: 1, color: AppColors.outline.withValues(alpha: 0.2)),
+                    if (!(user?.isAdmin ?? false)) ...[
+                      Divider(
+                        height: 1,
+                        color: AppColors.outline.withValues(alpha: 0.2),
+                      ),
                       _buildOptionTile(
                         icon: Icons.delete_forever,
                         title: 'Delete Account',
                         subtitle: 'Permanently remove your account',
                         iconColor: AppColors.error,
                         textColor: AppColors.error,
-                        onTap: _isLoading ? null : () => _showDeleteAccountDialog(context),
+                        onTap: _isLoading
+                            ? null
+                            : () => _showDeleteAccountDialog(context),
                       ),
                     ],
                   ],
@@ -101,7 +115,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   label: const Text('Log Out'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.error,
-                    side: BorderSide(color: AppColors.error),
+                    side: const BorderSide(color: AppColors.error),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                 ),
@@ -135,7 +149,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ? Text(
               subtitle,
               style: TextStyle(
-                color: textColor?.withValues(alpha: 0.7) ?? AppColors.textSecondary,
+                color:
+                    textColor?.withValues(alpha: 0.7) ??
+                    AppColors.textSecondary,
                 fontSize: 12,
               ),
             )
@@ -150,8 +166,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   String _formatDate(DateTime date) {
     final months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[date.month - 1]} ${date.year}';
   }
@@ -197,7 +223,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       decoration: const InputDecoration(
                         labelText: 'New Password',
                         border: OutlineInputBorder(),
-                        helperText: 'Min 8 chars with uppercase, lowercase, and digit',
+                        helperText:
+                            'Min 8 chars with uppercase, lowercase, and digit',
                         helperMaxLines: 2,
                       ),
                       validator: (value) {
@@ -256,7 +283,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       );
 
-      if (confirmed == true && mounted) {
+      if ((confirmed ?? false) && mounted) {
         setState(() => _isLoading = true);
         try {
           await _authService.updatePassword(
@@ -309,7 +336,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'This will permanently delete all your quiz attempts and results. This action cannot be undone.',
                   style: TextStyle(color: AppColors.textSecondary),
                 ),
@@ -349,14 +376,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       );
 
-      if (confirmed == true && mounted) {
+      if ((confirmed ?? false) && mounted) {
         setState(() => _isLoading = true);
         try {
-          final deletedCount = await _authService.resetHistory(passwordController.text);
+          final deletedCount = await _authService.resetHistory(
+            passwordController.text,
+          );
           if (mounted) {
             scaffoldMessenger.showSnackBar(
               SnackBar(
-                content: Text('Cleared $deletedCount quiz attempt${deletedCount == 1 ? '' : 's'}'),
+                content: Text(
+                  'Cleared $deletedCount quiz attempt${deletedCount == 1 ? '' : 's'}',
+                ),
                 backgroundColor: Colors.green,
               ),
             );
@@ -390,11 +421,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: Row(
+          title: const Row(
             children: [
               Icon(Icons.warning, color: AppColors.error),
-              const SizedBox(width: 8),
-              const Text('Delete Account'),
+              SizedBox(width: 8),
+              Text('Delete Account'),
             ],
           ),
           content: Form(
@@ -403,17 +434,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'This will permanently delete your account and all associated data including:',
                   style: TextStyle(color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 8),
-                Text(
+                const Text(
                   '  - Your profile\n  - All quizzes you created\n  - All quiz history and results',
                   style: TextStyle(color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 8),
-                Text(
+                const Text(
                   'This action cannot be undone.',
                   style: TextStyle(
                     color: AppColors.error,
@@ -459,7 +490,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       );
 
-      if (confirmed == true && mounted) {
+      if ((confirmed ?? false) && mounted) {
         setState(() => _isLoading = true);
         try {
           await _authService.deleteAccount(passwordController.text);
@@ -475,7 +506,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             );
           }
-        } catch (e) {
+        } on Object catch (e) {
           if (mounted) {
             scaffoldMessenger.showSnackBar(
               SnackBar(
@@ -508,7 +539,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(
+            child: const Text(
               'Log Out',
               style: TextStyle(color: AppColors.error),
             ),
@@ -517,7 +548,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
 
-    if (confirmed == true && mounted) {
+    if ((confirmed ?? false) && mounted) {
       await _authService.logout();
       if (mounted) {
         widget.onLogout();

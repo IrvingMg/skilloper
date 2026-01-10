@@ -131,16 +131,19 @@ void main() {
         expect(q.correctAnswers, [3]);
       });
 
-      test('removeOption adjusts answers correctly when removing earlier option', () {
-        final q = DraftQuestion(
-          options: ['A', 'B', 'C', 'D'],
-          correctAnswers: [3, 4], // C and D selected (1-based)
-        );
-        q.removeOption(0); // Remove 'A' (0-indexed)
-        expect(q.options, ['B', 'C', 'D']);
-        // Both answers shift down by 1
-        expect(q.correctAnswers, [2, 3]);
-      });
+      test(
+        'removeOption adjusts answers correctly when removing earlier option',
+        () {
+          final q = DraftQuestion(
+            options: ['A', 'B', 'C', 'D'],
+            correctAnswers: [3, 4], // C and D selected (1-based)
+          );
+          q.removeOption(0); // Remove 'A' (0-indexed)
+          expect(q.options, ['B', 'C', 'D']);
+          // Both answers shift down by 1
+          expect(q.correctAnswers, [2, 3]);
+        },
+      );
 
       test('removeOption does not remove below minimum', () {
         final q = DraftQuestion(options: ['A', 'B']);
@@ -231,13 +234,13 @@ void main() {
           options: ['A', '', 'C'],
           correctAnswers: [2], // Points to empty option
         );
-        expect(() => q.toJson(), throwsStateError);
+        expect(q.toJson, throwsStateError);
       });
     });
 
     group('fromQuestion', () {
       test('converts single choice from API format', () {
-        final apiQuestion = Question(
+        const apiQuestion = Question(
           id: 1,
           questionType: 'single_choice',
           question: 'What is 2+2?',
@@ -254,7 +257,7 @@ void main() {
       });
 
       test('converts multiple choice from API format', () {
-        final apiQuestion = Question(
+        const apiQuestion = Question(
           id: 2,
           questionType: 'multiple_choice',
           question: 'Select primes',
@@ -267,7 +270,7 @@ void main() {
       });
 
       test('handles missing optional fields', () {
-        final apiQuestion = Question(
+        const apiQuestion = Question(
           id: 3,
           questionType: 'single_choice',
           question: 'Test?',
@@ -388,9 +391,21 @@ void main() {
         final quiz = DraftQuiz(
           title: 'Test',
           questions: [
-            DraftQuestion(question: 'Q1?', options: ['A', 'B'], correctAnswers: [1]),
-            DraftQuestion(question: '', options: ['A', 'B'], correctAnswers: [1]), // Invalid
-            DraftQuestion(question: 'Q3?', options: ['A', 'B'], correctAnswers: [1]),
+            DraftQuestion(
+              question: 'Q1?',
+              options: ['A', 'B'],
+              correctAnswers: [1],
+            ),
+            DraftQuestion(
+              question: '',
+              options: ['A', 'B'],
+              correctAnswers: [1],
+            ), // Invalid
+            DraftQuestion(
+              question: 'Q3?',
+              options: ['A', 'B'],
+              correctAnswers: [1],
+            ),
           ],
         );
         expect(quiz.validQuestionCount, 2);
@@ -414,9 +429,21 @@ void main() {
         final quiz = DraftQuiz(
           title: 'Test',
           questions: [
-            DraftQuestion(question: 'Q1?', options: ['A', 'B'], correctAnswers: [1]),
-            DraftQuestion(question: 'Q2?', options: ['A', 'B'], correctAnswers: [1]),
-            DraftQuestion(question: 'Q3?', options: ['A', 'B'], correctAnswers: [1]),
+            DraftQuestion(
+              question: 'Q1?',
+              options: ['A', 'B'],
+              correctAnswers: [1],
+            ),
+            DraftQuestion(
+              question: 'Q2?',
+              options: ['A', 'B'],
+              correctAnswers: [1],
+            ),
+            DraftQuestion(
+              question: 'Q3?',
+              options: ['A', 'B'],
+              correctAnswers: [1],
+            ),
           ],
         );
         quiz.moveQuestionUp(1);
@@ -428,8 +455,16 @@ void main() {
         final quiz = DraftQuiz(
           title: 'Test',
           questions: [
-            DraftQuestion(question: 'Q1?', options: ['A', 'B'], correctAnswers: [1]),
-            DraftQuestion(question: 'Q2?', options: ['A', 'B'], correctAnswers: [1]),
+            DraftQuestion(
+              question: 'Q1?',
+              options: ['A', 'B'],
+              correctAnswers: [1],
+            ),
+            DraftQuestion(
+              question: 'Q2?',
+              options: ['A', 'B'],
+              correctAnswers: [1],
+            ),
           ],
         );
         quiz.moveQuestionUp(0);
@@ -440,9 +475,21 @@ void main() {
         final quiz = DraftQuiz(
           title: 'Test',
           questions: [
-            DraftQuestion(question: 'Q1?', options: ['A', 'B'], correctAnswers: [1]),
-            DraftQuestion(question: 'Q2?', options: ['A', 'B'], correctAnswers: [1]),
-            DraftQuestion(question: 'Q3?', options: ['A', 'B'], correctAnswers: [1]),
+            DraftQuestion(
+              question: 'Q1?',
+              options: ['A', 'B'],
+              correctAnswers: [1],
+            ),
+            DraftQuestion(
+              question: 'Q2?',
+              options: ['A', 'B'],
+              correctAnswers: [1],
+            ),
+            DraftQuestion(
+              question: 'Q3?',
+              options: ['A', 'B'],
+              correctAnswers: [1],
+            ),
           ],
         );
         quiz.moveQuestionDown(0);
@@ -454,8 +501,16 @@ void main() {
         final quiz = DraftQuiz(
           title: 'Test',
           questions: [
-            DraftQuestion(question: 'Q1?', options: ['A', 'B'], correctAnswers: [1]),
-            DraftQuestion(question: 'Q2?', options: ['A', 'B'], correctAnswers: [1]),
+            DraftQuestion(
+              question: 'Q1?',
+              options: ['A', 'B'],
+              correctAnswers: [1],
+            ),
+            DraftQuestion(
+              question: 'Q2?',
+              options: ['A', 'B'],
+              correctAnswers: [1],
+            ),
           ],
         );
         quiz.moveQuestionDown(1);
@@ -491,7 +546,11 @@ void main() {
           title: 'Test',
           description: '',
           questions: [
-            DraftQuestion(question: 'Q?', options: ['A', 'B'], correctAnswers: [1]),
+            DraftQuestion(
+              question: 'Q?',
+              options: ['A', 'B'],
+              correctAnswers: [1],
+            ),
           ],
         );
         final json = quiz.toJson();
@@ -508,7 +567,11 @@ void main() {
           type: 'exam',
           maxOptions: 6,
           questions: [
-            DraftQuestion(question: 'Q?', options: ['A', 'B'], correctAnswers: [1]),
+            DraftQuestion(
+              question: 'Q?',
+              options: ['A', 'B'],
+              correctAnswers: [1],
+            ),
           ],
         );
         quiz.clear();
@@ -533,8 +596,16 @@ void main() {
         final quiz = DraftQuiz(
           title: 'Test',
           questions: [
-            DraftQuestion(question: 'Q1?', options: ['A', 'B'], correctAnswers: [1]),
-            DraftQuestion(question: 'Q2?', options: ['A', 'B'], correctAnswers: [1]),
+            DraftQuestion(
+              question: 'Q1?',
+              options: ['A', 'B'],
+              correctAnswers: [1],
+            ),
+            DraftQuestion(
+              question: 'Q2?',
+              options: ['A', 'B'],
+              correctAnswers: [1],
+            ),
           ],
         );
         quiz.removeQuestion(0);
@@ -546,7 +617,11 @@ void main() {
         final quiz = DraftQuiz(
           title: 'Test',
           questions: [
-            DraftQuestion(question: 'Q1?', options: ['A', 'B'], correctAnswers: [1]),
+            DraftQuestion(
+              question: 'Q1?',
+              options: ['A', 'B'],
+              correctAnswers: [1],
+            ),
           ],
         );
         quiz.removeQuestion(5); // Out of bounds

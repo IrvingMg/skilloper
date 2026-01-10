@@ -316,10 +316,7 @@ void main() {
 
   group('ValidateAnswerResponse', () {
     test('fromJson parses single choice answer', () {
-      final json = {
-        'is_correct': true,
-        'correct_answer': 2,
-      };
+      final json = {'is_correct': true, 'correct_answer': 2};
 
       final response = ValidateAnswerResponse.fromJson(json);
 

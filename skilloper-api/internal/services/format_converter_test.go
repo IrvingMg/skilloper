@@ -1,7 +1,6 @@
 package services
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 
@@ -426,10 +425,4 @@ func TestSimplifiedQuestion_ParseAnswer(t *testing.T) {
 			}
 		})
 	}
-}
-
-// Helper to pretty print JSON for debugging
-func mustMarshal(v any) string {
-	b, _ := json.MarshalIndent(v, "", "  ")
-	return string(b)
 }

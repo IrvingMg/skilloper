@@ -3,6 +3,7 @@ package services
 import (
 	"bytes"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -103,7 +104,7 @@ func (p *CSVParser) ParseCSV(reader io.Reader, metadata CSVMetadata) (*models.Cr
 	for {
 		rowNum++
 		record, err := csvReader.Read()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {

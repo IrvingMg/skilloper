@@ -1,15 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import '../models/quiz.dart';
-import '../models/pagination.dart';
+
 import '../models/attempt.dart';
+import '../models/pagination.dart';
+import '../models/quiz.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
 import '../utils/date_formatter.dart';
 import '../utils/debouncer.dart';
 import '../widgets/search_filter_bar.dart';
-import 'quiz_screen.dart';
 import 'create_quiz/create_quiz_screen.dart';
+import 'quiz_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -24,8 +27,11 @@ class HomeScreenState extends State<HomeScreen> {
   void refresh() {
     _loadQuizzes(refresh: true);
   }
+
   final ScrollController _scrollController = ScrollController();
-  final Debouncer _searchDebouncer = Debouncer(delay: const Duration(milliseconds: 300));
+  final Debouncer _searchDebouncer = Debouncer(
+    delay: const Duration(milliseconds: 300),
+  );
 
   List<QuizSummary> _quizzes = [];
   PaginationMeta _pagination = PaginationMeta.initial();
@@ -97,12 +103,15 @@ class HomeScreenState extends State<HomeScreen> {
 
       if (!mounted) return;
       // Check if search/filter/sort changed while request was in flight
-      if (requestSearch != _searchQuery || requestType != _typeFilter || requestSort != _sortBy || _pendingRefresh) {
+      if (requestSearch != _searchQuery ||
+          requestType != _typeFilter ||
+          requestSort != _sortBy ||
+          _pendingRefresh) {
         // Query changed or refresh pending - discard stale results and load with current filters
         setState(() {
           _isInitialLoading = false;
         });
-        _loadQuizzes(refresh: true);
+        unawaited(_loadQuizzes(refresh: true));
         return;
       }
 
@@ -111,7 +120,7 @@ class HomeScreenState extends State<HomeScreen> {
         _pagination = result.pagination;
         _isInitialLoading = false;
       });
-    } catch (e) {
+    } on Object catch (e) {
       if (!mounted) return;
       setState(() {
         _error = e.toString();
@@ -119,7 +128,7 @@ class HomeScreenState extends State<HomeScreen> {
       });
       // Check for pending refresh even on error
       if (_pendingRefresh) {
-        _loadQuizzes(refresh: true);
+        unawaited(_loadQuizzes(refresh: true));
       }
     }
   }
@@ -148,7 +157,10 @@ class HomeScreenState extends State<HomeScreen> {
 
       if (!mounted) return;
       // Check if search/filter/sort changed while request was in flight
-      if (requestSearch != _searchQuery || requestType != _typeFilter || requestSort != _sortBy || _pendingRefresh) {
+      if (requestSearch != _searchQuery ||
+          requestType != _typeFilter ||
+          requestSort != _sortBy ||
+          _pendingRefresh) {
         // Query changed or refresh pending - discard stale results; a fresh load should already be in progress
         setState(() {
           _isLoadingMore = false;
@@ -161,18 +173,18 @@ class HomeScreenState extends State<HomeScreen> {
         _pagination = result.pagination;
         _isLoadingMore = false;
       });
-    } catch (e) {
+    } on Object catch (e) {
       if (!mounted) return;
       setState(() {
         _isLoadingMore = false;
       });
       // Check for pending refresh even on error
       if (_pendingRefresh) {
-        _loadQuizzes(refresh: true);
+        unawaited(_loadQuizzes(refresh: true));
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load more: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to load more: $e')));
       }
     }
   }
@@ -182,7 +194,7 @@ class HomeScreenState extends State<HomeScreen> {
       setState(() {
         _searchQuery = query;
       });
-      _loadQuizzes(refresh: true);
+      unawaited(_loadQuizzes(refresh: true));
     });
   }
 
@@ -190,14 +202,14 @@ class HomeScreenState extends State<HomeScreen> {
     setState(() {
       _typeFilter = filter;
     });
-    _loadQuizzes(refresh: true);
+    unawaited(_loadQuizzes(refresh: true));
   }
 
   void _onSortChanged(String sort) {
     setState(() {
       _sortBy = sort;
     });
-    _loadQuizzes(refresh: true);
+    unawaited(_loadQuizzes(refresh: true));
   }
 
   Future<void> _startQuiz(QuizSummary summary) async {
@@ -211,11 +223,11 @@ class HomeScreenState extends State<HomeScreen> {
     }
 
     // Practice mode: load quiz and navigate directly
-    _loadAndNavigateToQuiz(summary, attemptId: null);
+    unawaited(_loadAndNavigateToQuiz(summary, attemptId: null));
   }
 
   void _showExamConfirmation(QuizSummary summary) {
-    showDialog(
+    showDialog<void>(
       context: context,
       barrierDismissible: true,
       builder: (context) => AlertDialog(
@@ -242,10 +254,7 @@ class HomeScreenState extends State<HomeScreen> {
           children: [
             Text(
               summary.title,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
             ),
             const SizedBox(height: 16),
             const Text(
@@ -253,11 +262,20 @@ class HomeScreenState extends State<HomeScreen> {
               style: TextStyle(fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 12),
-            _buildInfoRow(Icons.history, 'Your attempt will be recorded in history'),
+            _buildInfoRow(
+              Icons.history,
+              'Your attempt will be recorded in history',
+            ),
             const SizedBox(height: 8),
-            _buildInfoRow(Icons.timer_outlined, 'Leaving early will mark it as abandoned'),
+            _buildInfoRow(
+              Icons.timer_outlined,
+              'Leaving early will mark it as abandoned',
+            ),
             const SizedBox(height: 8),
-            _buildInfoRow(Icons.visibility_off, 'Answers are revealed only at the end'),
+            _buildInfoRow(
+              Icons.visibility_off,
+              'Answers are revealed only at the end',
+            ),
           ],
         ),
         actions: [
@@ -305,11 +323,11 @@ class HomeScreenState extends State<HomeScreen> {
     _isStartingQuiz = true;
 
     // Show loading dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
+    unawaited(
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
       ),
     );
 
@@ -327,13 +345,15 @@ class HomeScreenState extends State<HomeScreen> {
       _isStartingQuiz = false;
 
       // Navigate with the pre-created attempt ID
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => QuizScreen(quiz: quiz, attemptId: attempt.id),
+      unawaited(
+        Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (context) => QuizScreen(quiz: quiz, attemptId: attempt.id),
+          ),
         ),
       );
-    } catch (e) {
+    } on Object catch (e) {
       _isStartingQuiz = false;
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
@@ -344,7 +364,7 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   void _showExamStartError(String error) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Row(
@@ -365,15 +385,18 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<void> _loadAndNavigateToQuiz(QuizSummary summary, {int? attemptId}) async {
+  Future<void> _loadAndNavigateToQuiz(
+    QuizSummary summary, {
+    int? attemptId,
+  }) async {
     if (_isStartingQuiz) return;
     _isStartingQuiz = true;
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
+    unawaited(
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
       ),
     );
 
@@ -384,28 +407,30 @@ class HomeScreenState extends State<HomeScreen> {
       Navigator.pop(context);
       _isStartingQuiz = false;
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => QuizScreen(quiz: quiz, attemptId: attemptId),
+      unawaited(
+        Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (context) => QuizScreen(quiz: quiz, attemptId: attemptId),
+          ),
         ),
       );
-    } catch (e) {
+    } on Object catch (e) {
       _isStartingQuiz = false;
       if (!mounted) return;
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading quiz: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error loading quiz: $e')));
     }
   }
 
   Future<void> _editQuiz(QuizSummary summary) async {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
+    unawaited(
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
       ),
     );
 
@@ -417,20 +442,20 @@ class HomeScreenState extends State<HomeScreen> {
 
       await Navigator.push(
         context,
-        MaterialPageRoute(
+        MaterialPageRoute<void>(
           builder: (context) => CreateQuizScreen(quiz: quiz),
         ),
       );
 
       if (mounted) {
-        _loadQuizzes(refresh: true);
+        unawaited(_loadQuizzes(refresh: true));
       }
-    } catch (e) {
+    } on Object catch (e) {
       if (!mounted) return;
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading quiz: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error loading quiz: $e')));
     }
   }
 
@@ -464,12 +489,16 @@ class HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Row(
             children: [
-              const Icon(Icons.check_circle, color: AppColors.textOnPrimary, size: AppIconSizes.lg),
-              const SizedBox(width: AppSpacing.sm),
-              const Text('Quiz deleted'),
+              Icon(
+                Icons.check_circle,
+                color: AppColors.textOnPrimary,
+                size: AppIconSizes.lg,
+              ),
+              SizedBox(width: AppSpacing.sm),
+              Text('Quiz deleted'),
             ],
           ),
           backgroundColor: AppColors.success,
@@ -478,8 +507,8 @@ class HomeScreenState extends State<HomeScreen> {
         ),
       );
 
-      _loadQuizzes(refresh: true);
-    } catch (e) {
+      unawaited(_loadQuizzes(refresh: true));
+    } on Object catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -572,9 +601,7 @@ class HomeScreenState extends State<HomeScreen> {
                         const SizedBox(height: AppSpacing.sm),
                         const Text(
                           'Make sure the API is running on localhost:8080',
-                          style: TextStyle(
-                            color: AppColors.textTertiary,
-                          ),
+                          style: TextStyle(color: AppColors.textTertiary),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: AppSpacing.lg),
@@ -614,12 +641,11 @@ class HomeScreenState extends State<HomeScreen> {
                           _searchQuery.isNotEmpty || _typeFilter.isNotEmpty
                               ? 'Try a different search or filter'
                               : 'Upload some quizzes using the Add tab',
-                          style: const TextStyle(
-                            color: AppColors.textTertiary,
-                          ),
+                          style: const TextStyle(color: AppColors.textTertiary),
                           textAlign: TextAlign.center,
                         ),
-                        if (_searchQuery.isNotEmpty || _typeFilter.isNotEmpty) ...[
+                        if (_searchQuery.isNotEmpty ||
+                            _typeFilter.isNotEmpty) ...[
                           const SizedBox(height: AppSpacing.lg),
                           TextButton(
                             onPressed: () {
@@ -642,12 +668,13 @@ class HomeScreenState extends State<HomeScreen> {
                   child: ListView.separated(
                     controller: _scrollController,
                     itemCount: _quizzes.length + (_isLoadingMore ? 1 : 0),
-                    separatorBuilder: (context, index) => const SizedBox(height: AppSpacing.md),
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: AppSpacing.md),
                     itemBuilder: (context, index) {
                       if (index == _quizzes.length) {
-                        return Padding(
+                        return const Padding(
                           padding: AppSpacing.verticalLg,
-                          child: const Center(child: CircularProgressIndicator()),
+                          child: Center(child: CircularProgressIndicator()),
                         );
                       }
                       final quiz = _quizzes[index];
@@ -685,9 +712,7 @@ class _QuizListItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: AppRadius.lgAll,
-      ),
+      shape: const RoundedRectangleBorder(borderRadius: AppRadius.lgAll),
       child: InkWell(
         onTap: onTap,
         borderRadius: AppRadius.lgAll,
@@ -704,7 +729,9 @@ class _QuizListItem extends StatelessWidget {
                     height: isNarrowScreen ? 44 : 56,
                     decoration: BoxDecoration(
                       color: AppColors.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(isNarrowScreen ? AppRadius.sm : AppRadius.md),
+                      borderRadius: BorderRadius.circular(
+                        isNarrowScreen ? AppRadius.sm : AppRadius.md,
+                      ),
                     ),
                     child: Center(
                       child: QuizModeIcon(
@@ -714,7 +741,9 @@ class _QuizListItem extends StatelessWidget {
                     ),
                   ),
 
-                  SizedBox(width: isNarrowScreen ? AppSpacing.md : AppSpacing.lg),
+                  SizedBox(
+                    width: isNarrowScreen ? AppSpacing.md : AppSpacing.lg,
+                  ),
 
                   Expanded(
                     child: Column(
@@ -740,7 +769,7 @@ class _QuizListItem extends StatelessWidget {
                                 horizontal: isNarrowScreen ? 6 : 8,
                                 vertical: 3,
                               ),
-                              decoration: BoxDecoration(
+                              decoration: const BoxDecoration(
                                 color: AppColors.surfaceContainerHigh,
                                 borderRadius: AppRadius.xsAll,
                               ),
@@ -756,12 +785,13 @@ class _QuizListItem extends StatelessWidget {
                           ],
                         ),
 
-                        if (!isNarrowScreen) const SizedBox(height: AppSpacing.xs),
+                        if (!isNarrowScreen)
+                          const SizedBox(height: AppSpacing.xs),
 
                         if (!isNarrowScreen && quiz.description.isNotEmpty) ...[
                           Text(
                             quiz.description,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontSize: 14,
                               color: AppColors.textTertiary,
                               height: 1.4,
@@ -844,7 +874,9 @@ class _QuizListItem extends StatelessWidget {
                     ),
                   ),
 
-                  SizedBox(width: isNarrowScreen ? AppSpacing.sm : AppSpacing.md),
+                  SizedBox(
+                    width: isNarrowScreen ? AppSpacing.sm : AppSpacing.md,
+                  ),
 
                   PopupMenuButton<String>(
                     icon: Icon(
@@ -870,13 +902,20 @@ class _QuizListItem extends StatelessWidget {
                           ],
                         ),
                       ),
-                      PopupMenuItem(
+                      const PopupMenuItem(
                         value: 'delete',
                         child: Row(
                           children: [
-                            Icon(Icons.delete_outline, size: AppIconSizes.lg, color: AppColors.error),
-                            const SizedBox(width: AppSpacing.md),
-                            Text('Delete', style: TextStyle(color: AppColors.error)),
+                            Icon(
+                              Icons.delete_outline,
+                              size: AppIconSizes.lg,
+                              color: AppColors.error,
+                            ),
+                            SizedBox(width: AppSpacing.md),
+                            Text(
+                              'Delete',
+                              style: TextStyle(color: AppColors.error),
+                            ),
                           ],
                         ),
                       ),

@@ -33,7 +33,7 @@ type RateLimiters struct {
 
 func (r *RateLimiters) Close() {
 	if r.redisClient != nil {
-		r.redisClient.Close()
+		_ = r.redisClient.Close()
 	}
 }
 
@@ -60,7 +60,9 @@ func NewRateLimiters(cfg config.RateLimitConfig, redisCfg config.RedisConfig, lo
 	ctx, cancel := context.WithTimeout(context.Background(), redisConnectTimeout)
 	defer cancel()
 	if err := client.Ping(ctx).Err(); err != nil {
-		client.Close()
+		if closeErr := client.Close(); closeErr != nil {
+			logger.Warn("Failed to close Redis client", zap.Error(closeErr))
+		}
 		logger.Error("Failed to connect to Redis", zap.Error(err), zap.Duration("timeout", redisConnectTimeout))
 		return nil, err
 	}
@@ -69,28 +71,36 @@ func NewRateLimiters(cfg config.RateLimitConfig, redisCfg config.RedisConfig, lo
 		Prefix: redisCfg.KeyPrefix,
 	})
 	if err != nil {
-		client.Close()
+		if closeErr := client.Close(); closeErr != nil {
+			logger.Warn("Failed to close Redis client", zap.Error(closeErr))
+		}
 		logger.Error("Failed to create Redis store", zap.Error(err))
 		return nil, err
 	}
 
 	loginRate, err := limiter.NewRateFromFormatted(cfg.LoginRate)
 	if err != nil {
-		client.Close()
+		if closeErr := client.Close(); closeErr != nil {
+			logger.Warn("Failed to close Redis client", zap.Error(closeErr))
+		}
 		logger.Error("Invalid login rate format", zap.String("rate", cfg.LoginRate), zap.Error(err))
 		return nil, err
 	}
 
 	registerRate, err := limiter.NewRateFromFormatted(cfg.RegisterRate)
 	if err != nil {
-		client.Close()
+		if closeErr := client.Close(); closeErr != nil {
+			logger.Warn("Failed to close Redis client", zap.Error(closeErr))
+		}
 		logger.Error("Invalid register rate format", zap.String("rate", cfg.RegisterRate), zap.Error(err))
 		return nil, err
 	}
 
 	apiRate, err := limiter.NewRateFromFormatted(cfg.APIRate)
 	if err != nil {
-		client.Close()
+		if closeErr := client.Close(); closeErr != nil {
+			logger.Warn("Failed to close Redis client", zap.Error(closeErr))
+		}
 		logger.Error("Invalid API rate format", zap.String("rate", cfg.APIRate), zap.Error(err))
 		return nil, err
 	}

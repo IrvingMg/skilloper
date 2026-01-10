@@ -7,17 +7,17 @@ class SummaryCard extends StatelessWidget {
   final Color color;
 
   const SummaryCard({
-    super.key,
     required this.title,
     required this.value,
     required this.color,
+    super.key,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: AppSpacing.allLg,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.surfaceContainer,
         borderRadius: AppRadius.smAll,
       ),

@@ -2,6 +2,7 @@ package jsonutil
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -20,14 +21,14 @@ func ParseJSONError(err error, content []byte, filename string) *JSONErrorInfo {
 		Message: fmt.Sprintf("JSON parsing failed in file '%s': %s", filename, err.Error()),
 	}
 
-	if syntaxErr, ok := err.(*json.SyntaxError); ok {
+	var syntaxErr *json.SyntaxError
+	if errors.As(err, &syntaxErr) {
 		lines := strings.Split(string(content), "\n")
-		lineNum := 1
 		charCount := int64(0)
 
 		for i, line := range lines {
 			if charCount+int64(len(line)) >= syntaxErr.Offset {
-				lineNum = i + 1
+				lineNum := i + 1
 				colNum := int(syntaxErr.Offset - charCount)
 				errorInfo.Line = lineNum
 				errorInfo.Column = colNum

@@ -77,11 +77,7 @@ void main() {
     });
 
     test('handles null options as empty list', () {
-      final json = {
-        'id': 5,
-        'question': 'Test',
-        'options': null,
-      };
+      final json = {'id': 5, 'question': 'Test', 'options': null};
 
       final question = Question.fromJson(json);
 
@@ -161,7 +157,7 @@ void main() {
         'type': 'practice',
         'created_at': '2024-01-15T10:30:00Z',
         'updated_at': '2024-01-15T10:30:00Z',
-        'questions': [],
+        'questions': <Map<String, Object?>>[],
       };
 
       final quiz = Quiz.fromJson(json);
@@ -178,7 +174,7 @@ void main() {
         'max_options': 4,
         'created_at': '2024-01-15T10:30:00Z',
         'updated_at': '2024-01-15T10:30:00Z',
-        'questions': [],
+        'questions': <Map<String, Object?>>[],
       };
 
       final quiz = Quiz.fromJson(json);
@@ -195,7 +191,7 @@ void main() {
         'max_options': 4,
         'created_at': '2024-01-15T10:30:00Z',
         'updated_at': '2024-01-15T10:30:00Z',
-        'questions': [],
+        'questions': <Map<String, Object?>>[],
       };
 
       final quiz = Quiz.fromJson(json);
@@ -213,10 +209,26 @@ void main() {
         'created_at': '2024-01-15T10:30:00Z',
         'updated_at': '2024-01-15T10:30:00Z',
         'questions': [
-          {'id': 1, 'question': 'Q1', 'options': ['A', 'B']},
-          {'id': 2, 'question': 'Q2', 'options': ['A', 'B']},
-          {'id': 3, 'question': 'Q3', 'options': ['A', 'B']},
-          {'id': 4, 'question': 'Q4', 'options': ['A', 'B']},
+          {
+            'id': 1,
+            'question': 'Q1',
+            'options': ['A', 'B'],
+          },
+          {
+            'id': 2,
+            'question': 'Q2',
+            'options': ['A', 'B'],
+          },
+          {
+            'id': 3,
+            'question': 'Q3',
+            'options': ['A', 'B'],
+          },
+          {
+            'id': 4,
+            'question': 'Q4',
+            'options': ['A', 'B'],
+          },
         ],
       };
 
@@ -229,41 +241,41 @@ void main() {
 
   group('QuizResult', () {
     test('percentage calculates correctly', () {
-      final result = QuizResult(
+      const result = QuizResult(
         score: 80,
         correct: 8,
         total: 10,
-        questionResults: [],
+        questionResults: <QuestionResult>[],
       );
       expect(result.percentage, 80.0);
     });
 
     test('percentage handles all correct', () {
-      final result = QuizResult(
+      const result = QuizResult(
         score: 100,
         correct: 5,
         total: 5,
-        questionResults: [],
+        questionResults: <QuestionResult>[],
       );
       expect(result.percentage, 100.0);
     });
 
     test('percentage handles none correct', () {
-      final result = QuizResult(
+      const result = QuizResult(
         score: 0,
         correct: 0,
         total: 10,
-        questionResults: [],
+        questionResults: <QuestionResult>[],
       );
       expect(result.percentage, 0.0);
     });
 
     test('percentage handles fractional result', () {
-      final result = QuizResult(
+      const result = QuizResult(
         score: 33,
         correct: 1,
         total: 3,
-        questionResults: [],
+        questionResults: <QuestionResult>[],
       );
       expect(result.percentage, closeTo(33.33, 0.01));
     });

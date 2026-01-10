@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
-import '../models/quiz.dart';
+
 import '../models/attempt.dart';
 import '../models/pagination.dart';
+import '../models/quiz.dart';
 import 'api_config.dart';
 import 'auth_service.dart';
 
@@ -27,10 +29,10 @@ class ApiService {
   final AuthService _authService = AuthService();
 
   static final ApiService _instance = ApiService._internal();
-  factory ApiService({String? baseUrl, Duration? timeout}) => _instance;
+  factory ApiService() => _instance;
   ApiService._internal({String? baseUrl, Duration? timeout})
-      : baseUrl = baseUrl ?? ApiConfig.baseUrl,
-        timeout = timeout ?? _defaultTimeout;
+    : baseUrl = baseUrl ?? ApiConfig.baseUrl,
+      timeout = timeout ?? _defaultTimeout;
 
   Map<String, String> get _headers {
     _validateTokenBeforeRequest();
@@ -64,36 +66,22 @@ class ApiService {
     String errorMessage = 'Failed to $operation (${response.statusCode})';
 
     try {
-      final Map<String, dynamic> errorData = json.decode(response.body);
+      final Map<String, dynamic> errorData =
+          json.decode(response.body) as Map<String, dynamic>;
       if (errorData.containsKey('error')) {
         errorMessage = errorData['error'] as String;
       }
-    } catch (e) {
-      switch (response.statusCode) {
-        case 400:
-          errorMessage = 'Invalid request for $operation';
-          break;
-        case 403:
-          errorMessage = 'Forbidden access for $operation';
-          break;
-        case 404:
-          errorMessage = 'Resource not found for $operation';
-          break;
-        case 422:
-          errorMessage = 'Validation failed for $operation';
-          break;
-        case 429:
-          errorMessage = 'Too many requests. Please try again later.';
-          break;
-        case 500:
-          errorMessage = 'Server error during $operation';
-          break;
-        case 503:
-          errorMessage = 'Service unavailable for $operation';
-          break;
-        default:
-          errorMessage = 'Failed to $operation (${response.statusCode})';
-      }
+    } on Object catch (_) {
+      errorMessage = switch (response.statusCode) {
+        400 => 'Invalid request for $operation',
+        403 => 'Forbidden access for $operation',
+        404 => 'Resource not found for $operation',
+        422 => 'Validation failed for $operation',
+        429 => 'Too many requests. Please try again later.',
+        500 => 'Server error during $operation',
+        503 => 'Service unavailable for $operation',
+        _ => 'Failed to $operation (${response.statusCode})',
+      };
     }
 
     throw ApiException(errorMessage);
@@ -102,13 +90,17 @@ class ApiService {
   /// Converts caught exceptions to user-friendly ApiException
   ApiException _handleException(dynamic e, String operation) {
     if (e is TimeoutException) {
-      return ApiException('Request timed out - please check your connection and try again');
+      return const ApiException(
+        'Request timed out - please check your connection and try again',
+      );
     }
     final errorStr = e.toString().toLowerCase();
     if (errorStr.contains('socketexception') ||
         errorStr.contains('connection refused') ||
         errorStr.contains('network is unreachable')) {
-      return ApiException('Unable to connect to server - please check if the API is running');
+      return const ApiException(
+        'Unable to connect to server - please check if the API is running',
+      );
     }
     return ApiException('Failed to $operation: $e');
   }
@@ -136,17 +128,21 @@ class ApiService {
         queryParams['sort'] = sort;
       }
 
-      final uri = Uri.parse('$baseUrl/quizzes/summaries')
-          .replace(queryParameters: queryParams);
+      final uri = Uri.parse(
+        '$baseUrl/quizzes/summaries',
+      ).replace(queryParameters: queryParams);
 
       final response = await http.get(uri, headers: _headers).timeout(timeout);
 
       _handleHttpResponse(response, 'load quiz summaries');
 
-      final Map<String, dynamic> body = json.decode(response.body);
+      final Map<String, dynamic> body =
+          json.decode(response.body) as Map<String, dynamic>;
       final dynamic rawData = body['data'];
       if (rawData != null && rawData is! List) {
-        throw ApiException('Invalid response format: expected data array');
+        throw const ApiException(
+          'Invalid response format: expected data array',
+        );
       }
       final List<dynamic> dataList = (rawData as List?) ?? [];
       final paginationJson = body['pagination'] as Map<String, dynamic>;
@@ -159,11 +155,10 @@ class ApiService {
       );
     } on ApiException {
       rethrow;
-    } catch (e) {
+    } on Object catch (e) {
       throw _handleException(e, 'load quiz summaries');
     }
   }
-
 
   Future<Quiz> getQuiz(int id) async {
     if (id <= 0) {
@@ -171,18 +166,18 @@ class ApiService {
     }
 
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/quizzes/$id'),
-        headers: _headers,
-      ).timeout(timeout);
+      final response = await http
+          .get(Uri.parse('$baseUrl/quizzes/$id'), headers: _headers)
+          .timeout(timeout);
 
       _handleHttpResponse(response, 'load quiz');
 
-      final Map<String, dynamic> data = json.decode(response.body);
+      final Map<String, dynamic> data =
+          json.decode(response.body) as Map<String, dynamic>;
       return Quiz.fromJson(data);
     } on ApiException {
       rethrow;
-    } catch (e) {
+    } on Object catch (e) {
       throw _handleException(e, 'load quiz');
     }
   }
@@ -194,18 +189,21 @@ class ApiService {
     }
 
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/quizzes/$id?view=$_viewModeEdit'),
-        headers: _headers,
-      ).timeout(timeout);
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/quizzes/$id?view=$_viewModeEdit'),
+            headers: _headers,
+          )
+          .timeout(timeout);
 
       _handleHttpResponse(response, 'load quiz for edit');
 
-      final Map<String, dynamic> data = json.decode(response.body);
+      final Map<String, dynamic> data =
+          json.decode(response.body) as Map<String, dynamic>;
       return Quiz.fromJson(data);
     } on ApiException {
       rethrow;
-    } catch (e) {
+    } on Object catch (e) {
       throw _handleException(e, 'load quiz for edit');
     }
   }
@@ -219,24 +217,25 @@ class ApiService {
     int? maxOptions,
   }) async {
     if (fileBytes.isEmpty) {
-      throw ApiException('File is empty - validation failed');
+      throw const ApiException('File is empty - validation failed');
     }
 
     if (fileName.isEmpty) {
-      throw ApiException('File name is required - validation failed');
+      throw const ApiException('File name is required - validation failed');
     }
 
     try {
       final uri = Uri.parse('$baseUrl/quizzes').replace(
         queryParameters: {
           if (title != null && title.isNotEmpty) 'title': title,
-          if (description != null && description.isNotEmpty) 'description': description,
+          if (description != null && description.isNotEmpty)
+            'description': description,
           if (type != null && type.isNotEmpty) 'type': type,
           if (maxOptions != null) 'max_options': maxOptions.toString(),
         },
       );
 
-      var request = http.MultipartRequest('POST', uri);
+      final request = http.MultipartRequest('POST', uri);
 
       final authHeaders = _authService.getAuthHeaders();
       if (authHeaders.containsKey('Authorization')) {
@@ -244,11 +243,7 @@ class ApiService {
       }
 
       request.files.add(
-        http.MultipartFile.fromBytes(
-          'file',
-          fileBytes,
-          filename: fileName,
-        ),
+        http.MultipartFile.fromBytes('file', fileBytes, filename: fileName),
       );
 
       final response = await request.send().timeout(timeout);
@@ -263,104 +258,109 @@ class ApiService {
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         final responseBody = await response.stream.bytesToString();
-        final Map<String, dynamic> data = json.decode(responseBody);
+        final Map<String, dynamic> data =
+            json.decode(responseBody) as Map<String, dynamic>;
         return ImportResponse.fromJson(data);
       } else {
         final responseBody = await response.stream.bytesToString();
-        String errorMessage = 'Upload failed (${response.statusCode})';
+        String? errorMessage;
 
         try {
-          final Map<String, dynamic> errorData = json.decode(responseBody);
+          final Map<String, dynamic> errorData =
+              json.decode(responseBody) as Map<String, dynamic>;
           if (errorData.containsKey('error')) {
             errorMessage = errorData['error'] as String;
           }
-        } catch (e) {
-          switch (response.statusCode) {
-            case 400:
-              errorMessage = 'Invalid file format or content';
-              break;
-            case 413:
-              errorMessage = 'File too large (max 10MB)';
-              break;
-            case 422:
-              errorMessage = 'File validation failed';
-              break;
-            case 429:
-              errorMessage = 'Too many requests. Please try again later.';
-              break;
-            case 500:
-              errorMessage = 'Server error - please try again later';
-              break;
-            default:
-              errorMessage = 'Upload failed (${response.statusCode})';
-          }
+        } on Object catch (_) {
+          // JSON parsing failed, use status code based message
         }
+
+        errorMessage ??= switch (response.statusCode) {
+          400 => 'Invalid file format or content',
+          413 => 'File too large (max 10MB)',
+          422 => 'File validation failed',
+          429 => 'Too many requests. Please try again later.',
+          500 => 'Server error - please try again later',
+          _ => 'Upload failed (${response.statusCode})',
+        };
 
         throw ApiException(errorMessage);
       }
     } on ApiException {
       rethrow;
-    } catch (e) {
+    } on Object catch (e) {
       throw _handleException(e, 'upload file');
     }
   }
 
   Future<QuizAttempt> startAttempt(StartAttemptRequest request) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/attempts'),
-        headers: _headers,
-        body: json.encode(request.toJson()),
-      ).timeout(timeout);
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/attempts'),
+            headers: _headers,
+            body: json.encode(request.toJson()),
+          )
+          .timeout(timeout);
 
       _handleHttpResponse(response, 'start attempt');
 
-      final Map<String, dynamic> data = json.decode(response.body);
+      final Map<String, dynamic> data =
+          json.decode(response.body) as Map<String, dynamic>;
       return QuizAttempt.fromJson(data);
     } on ApiException {
       rethrow;
-    } catch (e) {
+    } on Object catch (e) {
       throw _handleException(e, 'start attempt');
     }
   }
 
-  Future<QuizAttempt> completeAttempt(int attemptId, CompleteAttemptRequest request) async {
+  Future<QuizAttempt> completeAttempt(
+    int attemptId,
+    CompleteAttemptRequest request,
+  ) async {
     try {
-      final response = await http.patch(
-        Uri.parse('$baseUrl/attempts/$attemptId'),
-        headers: _headers,
-        body: json.encode({
-          'status': 'completed',
-          'answers': request.toJson()['answers'],
-        }),
-      ).timeout(timeout);
+      final response = await http
+          .patch(
+            Uri.parse('$baseUrl/attempts/$attemptId'),
+            headers: _headers,
+            body: json.encode({
+              'status': 'completed',
+              'answers': request.toJson()['answers'],
+            }),
+          )
+          .timeout(timeout);
 
       _handleHttpResponse(response, 'complete attempt');
 
-      final Map<String, dynamic> data = json.decode(response.body);
+      final Map<String, dynamic> data =
+          json.decode(response.body) as Map<String, dynamic>;
       return QuizAttempt.fromJson(data);
     } on ApiException {
       rethrow;
-    } catch (e) {
+    } on Object catch (e) {
       throw _handleException(e, 'complete attempt');
     }
   }
 
   Future<QuizAttempt> abandonAttempt(int attemptId) async {
     try {
-      final response = await http.patch(
-        Uri.parse('$baseUrl/attempts/$attemptId'),
-        headers: _headers,
-        body: json.encode({'status': 'completed'}),
-      ).timeout(timeout);
+      final response = await http
+          .patch(
+            Uri.parse('$baseUrl/attempts/$attemptId'),
+            headers: _headers,
+            body: json.encode({'status': 'completed'}),
+          )
+          .timeout(timeout);
 
       _handleHttpResponse(response, 'abandon attempt');
 
-      final Map<String, dynamic> data = json.decode(response.body);
+      final Map<String, dynamic> data =
+          json.decode(response.body) as Map<String, dynamic>;
       return QuizAttempt.fromJson(data);
     } on ApiException {
       rethrow;
-    } catch (e) {
+    } on Object catch (e) {
       throw _handleException(e, 'abandon attempt');
     }
   }
@@ -388,30 +388,36 @@ class ApiService {
         queryParams['sort'] = sort;
       }
 
-      final uri = Uri.parse('$baseUrl/attempts')
-          .replace(queryParameters: queryParams);
+      final uri = Uri.parse(
+        '$baseUrl/attempts',
+      ).replace(queryParameters: queryParams);
 
       final response = await http.get(uri, headers: _headers).timeout(timeout);
 
       _handleHttpResponse(response, 'load history');
 
-      final Map<String, dynamic> body = json.decode(response.body);
+      final Map<String, dynamic> body =
+          json.decode(response.body) as Map<String, dynamic>;
       final dynamic rawData = body['data'];
       if (rawData != null && rawData is! List) {
-        throw ApiException('Invalid response format: expected data array');
+        throw const ApiException(
+          'Invalid response format: expected data array',
+        );
       }
       final List<dynamic> dataList = (rawData as List?) ?? [];
       final paginationJson = body['pagination'] as Map<String, dynamic>;
 
       return PaginatedResponse(
         data: dataList
-            .map((json) => AttemptSummary.fromJson(json as Map<String, dynamic>))
+            .map(
+              (json) => AttemptSummary.fromJson(json as Map<String, dynamic>),
+            )
             .toList(),
         pagination: PaginationMeta.fromJson(paginationJson),
       );
     } on ApiException {
       rethrow;
-    } catch (e) {
+    } on Object catch (e) {
       throw _handleException(e, 'load history');
     }
   }
@@ -423,18 +429,18 @@ class ApiService {
     }
 
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/attempts/$attemptId'),
-        headers: _headers,
-      ).timeout(timeout);
+      final response = await http
+          .get(Uri.parse('$baseUrl/attempts/$attemptId'), headers: _headers)
+          .timeout(timeout);
 
       _handleHttpResponse(response, 'load attempt details');
 
-      final Map<String, dynamic> data = json.decode(response.body);
+      final Map<String, dynamic> data =
+          json.decode(response.body) as Map<String, dynamic>;
       return QuizAttempt.fromJson(data);
     } on ApiException {
       rethrow;
-    } catch (e) {
+    } on Object catch (e) {
       throw _handleException(e, 'load attempt details');
     }
   }
@@ -442,41 +448,48 @@ class ApiService {
   /// Create a new quiz using simplified JSON format
   Future<Map<String, dynamic>> createQuiz(Map<String, dynamic> data) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/quizzes'),
-        headers: _headers,
-        body: json.encode(data),
-      ).timeout(timeout);
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/quizzes'),
+            headers: _headers,
+            body: json.encode(data),
+          )
+          .timeout(timeout);
 
       _handleHttpResponse(response, 'create quiz');
 
       return json.decode(response.body) as Map<String, dynamic>;
     } on ApiException {
       rethrow;
-    } catch (e) {
+    } on Object catch (e) {
       throw _handleException(e, 'create quiz');
     }
   }
 
   /// Update an existing quiz
-  Future<Map<String, dynamic>> updateQuiz(int id, Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>> updateQuiz(
+    int id,
+    Map<String, dynamic> data,
+  ) async {
     if (id <= 0) {
       throw ApiException('Invalid quiz ID: $id');
     }
 
     try {
-      final response = await http.put(
-        Uri.parse('$baseUrl/quizzes/$id'),
-        headers: _headers,
-        body: json.encode(data),
-      ).timeout(timeout);
+      final response = await http
+          .put(
+            Uri.parse('$baseUrl/quizzes/$id'),
+            headers: _headers,
+            body: json.encode(data),
+          )
+          .timeout(timeout);
 
       _handleHttpResponse(response, 'update quiz');
 
       return json.decode(response.body) as Map<String, dynamic>;
     } on ApiException {
       rethrow;
-    } catch (e) {
+    } on Object catch (e) {
       throw _handleException(e, 'update quiz');
     }
   }
@@ -488,20 +501,22 @@ class ApiService {
     }
 
     try {
-      final response = await http.delete(
-        Uri.parse('$baseUrl/quizzes/$id'),
-        headers: _headers,
-      ).timeout(timeout);
+      final response = await http
+          .delete(Uri.parse('$baseUrl/quizzes/$id'), headers: _headers)
+          .timeout(timeout);
 
       _handleHttpResponse(response, 'delete quiz');
     } on ApiException {
       rethrow;
-    } catch (e) {
+    } on Object catch (e) {
       throw _handleException(e, 'delete quiz');
     }
   }
 
-  Future<ValidateAnswerResponse> validateAnswer(int questionId, ValidateAnswerRequest request) async {
+  Future<ValidateAnswerResponse> validateAnswer(
+    int questionId,
+    ValidateAnswerRequest request,
+  ) async {
     if (questionId <= 0) {
       throw ApiException('Invalid question ID: $questionId');
     }
@@ -510,19 +525,22 @@ class ApiService {
       final body = request.toJson();
       body['question_id'] = questionId;
 
-      final response = await http.post(
-        Uri.parse('$baseUrl/answers'),
-        headers: _headers,
-        body: json.encode(body),
-      ).timeout(timeout);
+      final response = await http
+          .post(
+            Uri.parse('$baseUrl/answers'),
+            headers: _headers,
+            body: json.encode(body),
+          )
+          .timeout(timeout);
 
       _handleHttpResponse(response, 'validate answer');
 
-      final Map<String, dynamic> data = json.decode(response.body);
+      final Map<String, dynamic> data =
+          json.decode(response.body) as Map<String, dynamic>;
       return ValidateAnswerResponse.fromJson(data);
     } on ApiException {
       rethrow;
-    } catch (e) {
+    } on Object catch (e) {
       throw _handleException(e, 'validate answer');
     }
   }

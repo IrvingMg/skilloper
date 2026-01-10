@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'screens/home_screen.dart';
-import 'screens/history_screen.dart';
+
 import 'screens/add_quiz_screen.dart';
-import 'screens/profile_screen.dart';
+import 'screens/history_screen.dart';
+import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/profile_screen.dart';
 import 'services/auth_service.dart';
-import 'theme/app_theme.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_icons.dart';
+import 'theme/app_theme.dart';
 
 void main() {
   runApp(const SkiloperApp());
@@ -88,12 +89,10 @@ class _AuthWrapperState extends State<AuthWrapper> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Scaffold(
+      return const Scaffold(
         backgroundColor: AppColors.surfaceWhite,
         body: Center(
-          child: CircularProgressIndicator(
-            color: AppColors.primary,
-          ),
+          child: CircularProgressIndicator(color: AppColors.primary),
         ),
       );
     }
@@ -169,7 +168,7 @@ class _MainScreenState extends State<MainScreen> {
               height: AppIconSizes.appBarLogo,
             ),
             const SizedBox(width: 10),
-            Text(
+            const Text(
               'Skilloper',
               style: TextStyle(
                 fontSize: 20,
@@ -181,19 +180,11 @@ class _MainScreenState extends State<MainScreen> {
           ],
         ),
       ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
+      body: IndexedStack(index: _currentIndex, children: _screens),
       bottomNavigationBar: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: AppColors.surfaceWhite,
-          border: Border(
-            top: BorderSide(
-              color: AppColors.outline,
-              width: 1,
-            ),
-          ),
+          border: Border(top: BorderSide(color: AppColors.outline, width: 1)),
         ),
         child: NavigationBar(
           selectedIndex: _currentIndex,
