@@ -24,7 +24,7 @@ go.work.sum
 # env file
 .env
 
-# Static files (built by make build-deploy)
+# Static files (embedded at build time)
 static/
 
 # Editor/IDE

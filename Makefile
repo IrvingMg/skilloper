@@ -1,7 +1,6 @@
 .PHONY: help start start-api start-app install-deps clean-all stop \
         build build-app build-api run test \
-        build-docker run-docker stop-docker \
-        build-deploy
+        build-docker run-docker stop-docker
 
 # Default environment variables (can be overridden: LOG_LEVEL=debug make start-api)
 APP_ENV ?= development
@@ -31,9 +30,9 @@ help:
 	@echo "  stop         Stop background processes"
 	@echo ""
 	@echo "Build & Test:"
-	@echo "  build        Build both API binary and Flutter web"
-	@echo "  build-api    Build Go binary"
+	@echo "  build        Build Flutter and Go with embedded static"
 	@echo "  build-app    Build Flutter web release"
+	@echo "  build-api    Build Go binary (API only, defaults to STATIC_MODE=none)"
 	@echo "  test         Run all tests"
 	@echo ""
 	@echo "Production (local):"
@@ -43,9 +42,6 @@ help:
 	@echo "  build-docker Build Docker image"
 	@echo "  run-docker   Run Docker container"
 	@echo "  stop-docker  Stop Docker container"
-	@echo ""
-	@echo "Deployment:"
-	@echo "  build-deploy Build static files for deployment"
 	@echo ""
 	@echo "Cleanup:"
 	@echo "  clean-all    Remove database, binaries, builds, and logs"
@@ -67,7 +63,7 @@ install-deps:
 
 start-api:
 	@echo "Starting API server on http://localhost:8080 (APP_ENV=$(APP_ENV), LOG_LEVEL=$(LOG_LEVEL))"
-	cd skilloper-api && APP_ENV=$(APP_ENV) LOG_LEVEL=$(LOG_LEVEL) go run main.go
+	cd skilloper-api && APP_ENV=$(APP_ENV) LOG_LEVEL=$(LOG_LEVEL) STATIC_MODE=none go run -tags noembed .
 
 start-app:
 	@echo "Starting Flutter app on http://localhost:3001"
@@ -79,7 +75,7 @@ start:
 	@echo "App: http://localhost:3001"
 	@echo "Logs: api.log and app.log"
 	@echo "Run 'make stop' to stop both services"
-	cd skilloper-api && APP_ENV=$(APP_ENV) LOG_LEVEL=$(LOG_LEVEL) nohup go run main.go > ../api.log 2>&1 &
+	cd skilloper-api && APP_ENV=$(APP_ENV) LOG_LEVEL=$(LOG_LEVEL) STATIC_MODE=none nohup go run -tags noembed . > ../api.log 2>&1 &
 	cd skilloper_app && nohup flutter run -d chrome --web-port 3001 > ../app.log 2>&1 &
 	@echo "Services started. Use 'make stop' to stop them."
 
@@ -89,6 +85,7 @@ stop:
 	@lsof -ti:3001 | xargs kill -9 2>/dev/null || true
 	@pkill -f "go run main.go" 2>/dev/null || true
 	@pkill -f "flutter run" 2>/dev/null || true
+	@pkill -f "build/skilloper-api" 2>/dev/null || true
 	@pkill -f "build/skilloper" 2>/dev/null || true
 	@echo "Services stopped."
 
@@ -101,17 +98,22 @@ build-app:
 	@echo "Flutter build complete: skilloper_app/build/web/"
 
 build-api:
-	@echo "Building Go binary..."
+	@echo "Building Go binary (API only)..."
+	@mkdir -p build
+	cd skilloper-api && CGO_ENABLED=1 go build -tags noembed -ldflags="-w -s -X github.com/irvingmg/skilloper/skilloper-api/internal/config.DefaultStaticMode=none" -o ../build/skilloper-api .
+	@echo "Go build complete: build/skilloper-api"
+
+build: build-app
+	@echo "Copying static files for embedding..."
+	@rm -rf skilloper-api/static && cp -r skilloper_app/build/web skilloper-api/static
+	@echo "Building Go binary with embedded static..."
 	@mkdir -p build
 	cd skilloper-api && CGO_ENABLED=1 go build -ldflags="-w -s" -o ../build/skilloper .
-	@echo "Go build complete: build/skilloper"
-
-build: build-app build-api
 	@echo "Build complete!"
 
 test:
 	@echo "Running Go tests..."
-	cd skilloper-api && go test ./...
+	cd skilloper-api && go test -tags noembed ./...
 	@echo "Running Flutter tests..."
 	cd skilloper_app && flutter test
 	@echo "All tests passed!"
@@ -120,7 +122,6 @@ test:
 # Production (local)
 # ==============================================================================
 run: build
-	@rm -rf skilloper-api/static && cp -r skilloper_app/build/web skilloper-api/static
 	@echo "Starting server at http://localhost:$(PORT)"
 	cd build && \
 		APP_ENV=production \
@@ -130,7 +131,6 @@ run: build
 		ADMIN_USERNAME="$${ADMIN_USERNAME:-admin_user}" \
 		ADMIN_PASSWORD="$${ADMIN_PASSWORD:-Admin123!}" \
 		LOG_LEVEL=$(LOG_LEVEL) \
-		STATIC_DIR=../skilloper-api/static \
 		PORT=$(PORT) \
 		./skilloper
 
@@ -163,16 +163,6 @@ stop-docker:
 	docker stop skilloper 2>/dev/null || true
 	docker rm skilloper 2>/dev/null || true
 	@echo "Container stopped."
-
-# ==============================================================================
-# Deployment
-# ==============================================================================
-build-deploy: build-app
-	@echo "Preparing static files for deployment..."
-	@rm -rf skilloper-api/static
-	@cp -r skilloper_app/build/web skilloper-api/static
-	@echo ""
-	@echo "Deployment build complete: skilloper-api/static/"
 
 # ==============================================================================
 # Cleanup

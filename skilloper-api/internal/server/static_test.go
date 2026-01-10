@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"testing/fstest"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,7 +29,7 @@ func TestStaticFileHandler(t *testing.T) {
 	}
 
 	s := &Server{}
-	handler := s.staticFileHandler(tmpDir)
+	handler := s.dirFileHandler(tmpDir)
 
 	tests := []struct {
 		name           string
@@ -134,7 +135,7 @@ func TestStaticFileHandler_PathTraversal(t *testing.T) {
 	}
 
 	s := &Server{}
-	handler := s.staticFileHandler(staticDir)
+	handler := s.dirFileHandler(staticDir)
 
 	traversalPaths := []string{
 		"/../secret/secret.txt",
@@ -195,6 +196,94 @@ func TestSetCacheHeaders(t *testing.T) {
 			cache := w.Header().Get("Cache-Control")
 			if cache != tt.expected {
 				t.Errorf("path %s: expected %q, got %q", tt.path, tt.expected, cache)
+			}
+		})
+	}
+}
+
+func TestEmbeddedFileHandler(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	mockFS := fstest.MapFS{
+		"index.html":       {Data: []byte("<html>embedded</html>")},
+		"app.js":           {Data: []byte("console.log('embedded')")},
+		"assets/style.css": {Data: []byte("body{}")},
+	}
+
+	s := &Server{}
+	handler := s.embeddedFileHandler(mockFS)
+
+	tests := []struct {
+		name           string
+		path           string
+		expectedStatus int
+		expectedCache  string
+	}{
+		{
+			name:           "serve index.html at root",
+			path:           "/",
+			expectedStatus: http.StatusOK,
+			expectedCache:  "no-cache, no-store, must-revalidate",
+		},
+		{
+			name:           "serve index.html explicitly",
+			path:           "/index.html",
+			expectedStatus: http.StatusOK,
+			expectedCache:  "no-cache, no-store, must-revalidate",
+		},
+		{
+			name:           "serve js with immutable cache",
+			path:           "/app.js",
+			expectedStatus: http.StatusOK,
+			expectedCache:  "public, max-age=31536000, immutable",
+		},
+		{
+			name:           "serve nested css",
+			path:           "/assets/style.css",
+			expectedStatus: http.StatusOK,
+			expectedCache:  "public, max-age=31536000, immutable",
+		},
+		{
+			name:           "SPA fallback for unknown route",
+			path:           "/dashboard",
+			expectedStatus: http.StatusOK,
+			expectedCache:  "no-cache, no-store, must-revalidate",
+		},
+		{
+			name:           "SPA fallback for nested route",
+			path:           "/quiz/123",
+			expectedStatus: http.StatusOK,
+			expectedCache:  "no-cache, no-store, must-revalidate",
+		},
+		{
+			name:           "404 for missing file with extension",
+			path:           "/missing.js",
+			expectedStatus: http.StatusNotFound,
+		},
+		{
+			name:           "404 for API routes",
+			path:           "/api/v1/users",
+			expectedStatus: http.StatusNotFound,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = httptest.NewRequest("GET", tt.path, nil)
+
+			handler(c)
+
+			if w.Code != tt.expectedStatus {
+				t.Errorf("expected status %d, got %d", tt.expectedStatus, w.Code)
+			}
+
+			if tt.expectedCache != "" {
+				cache := w.Header().Get("Cache-Control")
+				if cache != tt.expectedCache {
+					t.Errorf("expected Cache-Control %q, got %q", tt.expectedCache, cache)
+				}
 			}
 		})
 	}

@@ -2,6 +2,10 @@ package server
 
 import (
 	"context"
+	"embed"
+	"fmt"
+	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -33,6 +37,7 @@ type Server struct {
 	logger     *zap.Logger
 	router     *gin.Engine
 	httpServer *http.Server
+	embeddedFS embed.FS
 
 	rateLimiters   *middleware.RateLimiters
 	authService    *services.AuthService
@@ -41,6 +46,10 @@ type Server struct {
 	attemptHandler *handlers.AttemptHandler
 	answerHandler  *handlers.AnswerHandler
 	healthHandler  *handlers.HealthHandler
+}
+
+func (s *Server) SetStaticFS(fs embed.FS) {
+	s.embeddedFS = fs
 }
 
 func New(cfg *config.Config, db *gorm.DB, logger *zap.Logger) *Server {
@@ -68,7 +77,9 @@ func (s *Server) Initialize() error {
 	}
 	s.setupServices()
 	s.setupRoutes()
-	s.setupStaticFiles()
+	if err := s.setupStaticFiles(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -188,31 +199,105 @@ func (s *Server) Start() error {
 	return nil
 }
 
-func (s *Server) setupStaticFiles() {
-	if !s.config.StaticServing() {
+func (s *Server) setupStaticFiles() error {
+	switch s.config.StaticMode {
+	case config.StaticModeNone:
 		s.logger.Info("Static file serving disabled")
-		return
+		return nil
+	case config.StaticModeDir:
+		return s.setupDirStaticFiles()
+	case config.StaticModeEmbed:
+		return s.setupEmbedStaticFiles()
+	default:
+		return fmt.Errorf("unknown STATIC_MODE: %s", s.config.StaticMode)
+	}
+}
+
+func (s *Server) setupEmbedStaticFiles() error {
+	staticFS, err := fs.Sub(s.embeddedFS, "static")
+	if err != nil {
+		return fmt.Errorf("no embedded static files (use STATIC_MODE=none for API-only or build with 'make build'): %w", err)
 	}
 
-	staticDir := s.config.StaticDir
-	absStaticDir, err := filepath.Abs(staticDir)
+	if _, err := staticFS.Open("index.html"); err != nil {
+		return fmt.Errorf("no index.html in embedded files (use STATIC_MODE=none for API-only or build with 'make build')")
+	}
+
+	s.logger.Info("Serving embedded static files")
+	s.router.NoRoute(s.embeddedFileHandler(staticFS))
+	return nil
+}
+
+func (s *Server) setupDirStaticFiles() error {
+	absStaticDir, err := filepath.Abs(s.config.StaticDir)
 	if err != nil {
-		s.logger.Error("Failed to resolve static directory path",
-			zap.String("path", staticDir), zap.Error(err))
-		return
+		return fmt.Errorf("failed to resolve static directory path: %w", err)
 	}
 
 	if _, err := os.Stat(absStaticDir); os.IsNotExist(err) {
-		s.logger.Warn("Static directory not found, skipping static file setup",
-			zap.String("path", absStaticDir))
-		return
+		return fmt.Errorf("static directory not found: %s", absStaticDir)
 	}
 
-	s.logger.Info("Setting up static file serving", zap.String("directory", absStaticDir))
-	s.router.NoRoute(s.staticFileHandler(absStaticDir))
+	if _, err := os.Stat(filepath.Join(absStaticDir, "index.html")); err != nil {
+		return fmt.Errorf("no index.html in static directory: %s", absStaticDir)
+	}
+
+	s.logger.Info("Serving static files from directory", zap.String("path", absStaticDir))
+	s.router.NoRoute(s.dirFileHandler(absStaticDir))
+	return nil
 }
 
-func (s *Server) staticFileHandler(absStaticDir string) gin.HandlerFunc {
+func (s *Server) embeddedFileHandler(staticFS fs.FS) gin.HandlerFunc {
+	httpFS := http.FS(staticFS)
+
+	serveFile := func(c *gin.Context, name string) {
+		file, err := httpFS.Open(name)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
+			return
+		}
+		defer file.Close()
+
+		stat, err := file.Stat()
+		if err != nil || stat.IsDir() {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
+			return
+		}
+
+		http.ServeContent(c.Writer, c.Request, name, stat.ModTime(), file.(io.ReadSeeker))
+	}
+
+	return func(c *gin.Context) {
+		path := c.Request.URL.Path
+
+		if strings.HasPrefix(path, "/api/") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
+			return
+		}
+
+		cleanPath := strings.TrimPrefix(path, "/")
+		if cleanPath == "" {
+			cleanPath = "index.html"
+		}
+
+		if file, err := staticFS.Open(cleanPath); err == nil {
+			file.Close()
+			s.setCacheHeaders(c, path)
+			serveFile(c, cleanPath)
+			return
+		}
+
+		if !strings.Contains(filepath.Base(path), ".") {
+			c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+			serveFile(c, "index.html")
+			return
+		}
+
+		c.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
+	}
+}
+
+func (s *Server) dirFileHandler(absStaticDir string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		path := c.Request.URL.Path
 
@@ -225,7 +310,6 @@ func (s *Server) staticFileHandler(absStaticDir string) gin.HandlerFunc {
 		cleanPath = filepath.Clean(cleanPath)
 		filePath := filepath.Join(absStaticDir, cleanPath)
 
-		// Verify path is within static directory (catches traversal attempts)
 		relPath, err := filepath.Rel(absStaticDir, filePath)
 		if err != nil || strings.HasPrefix(relPath, "..") {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Not found"})

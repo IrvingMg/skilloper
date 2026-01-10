@@ -37,21 +37,22 @@ Run `make help` for all commands.
 
 ## Deployment
 
-Single container/binary serving API + Flutter frontend.
+Single container/binary serving API + embedded Flutter frontend.
 
 **Environment variables:**
 - `DB_DRIVER` - `sqlite` (default) or `postgres`
 - `DATABASE_URL` - PostgreSQL connection URL
 - `JWT_SECRET` - JWT signing secret
 - `ADMIN_USERNAME` / `ADMIN_PASSWORD` - Initial admin credentials
-- `STATIC_DIR` - Path to Flutter build (for platform deployment)
+- `STATIC_MODE` - `embed` (default), `dir`, or `none`
+- `STATIC_DIR` - Path to static files (required when `STATIC_MODE=dir`)
 
-**Platform deployment:**
+**Build:**
 ```bash
-make build-deploy    # Prepares skilloper-api/static/
+make build    # Builds Flutter + Go with embedded static
 ```
 
-Configure platform: build `cd skilloper-api && go build -o app`, start `./app`, set env vars.
+Static files are embedded in the binary by default. Use `STATIC_MODE=none` for API-only mode.
 
 ## Documentation
 

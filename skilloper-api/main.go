@@ -32,6 +32,7 @@ func main() {
 	}
 
 	srv := server.New(cfg, db, log)
+	srv.SetStaticFS(StaticFiles)
 	if err := srv.Initialize(); err != nil {
 		log.Fatal("Failed to initialize server", zap.Error(err))
 	}

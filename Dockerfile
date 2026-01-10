@@ -38,6 +38,7 @@ COPY skilloper-api/go.mod skilloper-api/go.sum ./
 RUN go mod download
 
 COPY skilloper-api/ ./
+COPY --from=flutter-builder /home/flutter/app/build/web ./static
 
 RUN CGO_ENABLED=1 GOOS=linux go build -ldflags="-w -s" -o skilloper .
 
@@ -54,14 +55,12 @@ RUN addgroup -g 1000 skilloper && \
 WORKDIR /app
 
 COPY --from=go-builder /app/skilloper .
-COPY --from=flutter-builder /home/flutter/app/build/web ./static
 
 RUN mkdir -p /app/data && chown -R skilloper:skilloper /app
 
 USER skilloper
 
 ENV PORT=8080 \
-    STATIC_DIR=/app/static \
     APP_ENV=production \
     LOG_LEVEL=info \
     DB_DRIVER=sqlite \

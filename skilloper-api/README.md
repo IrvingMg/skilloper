@@ -43,7 +43,8 @@ Copy `.env.example` to `.env` and configure:
 | `TLS_CERT_FILE` | - | Path to TLS certificate (enables HTTPS with TLS_KEY_FILE) |
 | `TLS_KEY_FILE` | - | Path to TLS private key (enables HTTPS with TLS_CERT_FILE) |
 | `LOG_LEVEL` | `info` | Logging level: `debug`, `info`, `warn`, `error` |
-| `STATIC_DIR` | - | Path to Flutter web build for static file serving (empty = disabled) |
+| `STATIC_MODE` | `embed` | Static file mode: `embed` (in binary), `dir` (STATIC_DIR), `none` (API only) |
+| `STATIC_DIR` | - | Path to Flutter web build (required when STATIC_MODE=dir) |
 
 **Rate limit format:** `count-period` (e.g., `5-M` = 5 per minute). Periods: S (second), M (minute), H (hour), D (day). IP-only limits are automatically 3x the configured values.
 

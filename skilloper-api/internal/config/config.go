@@ -20,6 +20,14 @@ const (
 	EnvDevelopment = "development"
 )
 
+const (
+	StaticModeEmbed = "embed"
+	StaticModeDir   = "dir"
+	StaticModeNone  = "none"
+)
+
+var DefaultStaticMode = StaticModeEmbed
+
 func init() {
 	if os.Getenv("APP_ENV") == EnvDevelopment {
 		godotenv.Load()
@@ -42,11 +50,12 @@ type Config struct {
 	RateLimit      RateLimitConfig
 	Redis          RedisConfig
 	TLS            TLSConfig
+	StaticMode     string
 	StaticDir      string
 }
 
 func (c *Config) StaticServing() bool {
-	return c.StaticDir != ""
+	return c.StaticMode != StaticModeNone
 }
 
 type RateLimitConfig struct {
@@ -105,6 +114,7 @@ func Load() *Config {
 		RateLimit:      parseRateLimitConfig(),
 		Redis:          parseRedisConfig(),
 		TLS:            parseTLSConfig(),
+		StaticMode:     getEnv("STATIC_MODE", DefaultStaticMode),
 		StaticDir:      getEnv("STATIC_DIR", ""),
 	}
 
@@ -113,6 +123,12 @@ func Load() *Config {
 	}
 	if cfg.DBDriver == DBDriverPostgres && cfg.DatabaseURL == "" {
 		log.Fatal("DATABASE_URL is required when DB_DRIVER=postgres")
+	}
+	if cfg.StaticMode != StaticModeEmbed && cfg.StaticMode != StaticModeDir && cfg.StaticMode != StaticModeNone {
+		log.Fatalf("Invalid STATIC_MODE: %s (must be 'embed', 'dir', or 'none')", cfg.StaticMode)
+	}
+	if cfg.StaticMode == StaticModeDir && cfg.StaticDir == "" {
+		log.Fatal("STATIC_DIR is required when STATIC_MODE=dir")
 	}
 
 	return cfg
