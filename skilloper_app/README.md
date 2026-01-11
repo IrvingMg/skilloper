@@ -45,18 +45,6 @@ flutter build web --release
 
 ## Development
 
-### Running Different Platforms
-```bash
-# Web (primary)
-flutter run -d chrome --web-port 3001
-
-# Android (future)
-flutter run -d android
-
-# iOS (future - macOS only)
-flutter run -d ios
-```
-
 ### Development Tools
 ```bash
 # Hot reload (automatic in dev mode)
