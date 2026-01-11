@@ -126,10 +126,7 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _screens = [
-      HomeScreen(
-        key: _homeKey,
-        onNavigateToAdd: () => _onTabSelected(2),
-      ),
+      HomeScreen(key: _homeKey, onNavigateToAdd: () => _onTabSelected(2)),
       HistoryScreen(key: _historyKey),
       const AddQuizScreen(),
       ProfileScreen(onLogout: () => widget.onLogout?.call()),

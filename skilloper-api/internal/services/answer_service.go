@@ -41,6 +41,10 @@ func (s *AnswerService) ValidateAnswer(req models.CreateAnswerRequest) (*models.
 	response := &models.AnswerResponse{}
 
 	if question.QuestionType == models.QuestionTypeMultipleChoice {
+		if len(req.UserAnswers) == 0 {
+			return nil, apperrors.ErrWrongAnswerFormat
+		}
+
 		var correctAnswers []int
 		if err := json.Unmarshal([]byte(question.CorrectAnswers), &correctAnswers); err != nil {
 			s.log.Debug("Failed to unmarshal correct answers",
@@ -52,9 +56,10 @@ func (s *AnswerService) ValidateAnswer(req models.CreateAnswerRequest) (*models.
 		response.IsCorrect = validation.ValidateMultipleChoice(req.UserAnswers, correctAnswers)
 		response.CorrectAnswers = correctAnswers
 	} else {
-		if req.UserAnswer != nil {
-			response.IsCorrect = *req.UserAnswer == question.CorrectAnswer
+		if req.UserAnswer == nil {
+			return nil, apperrors.ErrWrongAnswerFormat
 		}
+		response.IsCorrect = *req.UserAnswer == question.CorrectAnswer
 		response.CorrectAnswer = &question.CorrectAnswer
 	}
 

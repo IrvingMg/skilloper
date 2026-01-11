@@ -15,7 +15,7 @@ const (
 type QuizAttempt struct {
 	ID            uint            `json:"id" gorm:"primaryKey"`
 	UserID        uint            `json:"user_id" gorm:"not null;index"`
-	QuizID        uint            `json:"quiz_id" gorm:"not null"`
+	QuizID        uint            `json:"quiz_id" gorm:"not null;index"`
 	QuizTitle     string          `json:"quiz_title" gorm:"not null"`
 	QuizType      string          `json:"quiz_type" gorm:"not null"`
 	AttemptNumber int             `json:"attempt_number" gorm:"not null"`

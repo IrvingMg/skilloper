@@ -50,13 +50,13 @@ func openConnection(cfg *config.Config, log *zap.Logger) (*gorm.DB, error) {
 			log.Error("Failed to get underlying DB connection", zap.Error(err))
 			return nil, err
 		}
-		sqlDB.SetMaxOpenConns(25)
-		sqlDB.SetMaxIdleConns(10)
-		sqlDB.SetConnMaxLifetime(30 * time.Minute)
-		sqlDB.SetConnMaxIdleTime(5 * time.Minute)
+		sqlDB.SetMaxOpenConns(cfg.DBPool.MaxOpenConns)
+		sqlDB.SetMaxIdleConns(cfg.DBPool.MaxIdleConns)
+		sqlDB.SetConnMaxLifetime(cfg.DBPool.ConnMaxLifetime)
+		sqlDB.SetConnMaxIdleTime(cfg.DBPool.ConnMaxIdleTime)
 		log.Info("PostgreSQL connection pool configured",
-			zap.Int("max_open", 25),
-			zap.Int("max_idle", 10))
+			zap.Int("max_open", cfg.DBPool.MaxOpenConns),
+			zap.Int("max_idle", cfg.DBPool.MaxIdleConns))
 	}
 
 	return db, nil

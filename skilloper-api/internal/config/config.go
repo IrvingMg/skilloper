@@ -40,6 +40,7 @@ type Config struct {
 	DBDriver       string
 	DatabasePath   string
 	DatabaseURL    string
+	DBPool         DBPoolConfig
 	AllowedOrigins []string
 	AllowedMethods []string
 	AllowedHeaders []string
@@ -52,6 +53,13 @@ type Config struct {
 	TLS            TLSConfig
 	StaticMode     string
 	StaticDir      string
+}
+
+type DBPoolConfig struct {
+	MaxOpenConns    int
+	MaxIdleConns    int
+	ConnMaxLifetime time.Duration
+	ConnMaxIdleTime time.Duration
 }
 
 func (c *Config) StaticServing() bool {
@@ -104,6 +112,7 @@ func Load() *Config {
 		DBDriver:       dbDriver,
 		DatabasePath:   getEnv("DATABASE_PATH", "skilloper.db"),
 		DatabaseURL:    getEnv("DATABASE_URL", ""),
+		DBPool:         parseDBPoolConfig(),
 		AllowedOrigins: parseAllowedOrigins(),
 		AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders: []string{"Origin", "Content-Type", "Authorization"},
@@ -219,6 +228,34 @@ func parseRedisConfig() RedisConfig {
 		URL:       getEnv("REDIS_URL", ""),
 		KeyPrefix: getEnv("REDIS_KEY_PREFIX", "skilloper"),
 	}
+}
+
+// parseDBPoolConfig parses database connection pool configuration
+func parseDBPoolConfig() DBPoolConfig {
+	maxOpenConns := getEnvInt("DB_MAX_OPEN_CONNS", 25)
+	maxIdleConns := getEnvInt("DB_MAX_IDLE_CONNS", 10)
+	connMaxLifetimeMins := getEnvInt("DB_CONN_MAX_LIFETIME_MINS", 30)
+	connMaxIdleTimeMins := getEnvInt("DB_CONN_MAX_IDLE_TIME_MINS", 5)
+
+	return DBPoolConfig{
+		MaxOpenConns:    maxOpenConns,
+		MaxIdleConns:    maxIdleConns,
+		ConnMaxLifetime: time.Duration(connMaxLifetimeMins) * time.Minute,
+		ConnMaxIdleTime: time.Duration(connMaxIdleTimeMins) * time.Minute,
+	}
+}
+
+// getEnvInt gets an environment variable as a non-negative integer with a default value
+func getEnvInt(key string, defaultValue int) int {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	intVal, err := strconv.Atoi(value)
+	if err != nil || intVal < 0 {
+		return defaultValue
+	}
+	return intVal
 }
 
 // parseTLSConfig parses TLS configuration

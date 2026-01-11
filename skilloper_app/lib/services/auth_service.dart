@@ -103,11 +103,11 @@ class AuthService {
           json.decode(userJson) as Map<String, dynamic>,
         );
         _token = storedToken;
-      } on Object catch (e) {
+      } on Exception catch (e) {
         _debugLog('Failed to parse stored user: $e');
         await _clearStoredSession();
       }
-    } on Object catch (e) {
+    } on Exception catch (e) {
       _debugLog('Failed to load session: $e');
       _token = null;
       _currentUser = null;
@@ -145,7 +145,7 @@ class AuthService {
       final List<int> decodedBytes;
       try {
         decodedBytes = base64Url.decode(payload);
-      } on Object catch (e) {
+      } on Exception catch (e) {
         _debugLog('Invalid base64 in token payload: $e');
         return true;
       }
@@ -153,7 +153,7 @@ class AuthService {
       final String decoded;
       try {
         decoded = utf8.decode(decodedBytes);
-      } on Object catch (e) {
+      } on Exception catch (e) {
         _debugLog('Invalid UTF-8 in token payload: $e');
         return true;
       }
@@ -181,7 +181,7 @@ class AuthService {
       final expiryTime = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
       final now = DateTime.now();
       return expiryTime.isBefore(now.add(threshold));
-    } on Object catch (e) {
+    } on Exception catch (e) {
       _debugLog('Error parsing token: $e');
       return true;
     }
@@ -210,7 +210,7 @@ class AuthService {
         final error = _parseError(response);
         throw AuthException(error.message, code: error.code);
       }
-    } on Object catch (e) {
+    } on Exception catch (e) {
       if (e is AuthException) rethrow;
       throw AuthException('Failed to register: $e');
     } finally {
@@ -241,7 +241,7 @@ class AuthService {
         final error = _parseError(response);
         throw AuthException(error.message, code: error.code);
       }
-    } on Object catch (e) {
+    } on Exception catch (e) {
       if (e is AuthException) rethrow;
       throw AuthException('Failed to login: $e');
     } finally {
@@ -264,7 +264,7 @@ class AuthService {
           },
         );
       }
-    } on Object catch (e) {
+    } on Exception catch (e) {
       _debugLog('Logout request failed: $e');
     } finally {
       _token = null;
@@ -303,7 +303,7 @@ class AuthService {
         message: data['error'] as String? ?? 'Unknown error',
         code: data['code'] as String?,
       );
-    } on Object catch (e) {
+    } on Exception catch (e) {
       _debugLog('Failed to parse error response: $e');
       return (message: 'Request failed (${response.statusCode})', code: null);
     }
@@ -346,7 +346,7 @@ class AuthService {
         final error = _parseError(response);
         throw AuthException(error.message, code: error.code);
       }
-    } on Object catch (e) {
+    } on Exception catch (e) {
       if (e is AuthException) rethrow;
       throw AuthException('Failed to update password: $e');
     } finally {
@@ -370,7 +370,7 @@ class AuthService {
         final error = _parseError(response);
         throw AuthException(error.message, code: error.code);
       }
-    } on Object catch (e) {
+    } on Exception catch (e) {
       if (e is AuthException) rethrow;
       throw AuthException('Failed to reset history: $e');
     } finally {
@@ -397,7 +397,7 @@ class AuthService {
         final error = _parseError(response);
         throw AuthException(error.message, code: error.code);
       }
-    } on Object catch (e) {
+    } on Exception catch (e) {
       if (e is AuthException) rethrow;
       throw AuthException('Failed to delete account: $e');
     } finally {

@@ -134,9 +134,21 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       textInputAction: TextInputAction.next,
                       autocorrect: false,
+                      maxLength: 30,
+                      buildCounter:
+                          (
+                            context, {
+                            required currentLength,
+                            required isFocused,
+                            maxLength,
+                          }) => null,
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
                           return 'Please enter your username';
+                        }
+                        final trimmed = value.trim();
+                        if (trimmed.length < 6) {
+                          return 'Username must be at least 6 characters';
                         }
                         return null;
                       },
@@ -162,6 +174,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       obscureText: _obscurePassword,
                       textInputAction: TextInputAction.done,
+                      maxLength: 72,
+                      buildCounter:
+                          (
+                            context, {
+                            required currentLength,
+                            required isFocused,
+                            maxLength,
+                          }) => null,
                       onFieldSubmitted: (_) => _login(),
                       validator: (value) {
                         if (value == null || value.isEmpty) {

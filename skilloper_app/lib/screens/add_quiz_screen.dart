@@ -211,9 +211,7 @@ class _TipBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.primaryContainer.withValues(alpha: 0.5),
         borderRadius: AppRadius.lgAll,
-        border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
       ),
       child: const Row(
         children: [

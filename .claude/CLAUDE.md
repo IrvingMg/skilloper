@@ -96,6 +96,7 @@ Key optional variables:
 - `APP_ENV` - `development` (auto-loads .env) or `production`
 - `DB_DRIVER` - `sqlite` (default) or `postgres`
 - `DATABASE_URL` - PostgreSQL connection URL (required when DB_DRIVER=postgres)
+- `DB_MAX_OPEN_CONNS` / `DB_MAX_IDLE_CONNS` - PostgreSQL connection pool settings
 - `RATE_LIMIT_ENABLED` - Enable rate limiting (requires Redis)
 
 ## Documentation

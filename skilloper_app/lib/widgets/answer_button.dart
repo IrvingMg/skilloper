@@ -84,60 +84,83 @@ class AnswerButton extends StatelessWidget {
       labelBackgroundColor = AppColors.primary;
     }
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: isDisabled ? null : onTap,
-        borderRadius: AppRadius.mdAll,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.lg,
-            vertical: AppSpacing.md + 2,
-          ),
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            borderRadius: AppRadius.mdAll,
-            border: Border.all(
-              color: borderColor,
-              width: isCorrectButNotSelected ? 1.5 : 2,
-              strokeAlign: BorderSide.strokeAlignInside,
+    final String stateLabel = isCorrect
+        ? 'Correct answer'
+        : isIncorrect
+        ? 'Incorrect answer'
+        : isCorrectButNotSelected
+        ? 'Correct answer, not selected'
+        : isSelected
+        ? 'Selected'
+        : '';
+
+    final String optionLabel = isMultipleChoice
+        ? 'Option ${index + 1}'
+        : 'Option ${String.fromCharCode(65 + index)}';
+
+    return Semantics(
+      button: true,
+      enabled: !isDisabled,
+      selected: isSelected,
+      label:
+          '$optionLabel: $text${stateLabel.isNotEmpty ? '. $stateLabel' : ''}',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: isDisabled ? null : onTap,
+          borderRadius: AppRadius.mdAll,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.md + 2,
             ),
-            boxShadow: isSelected && !isCorrect && !isIncorrect
-                ? AppShadows.sm
-                : null,
-          ),
-          child: Row(
-            children: [
-              if (isMultipleChoice) ...[
-                // Checkbox indicator for multiple choice
-                _buildCheckbox(labelBackgroundColor, borderColor),
-              ] else ...[
-                // Letter badge for single choice (A, B, C, D)
-                _buildLetterBadge(labelBackgroundColor, labelColor),
-              ],
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: AppRadius.mdAll,
+              border: Border.all(
+                color: borderColor,
+                width: isCorrectButNotSelected ? 1.5 : 2,
+                strokeAlign: BorderSide.strokeAlignInside,
+              ),
+              boxShadow: isSelected && !isCorrect && !isIncorrect
+                  ? AppShadows.sm
+                  : null,
+            ),
+            child: Row(
+              children: [
+                if (isMultipleChoice) ...[
+                  // Checkbox indicator for multiple choice
+                  _buildCheckbox(labelBackgroundColor, borderColor),
+                ] else ...[
+                  // Letter badge for single choice (A, B, C, D)
+                  _buildLetterBadge(labelBackgroundColor, labelColor),
+                ],
 
-              const SizedBox(width: AppSpacing.md + 2),
+                const SizedBox(width: AppSpacing.md + 2),
 
-              // Answer text
-              Expanded(
-                child: Text(
-                  text,
-                  style: TextStyle(
-                    color: textColor,
-                    fontSize: 15,
-                    height: 1.4,
-                    fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
+                // Answer text
+                Expanded(
+                  child: Text(
+                    text,
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 15,
+                      height: 1.4,
+                      fontWeight: isSelected
+                          ? FontWeight.w500
+                          : FontWeight.w400,
+                    ),
                   ),
                 ),
-              ),
 
-              // Trailing icon (check/cancel)
-              if (trailingIcon != null) ...[
-                const SizedBox(width: AppSpacing.md),
-                trailingIcon,
+                // Trailing icon (check/cancel)
+                if (trailingIcon != null) ...[
+                  const SizedBox(width: AppSpacing.md),
+                  trailingIcon,
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

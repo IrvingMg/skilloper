@@ -21,19 +21,22 @@ class NumberedStep extends StatelessWidget {
     required this.number,
     required this.text,
     super.key,
-  })  : description = null,
-        circleSize = 20,
-        fontSize = 14;
+  }) : description = null,
+       circleSize = 20,
+       fontSize = 14;
 
   @override
   Widget build(BuildContext context) {
     final numberFontSize = circleSize == 20 ? 11.0 : 14.0;
 
     return Padding(
-      padding: description != null ? EdgeInsets.zero : const EdgeInsets.only(bottom: 6),
+      padding: description != null
+          ? EdgeInsets.zero
+          : const EdgeInsets.only(bottom: 6),
       child: Row(
-        crossAxisAlignment:
-            description != null ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+        crossAxisAlignment: description != null
+            ? CrossAxisAlignment.start
+            : CrossAxisAlignment.center,
         children: [
           Container(
             width: circleSize,

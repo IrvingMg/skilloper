@@ -98,7 +98,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
       if (mounted) {
         _showSuccessDialog(response);
       }
-    } on Object catch (e) {
+    } on Exception catch (e) {
       if (mounted) {
         _showErrorSnackBar(e.toString());
       }

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"net/http"
 	"strconv"
 
@@ -17,35 +16,14 @@ import (
 type AttemptHandler struct {
 	service *services.AttemptService
 	log     *zap.Logger
+	errH    *ErrorHandler
 }
 
-func NewAttemptHandler(service *services.AttemptService, log *zap.Logger) *AttemptHandler {
+func NewAttemptHandler(service *services.AttemptService, errH *ErrorHandler, log *zap.Logger) *AttemptHandler {
 	return &AttemptHandler{
 		service: service,
 		log:     log,
-	}
-}
-
-func (h *AttemptHandler) handleError(c *gin.Context, err error, operation string) {
-	var appErr *apperrors.AppError
-	if errors.As(err, &appErr) {
-		switch appErr.Type {
-		case apperrors.ErrTypeValidation:
-			h.log.Warn("Validation error", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
-			c.JSON(http.StatusBadRequest, gin.H{"error": appErr.Message, "code": appErr.Code})
-		case apperrors.ErrTypeNotFound:
-			h.log.Warn("Resource not found", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
-			c.JSON(http.StatusNotFound, gin.H{"error": appErr.Message, "code": appErr.Code})
-		case apperrors.ErrTypeDatabase, apperrors.ErrTypeInternal:
-			h.log.Error("Internal error", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error", "code": appErr.Code})
-		default:
-			h.log.Error("Unknown error type", zap.String("operation", operation), zap.Error(err))
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
-		}
-	} else {
-		h.log.Error("Unexpected error", zap.String("operation", operation), zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+		errH:    errH,
 	}
 }
 
@@ -56,7 +34,7 @@ func (h *AttemptHandler) CreateAttempt(c *gin.Context) {
 
 	var req models.StartAttemptRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.handleError(c, apperrors.ErrInvalidJSONFormat, "parse_create_attempt_request")
+		h.errH.Handle(c, apperrors.ErrInvalidJSONFormat, "parse_create_attempt_request")
 		return
 	}
 
@@ -66,7 +44,7 @@ func (h *AttemptHandler) CreateAttempt(c *gin.Context) {
 
 	attempt, err := h.service.Start(userID, req)
 	if err != nil {
-		h.handleError(c, err, "create_attempt")
+		h.errH.Handle(c, err, "create_attempt")
 		return
 	}
 
@@ -81,13 +59,13 @@ func (h *AttemptHandler) UpdateAttempt(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		h.handleError(c, apperrors.ErrInvalidAttemptID, "parse_attempt_id")
+		h.errH.Handle(c, apperrors.ErrInvalidAttemptID, "parse_attempt_id")
 		return
 	}
 
 	var req models.UpdateAttemptRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.handleError(c, apperrors.ErrInvalidJSONFormat, "parse_update_attempt_request")
+		h.errH.Handle(c, apperrors.ErrInvalidJSONFormat, "parse_update_attempt_request")
 		return
 	}
 
@@ -95,7 +73,7 @@ func (h *AttemptHandler) UpdateAttempt(c *gin.Context) {
 
 	attempt, err := h.service.Update(userID, uint(id), req)
 	if err != nil {
-		h.handleError(c, err, "update_attempt")
+		h.errH.Handle(c, err, "update_attempt")
 		return
 	}
 
@@ -111,11 +89,11 @@ func (h *AttemptHandler) GetAttempts(c *gin.Context) {
 
 	var params models.PaginationParams
 	if err := c.ShouldBindQuery(&params); err != nil {
-		h.handleError(c, apperrors.ErrInvalidPaginationParams, "parse_pagination_params")
+		h.errH.Handle(c, apperrors.ErrInvalidPaginationParams, "parse_pagination_params")
 		return
 	}
 	if !params.Validate() {
-		h.handleError(c, apperrors.ErrInvalidPaginationParams, "validate_pagination_params")
+		h.errH.Handle(c, apperrors.ErrInvalidPaginationParams, "validate_pagination_params")
 		return
 	}
 
@@ -128,7 +106,7 @@ func (h *AttemptHandler) GetAttempts(c *gin.Context) {
 
 	result, err := h.service.GetPaginatedByUserID(userID, params)
 	if err != nil {
-		h.handleError(c, err, "fetch_attempts")
+		h.errH.Handle(c, err, "fetch_attempts")
 		return
 	}
 
@@ -144,7 +122,7 @@ func (h *AttemptHandler) GetAttempt(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		h.handleError(c, apperrors.ErrInvalidAttemptID, "parse_attempt_id")
+		h.errH.Handle(c, apperrors.ErrInvalidAttemptID, "parse_attempt_id")
 		return
 	}
 
@@ -152,7 +130,7 @@ func (h *AttemptHandler) GetAttempt(c *gin.Context) {
 
 	attempt, err := h.service.GetByID(userID, uint(id))
 	if err != nil {
-		h.handleError(c, err, "fetch_attempt")
+		h.errH.Handle(c, err, "fetch_attempt")
 		return
 	}
 

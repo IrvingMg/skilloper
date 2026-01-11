@@ -165,10 +165,7 @@ My study notes:
                     children: [
                       // JSON Tab
                       const SingleChildScrollView(
-                        child: CodeBlock(
-                          code: _jsonExample,
-                          language: 'json',
-                        ),
+                        child: CodeBlock(code: _jsonExample, language: 'json'),
                       ),
                       // CSV Tab
                       SingleChildScrollView(
@@ -224,10 +221,7 @@ My study notes:
                               ),
                             ),
                             const SizedBox(height: 8),
-                            const CodeBlock(
-                              code: _csvExample,
-                              language: 'csv',
-                            ),
+                            const CodeBlock(code: _csvExample, language: 'csv'),
                             const SizedBox(height: 12),
                             const Text(
                               'Note: Quiz title and type are set during import.',

@@ -38,7 +38,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
         _attempt = attempt;
         _isLoading = false;
       });
-    } on Object catch (e) {
+    } on Exception catch (e) {
       setState(() {
         _error = e.toString();
         _isLoading = false;

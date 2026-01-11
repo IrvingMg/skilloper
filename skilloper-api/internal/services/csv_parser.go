@@ -120,7 +120,7 @@ func (p *CSVParser) ParseCSV(reader io.Reader, metadata CSVMetadata) (*models.Cr
 			return nil, fmt.Errorf("CSV exceeds maximum of %d questions", models.MaxQuestionsPerQuiz)
 		}
 
-		question, err := p.parseRow(record, cols, rowNum)
+		question, err := p.parseRow(record, cols)
 		if err != nil {
 			return nil, fmt.Errorf("row %d: %w", rowNum, err)
 		}
@@ -206,7 +206,7 @@ func (p *CSVParser) parseHeader(header []string) (*columnIndices, error) {
 	return cols, nil
 }
 
-func (p *CSVParser) parseRow(record []string, cols *columnIndices, _ int) (*models.QuestionRequest, error) {
+func (p *CSVParser) parseRow(record []string, cols *columnIndices) (*models.QuestionRequest, error) {
 	if cols.question >= len(record) {
 		return nil, fmt.Errorf("missing question column")
 	}

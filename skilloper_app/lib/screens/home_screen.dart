@@ -122,7 +122,7 @@ class HomeScreenState extends State<HomeScreen> {
         _pagination = result.pagination;
         _isInitialLoading = false;
       });
-    } on Object catch (e) {
+    } on Exception catch (e) {
       if (!mounted) return;
       setState(() {
         _error = e.toString();
@@ -175,7 +175,7 @@ class HomeScreenState extends State<HomeScreen> {
         _pagination = result.pagination;
         _isLoadingMore = false;
       });
-    } on Object catch (e) {
+    } on Exception catch (e) {
       if (!mounted) return;
       setState(() {
         _isLoadingMore = false;
@@ -355,7 +355,7 @@ class HomeScreenState extends State<HomeScreen> {
           ),
         ),
       );
-    } on Object catch (e) {
+    } on Exception catch (e) {
       _isStartingQuiz = false;
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
@@ -417,7 +417,7 @@ class HomeScreenState extends State<HomeScreen> {
           ),
         ),
       );
-    } on Object catch (e) {
+    } on Exception catch (e) {
       _isStartingQuiz = false;
       if (!mounted) return;
       Navigator.pop(context);
@@ -452,7 +452,7 @@ class HomeScreenState extends State<HomeScreen> {
       if (mounted) {
         unawaited(_loadQuizzes(refresh: true));
       }
-    } on Object catch (e) {
+    } on Exception catch (e) {
       if (!mounted) return;
       Navigator.pop(context);
       ScaffoldMessenger.of(
@@ -510,7 +510,7 @@ class HomeScreenState extends State<HomeScreen> {
       );
 
       unawaited(_loadQuizzes(refresh: true));
-    } on Object catch (e) {
+    } on Exception catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -645,8 +645,9 @@ class HomeScreenState extends State<HomeScreen> {
                             _searchQuery.isNotEmpty || _typeFilter.isNotEmpty
                                 ? 'Try a different search or filter'
                                 : 'Create quizzes from your study notes using ChatGPT or Claude',
-                            style:
-                                const TextStyle(color: AppColors.textTertiary),
+                            style: const TextStyle(
+                              color: AppColors.textTertiary,
+                            ),
                             textAlign: TextAlign.center,
                           ),
                         ),

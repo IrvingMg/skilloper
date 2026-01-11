@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	apperrors "github.com/irvingmg/skilloper/skilloper-api/internal/errors"
 	"github.com/irvingmg/skilloper/skilloper-api/internal/services"
 )
 
@@ -21,27 +22,27 @@ func AuthMiddleware(authService *services.AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader(AuthorizationHeader)
 		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Missing authorization header", "code": "UNAUTHORIZED"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": apperrors.ErrMissingAuthHeader.Message, "code": apperrors.ErrMissingAuthHeader.Code})
 			c.Abort()
 			return
 		}
 
 		if !strings.HasPrefix(authHeader, BearerPrefix) {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization format", "code": "UNAUTHORIZED"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": apperrors.ErrInvalidAuthFormat.Message, "code": apperrors.ErrInvalidAuthFormat.Code})
 			c.Abort()
 			return
 		}
 
 		tokenString := strings.TrimPrefix(authHeader, BearerPrefix)
 		if tokenString == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Missing token", "code": "UNAUTHORIZED"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": apperrors.ErrMissingToken.Message, "code": apperrors.ErrMissingToken.Code})
 			c.Abort()
 			return
 		}
 
 		claims, err := authService.ValidateToken(tokenString)
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token", "code": "INVALID_TOKEN"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": apperrors.ErrInvalidToken.Message, "code": apperrors.ErrInvalidToken.Code})
 			c.Abort()
 			return
 		}

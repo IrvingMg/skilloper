@@ -71,7 +71,7 @@ class ApiService {
       if (errorData.containsKey('error')) {
         errorMessage = errorData['error'] as String;
       }
-    } on Object catch (_) {
+    } on Exception catch (_) {
       errorMessage = switch (response.statusCode) {
         400 => 'Invalid request for $operation',
         403 => 'Forbidden access for $operation',
@@ -155,7 +155,7 @@ class ApiService {
       );
     } on ApiException {
       rethrow;
-    } on Object catch (e) {
+    } on Exception catch (e) {
       throw _handleException(e, 'load quiz summaries');
     }
   }
@@ -177,7 +177,7 @@ class ApiService {
       return Quiz.fromJson(data);
     } on ApiException {
       rethrow;
-    } on Object catch (e) {
+    } on Exception catch (e) {
       throw _handleException(e, 'load quiz');
     }
   }
@@ -203,7 +203,7 @@ class ApiService {
       return Quiz.fromJson(data);
     } on ApiException {
       rethrow;
-    } on Object catch (e) {
+    } on Exception catch (e) {
       throw _handleException(e, 'load quiz for edit');
     }
   }
@@ -271,7 +271,7 @@ class ApiService {
           if (errorData.containsKey('error')) {
             errorMessage = errorData['error'] as String;
           }
-        } on Object catch (_) {
+        } on Exception catch (_) {
           // JSON parsing failed, use status code based message
         }
 
@@ -288,7 +288,7 @@ class ApiService {
       }
     } on ApiException {
       rethrow;
-    } on Object catch (e) {
+    } on Exception catch (e) {
       throw _handleException(e, 'upload file');
     }
   }
@@ -310,7 +310,7 @@ class ApiService {
       return QuizAttempt.fromJson(data);
     } on ApiException {
       rethrow;
-    } on Object catch (e) {
+    } on Exception catch (e) {
       throw _handleException(e, 'start attempt');
     }
   }
@@ -338,7 +338,7 @@ class ApiService {
       return QuizAttempt.fromJson(data);
     } on ApiException {
       rethrow;
-    } on Object catch (e) {
+    } on Exception catch (e) {
       throw _handleException(e, 'complete attempt');
     }
   }
@@ -360,7 +360,7 @@ class ApiService {
       return QuizAttempt.fromJson(data);
     } on ApiException {
       rethrow;
-    } on Object catch (e) {
+    } on Exception catch (e) {
       throw _handleException(e, 'abandon attempt');
     }
   }
@@ -417,7 +417,7 @@ class ApiService {
       );
     } on ApiException {
       rethrow;
-    } on Object catch (e) {
+    } on Exception catch (e) {
       throw _handleException(e, 'load history');
     }
   }
@@ -440,7 +440,7 @@ class ApiService {
       return QuizAttempt.fromJson(data);
     } on ApiException {
       rethrow;
-    } on Object catch (e) {
+    } on Exception catch (e) {
       throw _handleException(e, 'load attempt details');
     }
   }
@@ -461,7 +461,7 @@ class ApiService {
       return json.decode(response.body) as Map<String, dynamic>;
     } on ApiException {
       rethrow;
-    } on Object catch (e) {
+    } on Exception catch (e) {
       throw _handleException(e, 'create quiz');
     }
   }
@@ -489,7 +489,7 @@ class ApiService {
       return json.decode(response.body) as Map<String, dynamic>;
     } on ApiException {
       rethrow;
-    } on Object catch (e) {
+    } on Exception catch (e) {
       throw _handleException(e, 'update quiz');
     }
   }
@@ -508,7 +508,7 @@ class ApiService {
       _handleHttpResponse(response, 'delete quiz');
     } on ApiException {
       rethrow;
-    } on Object catch (e) {
+    } on Exception catch (e) {
       throw _handleException(e, 'delete quiz');
     }
   }
@@ -540,7 +540,7 @@ class ApiService {
       return ValidateAnswerResponse.fromJson(data);
     } on ApiException {
       rethrow;
-    } on Object catch (e) {
+    } on Exception catch (e) {
       throw _handleException(e, 'validate answer');
     }
   }

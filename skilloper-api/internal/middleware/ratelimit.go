@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -17,6 +16,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/irvingmg/skilloper/skilloper-api/internal/config"
+	"github.com/irvingmg/skilloper/skilloper-api/internal/models"
 )
 
 const (
@@ -147,7 +147,7 @@ func NewRateLimiters(cfg config.RateLimitConfig, redisCfg config.RedisConfig, lo
 			Username string `json:"username"`
 		}
 		if err := c.ShouldBindBodyWith(&req, binding.JSON); err == nil && req.Username != "" {
-			return fmt.Sprintf("login:user:%s:%s", c.ClientIP(), strings.ToLower(req.Username))
+			return fmt.Sprintf("login:user:%s:%s", c.ClientIP(), models.NormalizeUsername(req.Username))
 		}
 		return fmt.Sprintf("login:ip:%s", c.ClientIP())
 	}
@@ -161,7 +161,7 @@ func NewRateLimiters(cfg config.RateLimitConfig, redisCfg config.RedisConfig, lo
 			Username string `json:"username"`
 		}
 		if err := c.ShouldBindBodyWith(&req, binding.JSON); err == nil && req.Username != "" {
-			return fmt.Sprintf("register:user:%s:%s", c.ClientIP(), strings.ToLower(req.Username))
+			return fmt.Sprintf("register:user:%s:%s", c.ClientIP(), models.NormalizeUsername(req.Username))
 		}
 		return fmt.Sprintf("register:ip:%s", c.ClientIP())
 	}

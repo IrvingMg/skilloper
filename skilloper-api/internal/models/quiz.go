@@ -34,7 +34,7 @@ type Question struct {
 	Language             string    `json:"language"`
 	Options              string    `json:"options"`             // JSON array stored as string
 	AlternativeOptions   string    `json:"alternative_options"` // JSON array of additional options for variety
-	CorrectAnswer        int       `json:"correctAnswer"`       // Index in the original options array (for single_choice)
+	CorrectAnswer        int       `json:"correct_answer"`      // Index in the original options array (for single_choice)
 	CorrectAnswers       string    `json:"correct_answers"`     // JSON array of indices (for multiple_choice)
 	AlternativeAnswers   string    `json:"alternative_answers"` // JSON array of alternative correct answer texts
 	Explanation          string    `json:"explanation"`         // Explanation for the correct answer
@@ -58,7 +58,7 @@ type QuestionRequest struct {
 	Language             string   `json:"language,omitempty"`
 	Options              []string `json:"options,omitempty"`
 	AlternativeOptions   []string `json:"alternative_options,omitempty"` // Additional options for variety
-	CorrectAnswer        int      `json:"correctAnswer"`                 // For single_choice (0-indexed)
+	CorrectAnswer        int      `json:"correct_answer"`                // For single_choice (0-indexed)
 	CorrectAnswers       []int    `json:"correct_answers,omitempty"`     // For multiple_choice (0-indexed)
 	AlternativeAnswers   []string `json:"alternative_answers,omitempty"` // Alternative correct answer texts
 	Explanation          string   `json:"explanation,omitempty"`
@@ -96,7 +96,7 @@ type QuestionResponse struct {
 // QuestionResponseWithAnswers includes correct answers (for edit mode)
 type QuestionResponseWithAnswers struct {
 	questionResponseBase
-	CorrectAnswer  int   `json:"correctAnswer"`             // 0-indexed
+	CorrectAnswer  int   `json:"correct_answer"`            // 0-indexed
 	CorrectAnswers []int `json:"correct_answers,omitempty"` // 0-indexed
 }
 

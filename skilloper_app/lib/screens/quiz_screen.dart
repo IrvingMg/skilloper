@@ -134,7 +134,7 @@ class _QuizScreenState extends State<QuizScreen> {
           _attemptId = attempt.id;
         });
       }
-    } on Object catch (e) {
+    } on Exception catch (e) {
       debugPrint('Failed to start attempt: $e');
       if (mounted) {
         _showAttemptFailedDialog(e.toString());
@@ -204,7 +204,7 @@ class _QuizScreenState extends State<QuizScreen> {
       if (!widget.quiz.isPracticeMode && _attemptId != null) {
         try {
           await _apiService.abandonAttempt(_attemptId!);
-        } on Object catch (e) {
+        } on Exception catch (e) {
           debugPrint('Failed to abandon attempt: $e');
         }
       }
@@ -285,7 +285,7 @@ class _QuizScreenState extends State<QuizScreen> {
           _isValidating = false;
         });
       }
-    } on Object catch (e) {
+    } on Exception catch (e) {
       if (mounted) {
         setState(() {
           _isValidating = false;

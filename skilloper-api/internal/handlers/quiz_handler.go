@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -22,38 +21,14 @@ const (
 type QuizHandler struct {
 	service *services.QuizService
 	log     *zap.Logger
+	errH    *ErrorHandler
 }
 
-func NewQuizHandler(service *services.QuizService, log *zap.Logger) *QuizHandler {
+func NewQuizHandler(service *services.QuizService, errH *ErrorHandler, log *zap.Logger) *QuizHandler {
 	return &QuizHandler{
 		service: service,
 		log:     log,
-	}
-}
-
-func (h *QuizHandler) handleError(c *gin.Context, err error, operation string) {
-	var appErr *apperrors.AppError
-	if errors.As(err, &appErr) {
-		switch appErr.Type {
-		case apperrors.ErrTypeValidation:
-			h.log.Warn("Validation error", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
-			c.JSON(http.StatusBadRequest, gin.H{"error": appErr.Message, "code": appErr.Code})
-		case apperrors.ErrTypeNotFound:
-			h.log.Warn("Resource not found", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
-			c.JSON(http.StatusNotFound, gin.H{"error": appErr.Message, "code": appErr.Code})
-		case apperrors.ErrTypeAuthorization:
-			h.log.Warn("Authorization error", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
-			c.JSON(http.StatusForbidden, gin.H{"error": appErr.Message, "code": appErr.Code})
-		case apperrors.ErrTypeDatabase, apperrors.ErrTypeInternal:
-			h.log.Error("Internal error", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error", "code": appErr.Code})
-		default:
-			h.log.Error("Unknown error type", zap.String("operation", operation), zap.Error(err))
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
-		}
-	} else {
-		h.log.Error("Unexpected error", zap.String("operation", operation), zap.Error(err))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+		errH:    errH,
 	}
 }
 
@@ -63,11 +38,11 @@ func (h *QuizHandler) GetQuizSummaries(c *gin.Context) {
 
 	var params models.PaginationParams
 	if err := c.ShouldBindQuery(&params); err != nil {
-		h.handleError(c, apperrors.ErrInvalidPaginationParams, "parse_pagination_params")
+		h.errH.Handle(c, apperrors.ErrInvalidPaginationParams, "parse_pagination_params")
 		return
 	}
 	if !params.Validate() {
-		h.handleError(c, apperrors.ErrInvalidPaginationParams, "validate_pagination_params")
+		h.errH.Handle(c, apperrors.ErrInvalidPaginationParams, "validate_pagination_params")
 		return
 	}
 
@@ -79,7 +54,7 @@ func (h *QuizHandler) GetQuizSummaries(c *gin.Context) {
 
 	result, err := h.service.GetPaginatedSummaries(params)
 	if err != nil {
-		h.handleError(c, err, "fetch_quiz_summaries")
+		h.errH.Handle(c, err, "fetch_quiz_summaries")
 		return
 	}
 
@@ -93,7 +68,7 @@ func (h *QuizHandler) GetQuizSummaries(c *gin.Context) {
 func (h *QuizHandler) GetQuiz(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		h.handleError(c, apperrors.ErrInvalidQuizID, "parse_quiz_id")
+		h.errH.Handle(c, apperrors.ErrInvalidQuizID, "parse_quiz_id")
 		return
 	}
 
@@ -106,7 +81,7 @@ func (h *QuizHandler) GetQuiz(c *gin.Context) {
 
 		quiz, err := h.service.GetByIDWithAnswers(uint(id), userID, isAdmin)
 		if err != nil {
-			h.handleError(c, err, "fetch_quiz")
+			h.errH.Handle(c, err, "fetch_quiz")
 			return
 		}
 
@@ -121,7 +96,7 @@ func (h *QuizHandler) GetQuiz(c *gin.Context) {
 
 	quiz, err := h.service.GetByID(uint(id))
 	if err != nil {
-		h.handleError(c, err, "fetch_quiz")
+		h.errH.Handle(c, err, "fetch_quiz")
 		return
 	}
 
@@ -145,7 +120,7 @@ func (h *QuizHandler) CreateQuiz(c *gin.Context) {
 
 	var req models.CreateQuizRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.handleError(c, apperrors.ErrInvalidJSONFormat, "parse_create_request")
+		h.errH.Handle(c, apperrors.ErrInvalidJSONFormat, "parse_create_request")
 		return
 	}
 
@@ -153,7 +128,7 @@ func (h *QuizHandler) CreateQuiz(c *gin.Context) {
 
 	quiz, err := h.service.Create(req, userID)
 	if err != nil {
-		h.handleError(c, err, "create_quiz")
+		h.errH.Handle(c, err, "create_quiz")
 		return
 	}
 
@@ -167,7 +142,7 @@ func (h *QuizHandler) UpdateQuiz(c *gin.Context) {
 	isAdmin := middleware.IsAdmin(c)
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		h.handleError(c, apperrors.ErrInvalidQuizID, "parse_quiz_id")
+		h.errH.Handle(c, apperrors.ErrInvalidQuizID, "parse_quiz_id")
 		return
 	}
 
@@ -175,13 +150,13 @@ func (h *QuizHandler) UpdateQuiz(c *gin.Context) {
 
 	var req models.CreateQuizRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		h.handleError(c, apperrors.ErrInvalidJSONFormat, "parse_update_request")
+		h.errH.Handle(c, apperrors.ErrInvalidJSONFormat, "parse_update_request")
 		return
 	}
 
 	quiz, err := h.service.Update(uint(id), req, userID, isAdmin)
 	if err != nil {
-		h.handleError(c, err, "update_quiz")
+		h.errH.Handle(c, err, "update_quiz")
 		return
 	}
 
@@ -195,7 +170,7 @@ func (h *QuizHandler) DeleteQuiz(c *gin.Context) {
 	isAdmin := middleware.IsAdmin(c)
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		h.handleError(c, apperrors.ErrInvalidQuizID, "parse_quiz_id")
+		h.errH.Handle(c, apperrors.ErrInvalidQuizID, "parse_quiz_id")
 		return
 	}
 
@@ -203,7 +178,7 @@ func (h *QuizHandler) DeleteQuiz(c *gin.Context) {
 
 	err = h.service.Delete(uint(id), userID, isAdmin)
 	if err != nil {
-		h.handleError(c, err, "delete_quiz")
+		h.errH.Handle(c, err, "delete_quiz")
 		return
 	}
 
@@ -216,7 +191,12 @@ func (h *QuizHandler) handleImport(c *gin.Context, userID uint) {
 
 	file, err := c.FormFile("file")
 	if err != nil {
-		h.handleError(c, apperrors.ErrFileRequired, "parse_import_file")
+		h.errH.Handle(c, apperrors.ErrFileRequired, "parse_import_file")
+		return
+	}
+
+	if file.Size > models.MaxImportFileSize {
+		h.errH.Handle(c, apperrors.ErrFileTooLarge, "validate_file_size")
 		return
 	}
 
@@ -226,12 +206,12 @@ func (h *QuizHandler) handleImport(c *gin.Context, userID uint) {
 	description := c.Query("description")
 
 	if len(title) > models.MaxTitleLength {
-		h.handleError(c, apperrors.NewValidationError("TITLE_TOO_LONG",
+		h.errH.Handle(c, apperrors.NewValidationError("TITLE_TOO_LONG",
 			fmt.Sprintf("title exceeds %d character limit", models.MaxTitleLength)), "parse_csv_metadata")
 		return
 	}
 	if len(description) > models.MaxDescriptionLength {
-		h.handleError(c, apperrors.NewValidationError("DESCRIPTION_TOO_LONG",
+		h.errH.Handle(c, apperrors.NewValidationError("DESCRIPTION_TOO_LONG",
 			fmt.Sprintf("description exceeds %d character limit", models.MaxDescriptionLength)), "parse_csv_metadata")
 		return
 	}
@@ -245,7 +225,7 @@ func (h *QuizHandler) handleImport(c *gin.Context, userID uint) {
 	if maxOpts := c.Query("max_options"); maxOpts != "" {
 		n, err := strconv.Atoi(maxOpts)
 		if err != nil || n < models.MinOptionsLimit || n > models.MaxOptionsLimit {
-			h.handleError(c, apperrors.NewValidationError("INVALID_MAX_OPTIONS",
+			h.errH.Handle(c, apperrors.NewValidationError("INVALID_MAX_OPTIONS",
 				fmt.Sprintf("max_options must be a number between %d and %d", models.MinOptionsLimit, models.MaxOptionsLimit)), "parse_csv_metadata")
 			return
 		}
@@ -254,7 +234,7 @@ func (h *QuizHandler) handleImport(c *gin.Context, userID uint) {
 
 	quiz, err := h.service.ImportFromFile(file, csvMeta, userID)
 	if err != nil {
-		h.handleError(c, err, "import_quiz")
+		h.errH.Handle(c, err, "import_quiz")
 		return
 	}
 

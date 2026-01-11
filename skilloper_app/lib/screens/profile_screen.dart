@@ -506,7 +506,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             );
           }
-        } on Object catch (e) {
+        } on Exception catch (e) {
           if (mounted) {
             scaffoldMessenger.showSnackBar(
               SnackBar(

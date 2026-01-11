@@ -104,7 +104,7 @@ class HistoryScreenState extends State<HistoryScreen> {
         _pagination = result.pagination;
         _isInitialLoading = false;
       });
-    } on Object catch (e) {
+    } on Exception catch (e) {
       if (!mounted) return;
       setState(() {
         _error = e.toString();
@@ -149,7 +149,7 @@ class HistoryScreenState extends State<HistoryScreen> {
         _pagination = result.pagination;
         _isLoadingMore = false;
       });
-    } on Object catch (e) {
+    } on Exception catch (e) {
       if (!mounted) return;
       setState(() {
         _isLoadingMore = false;

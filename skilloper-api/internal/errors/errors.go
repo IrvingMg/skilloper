@@ -10,7 +10,9 @@ const (
 	ErrTypeValidation ErrorType = "validation"
 	// Not found errors
 	ErrTypeNotFound ErrorType = "not_found"
-	// Authorization errors
+	// Authentication errors (login, token issues)
+	ErrTypeAuthentication ErrorType = "authentication"
+	// Authorization errors (permission denied)
 	ErrTypeAuthorization ErrorType = "authorization"
 	// Internal server errors
 	ErrTypeInternal ErrorType = "internal"
@@ -100,6 +102,12 @@ var (
 		Type:    ErrTypeValidation,
 		Code:    "FILE_READ_FAILED",
 		Message: "Failed to read uploaded file",
+	}
+
+	ErrFileTooLarge = &AppError{
+		Type:    ErrTypeValidation,
+		Code:    "FILE_TOO_LARGE",
+		Message: "File exceeds maximum allowed size",
 	}
 
 	// Question validation errors
@@ -250,9 +258,15 @@ var (
 		Message: "Invalid answer data",
 	}
 
+	ErrWrongAnswerFormat = &AppError{
+		Type:    ErrTypeValidation,
+		Code:    "WRONG_ANSWER_FORMAT",
+		Message: "Use user_answer for single choice or user_answers for multiple choice questions",
+	}
+
 	// Auth errors
 	ErrInvalidCredentials = &AppError{
-		Type:    ErrTypeValidation,
+		Type:    ErrTypeAuthentication,
 		Code:    "INVALID_CREDENTIALS",
 		Message: "Invalid username or password",
 	}
@@ -264,13 +278,13 @@ var (
 	}
 
 	ErrUnauthorized = &AppError{
-		Type:    ErrTypeValidation,
+		Type:    ErrTypeAuthentication,
 		Code:    "UNAUTHORIZED",
 		Message: "Unauthorized",
 	}
 
 	ErrInvalidToken = &AppError{
-		Type:    ErrTypeValidation,
+		Type:    ErrTypeAuthentication,
 		Code:    "INVALID_TOKEN",
 		Message: "Invalid or expired token",
 	}
@@ -294,7 +308,7 @@ var (
 	}
 
 	ErrAccountLocked = &AppError{
-		Type:    ErrTypeValidation,
+		Type:    ErrTypeAuthentication,
 		Code:    "ACCOUNT_LOCKED",
 		Message: "Account is temporarily locked due to too many failed login attempts. Please try again later",
 	}
@@ -321,6 +335,25 @@ var (
 		Type:    ErrTypeValidation,
 		Code:    "SAME_PASSWORD",
 		Message: "New password must be different from current password",
+	}
+
+	// Auth middleware errors
+	ErrMissingAuthHeader = &AppError{
+		Type:    ErrTypeAuthentication,
+		Code:    "UNAUTHORIZED",
+		Message: "Missing authorization header",
+	}
+
+	ErrInvalidAuthFormat = &AppError{
+		Type:    ErrTypeAuthentication,
+		Code:    "UNAUTHORIZED",
+		Message: "Invalid authorization format",
+	}
+
+	ErrMissingToken = &AppError{
+		Type:    ErrTypeAuthentication,
+		Code:    "UNAUTHORIZED",
+		Message: "Missing token",
 	}
 )
 

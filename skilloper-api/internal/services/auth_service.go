@@ -69,16 +69,6 @@ func (s *AuthService) Register(req models.RegisterRequest) (*models.LoginRespons
 
 	normalizedUsername := models.NormalizeUsername(req.Username)
 
-	var existingUser models.User
-	result := s.db.Where("username = ?", normalizedUsername).First(&existingUser)
-	if result.Error == nil {
-		s.log.Debug("Registration failed: username taken")
-		return nil, apperrors.ErrUsernameTaken
-	}
-	if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		return nil, apperrors.NewDatabaseError("USER_LOOKUP_FAILED", "Failed to check username", result.Error)
-	}
-
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), models.BcryptCost)
 	if err != nil {
 		return nil, apperrors.NewInternalError("PASSWORD_HASH_FAILED", "Failed to hash password", err)

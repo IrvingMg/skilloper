@@ -301,8 +301,8 @@ func (s *AttemptService) complete(userID uint, attemptID uint, answers []models.
 			return err
 		}
 
-		for i := range attempt.Answers {
-			if err := tx.Create(&attempt.Answers[i]).Error; err != nil {
+		if len(attempt.Answers) > 0 {
+			if err := tx.Create(&attempt.Answers).Error; err != nil {
 				return err
 			}
 		}

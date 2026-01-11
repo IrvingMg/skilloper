@@ -56,7 +56,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
           final attempt = await _apiService.startAttempt(startRequest);
           attemptId = attempt.id;
           _createdAttemptId = attemptId;
-        } on Object catch (e) {
+        } on Exception catch (e) {
           if (mounted) {
             setState(() {
               _isLoading = false;
@@ -82,7 +82,7 @@ class _ResultsScreenState extends State<ResultsScreen> {
           _isLoading = false;
         });
       }
-    } on Object catch (e) {
+    } on Exception catch (e) {
       if (mounted) {
         setState(() {
           _isLoading = false;

@@ -202,7 +202,7 @@ func TestPredefinedErrors(t *testing.T) {
 		{"ErrNotQuizOwner", ErrNotQuizOwner, ErrTypeAuthorization},
 		{"ErrQuizTitleRequired", ErrQuizTitleRequired, ErrTypeValidation},
 		{"ErrFetchQuizzesFailed", ErrFetchQuizzesFailed, ErrTypeDatabase},
-		{"ErrInvalidCredentials", ErrInvalidCredentials, ErrTypeValidation},
+		{"ErrInvalidCredentials", ErrInvalidCredentials, ErrTypeAuthentication},
 	}
 
 	for _, tt := range tests {

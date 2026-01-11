@@ -121,10 +121,11 @@ func (s *Server) setupServices() {
 	answerService := services.NewAnswerService(s.db, s.log)
 	healthService := services.NewHealthService()
 
-	s.authHandler = handlers.NewAuthHandler(s.authService, s.log)
-	s.quizHandler = handlers.NewQuizHandler(quizService, s.log)
-	s.attemptHandler = handlers.NewAttemptHandler(attemptService, s.log)
-	s.answerHandler = handlers.NewAnswerHandler(answerService, s.log)
+	errHandler := handlers.NewErrorHandler(s.log)
+	s.authHandler = handlers.NewAuthHandler(s.authService, errHandler, s.log)
+	s.quizHandler = handlers.NewQuizHandler(quizService, errHandler, s.log)
+	s.attemptHandler = handlers.NewAttemptHandler(attemptService, errHandler, s.log)
+	s.answerHandler = handlers.NewAnswerHandler(answerService, errHandler, s.log)
 	s.healthHandler = handlers.NewHealthHandler(healthService, s.log)
 }
 

@@ -7,7 +7,7 @@ import (
 
 const (
 	FormatSimple   = "simple"   // User-friendly: 1-based indexing, answer as string array (default)
-	FormatInternal = "internal" // API format: 0-based indexing, correctAnswer/correct_answers
+	FormatInternal = "internal" // API format: 0-based indexing, correct_answer/correct_answers
 )
 
 // SimplifiedQuiz represents the user-friendly JSON format
@@ -21,7 +21,6 @@ type SimplifiedQuiz struct {
 	Questions   []SimplifiedQuestion `json:"questions"`
 }
 
-// IsInternalFormat returns true if this quiz uses internal API format
 func (sq *SimplifiedQuiz) IsInternalFormat() bool {
 	return sq.Format == FormatInternal
 }

@@ -29,6 +29,10 @@ Copy `.env.example` to `.env` and configure:
 | `DB_DRIVER` | `sqlite` | Database driver (`sqlite` or `postgres`) |
 | `DATABASE_PATH` | `skilloper.db` | SQLite file path |
 | `DATABASE_URL` | - | PostgreSQL connection URL (required when DB_DRIVER=postgres) |
+| `DB_MAX_OPEN_CONNS` | `25` | Max open database connections (PostgreSQL only) |
+| `DB_MAX_IDLE_CONNS` | `10` | Max idle database connections (PostgreSQL only) |
+| `DB_CONN_MAX_LIFETIME_MINS` | `30` | Max connection lifetime in minutes (PostgreSQL only) |
+| `DB_CONN_MAX_IDLE_TIME_MINS` | `5` | Max idle time in minutes (PostgreSQL only) |
 | `JWT_SECRET` | **Required** | Secret key for signing JWT tokens |
 | `JWT_EXPIRY` | `24` | Token expiry time in hours |
 | `ADMIN_USERNAME` | **Required** | Admin username (6-30 chars) |
@@ -90,7 +94,7 @@ go build -o app
 ## Database
 
 - **Development:** SQLite (auto-created as `skilloper.db`)
-- **Production:** PostgreSQL (with connection pooling: 25 max, 10 idle)
+- **Production:** PostgreSQL (with configurable connection pooling)
 - **Schema:** Auto-migrated on startup using GORM
 
 ## API Reference

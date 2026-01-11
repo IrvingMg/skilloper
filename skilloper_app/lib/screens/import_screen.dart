@@ -60,7 +60,7 @@ class _ImportScreenState extends State<ImportScreen> {
           await _uploadFile(fileBytes, fileName);
         }
       }
-    } on Object catch (e) {
+    } on Exception catch (e) {
       if (mounted) {
         setState(() {
           _isUploading = false;
@@ -300,7 +300,7 @@ class _ImportScreenState extends State<ImportScreen> {
         _showSuccessDialog(importResponse);
         _showSnackBar('Quiz imported successfully!', true);
       }
-    } on Object catch (e) {
+    } on Exception catch (e) {
       if (!mounted) return;
 
       setState(() {
@@ -690,7 +690,9 @@ class _ImportScreenState extends State<ImportScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: AppColors.primaryContainer.withValues(alpha: 0.5),
+                        color: AppColors.primaryContainer.withValues(
+                          alpha: 0.5,
+                        ),
                         borderRadius: AppRadius.lgAll,
                         border: Border.all(
                           color: AppColors.primary.withValues(alpha: 0.3),
@@ -763,8 +765,9 @@ class _ImportScreenState extends State<ImportScreen> {
                                   color: AppColors.primary,
                                   width: 1.5,
                                 ),
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                               ),
                             ),
                           ),
@@ -909,7 +912,9 @@ class _ImportScreenState extends State<ImportScreen> {
 
                     // Bottom padding
                     SizedBox(
-                      height: MediaQuery.of(context).size.height < 700 ? 20 : 16,
+                      height: MediaQuery.of(context).size.height < 700
+                          ? 20
+                          : 16,
                     ),
                   ],
                 ),

@@ -47,11 +47,13 @@ class _PromptCardState extends State<PromptCard> {
       ),
     );
 
-    unawaited(Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        setState(() => _copied = false);
-      }
-    }));
+    unawaited(
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) {
+          setState(() => _copied = false);
+        }
+      }),
+    );
   }
 
   @override

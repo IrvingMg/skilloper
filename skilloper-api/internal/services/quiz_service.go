@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
+	"math/rand/v2"
 	"mime/multipart"
 	"strings"
 
@@ -539,13 +539,13 @@ func (s *QuizService) convertToResponse(q models.Quiz) models.QuizResponse {
 		questionText := question.QuestionText
 		if alternatives := parseStringArrayJSON(question.AlternativeQuestions); len(alternatives) > 0 {
 			allTexts := append([]string{questionText}, alternatives...)
-			questionText = allTexts[rand.Intn(len(allTexts))]
+			questionText = allTexts[rand.IntN(len(allTexts))]
 		}
 
 		if alternatives := parseStringArrayJSON(question.AlternativeAnswers); len(alternatives) > 0 {
 			if len(options) > 0 && question.CorrectAnswer >= 0 && question.CorrectAnswer < len(options) {
 				allTexts := append([]string{options[question.CorrectAnswer]}, alternatives...)
-				options[question.CorrectAnswer] = allTexts[rand.Intn(len(allTexts))]
+				options[question.CorrectAnswer] = allTexts[rand.IntN(len(allTexts))]
 			}
 		}
 
