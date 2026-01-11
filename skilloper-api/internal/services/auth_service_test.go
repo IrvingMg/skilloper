@@ -15,12 +15,12 @@ import (
 // createTestAuthService creates an AuthService for testing token operations
 // Note: DB is nil, so only non-DB operations can be tested
 func createTestAuthService() *AuthService {
-	logger := zap.NewNop() // No-op logger for tests
+	log := zap.NewNop() // No-op logger for tests
 	return &AuthService{
 		db:        nil,
 		jwtSecret: []byte("test-secret-key-for-testing-purposes"),
 		jwtExpiry: 24 * time.Hour,
-		logger:    logger,
+		log:       log,
 	}
 }
 

@@ -37,22 +37,22 @@ func (r *RateLimiters) Close() {
 	}
 }
 
-func NewRateLimiters(cfg config.RateLimitConfig, redisCfg config.RedisConfig, logger *zap.Logger) (*RateLimiters, error) {
+func NewRateLimiters(cfg config.RateLimitConfig, redisCfg config.RedisConfig, log *zap.Logger) (*RateLimiters, error) {
 	noop := func(c *gin.Context) { c.Next() }
 
 	if !cfg.Enabled {
-		logger.Info("Rate limiting disabled")
+		log.Info("Rate limiting disabled")
 		return &RateLimiters{Login: noop, Register: noop, API: noop}, nil
 	}
 
 	if redisCfg.URL == "" {
-		logger.Error("REDIS_URL is required when RATE_LIMIT_ENABLED=true")
+		log.Error("REDIS_URL is required when RATE_LIMIT_ENABLED=true")
 		return nil, fmt.Errorf("REDIS_URL is required when RATE_LIMIT_ENABLED=true")
 	}
 
 	opt, err := redis.ParseURL(redisCfg.URL)
 	if err != nil {
-		logger.Error("Failed to parse Redis URL", zap.Error(err))
+		log.Error("Failed to parse Redis URL", zap.Error(err))
 		return nil, err
 	}
 
@@ -61,9 +61,9 @@ func NewRateLimiters(cfg config.RateLimitConfig, redisCfg config.RedisConfig, lo
 	defer cancel()
 	if err := client.Ping(ctx).Err(); err != nil {
 		if closeErr := client.Close(); closeErr != nil {
-			logger.Warn("Failed to close Redis client", zap.Error(closeErr))
+			log.Warn("Failed to close Redis client", zap.Error(closeErr))
 		}
-		logger.Error("Failed to connect to Redis", zap.Error(err), zap.Duration("timeout", redisConnectTimeout))
+		log.Error("Failed to connect to Redis", zap.Error(err), zap.Duration("timeout", redisConnectTimeout))
 		return nil, err
 	}
 
@@ -72,36 +72,36 @@ func NewRateLimiters(cfg config.RateLimitConfig, redisCfg config.RedisConfig, lo
 	})
 	if err != nil {
 		if closeErr := client.Close(); closeErr != nil {
-			logger.Warn("Failed to close Redis client", zap.Error(closeErr))
+			log.Warn("Failed to close Redis client", zap.Error(closeErr))
 		}
-		logger.Error("Failed to create Redis store", zap.Error(err))
+		log.Error("Failed to create Redis store", zap.Error(err))
 		return nil, err
 	}
 
 	loginRate, err := limiter.NewRateFromFormatted(cfg.LoginRate)
 	if err != nil {
 		if closeErr := client.Close(); closeErr != nil {
-			logger.Warn("Failed to close Redis client", zap.Error(closeErr))
+			log.Warn("Failed to close Redis client", zap.Error(closeErr))
 		}
-		logger.Error("Invalid login rate format", zap.String("rate", cfg.LoginRate), zap.Error(err))
+		log.Error("Invalid login rate format", zap.String("rate", cfg.LoginRate), zap.Error(err))
 		return nil, err
 	}
 
 	registerRate, err := limiter.NewRateFromFormatted(cfg.RegisterRate)
 	if err != nil {
 		if closeErr := client.Close(); closeErr != nil {
-			logger.Warn("Failed to close Redis client", zap.Error(closeErr))
+			log.Warn("Failed to close Redis client", zap.Error(closeErr))
 		}
-		logger.Error("Invalid register rate format", zap.String("rate", cfg.RegisterRate), zap.Error(err))
+		log.Error("Invalid register rate format", zap.String("rate", cfg.RegisterRate), zap.Error(err))
 		return nil, err
 	}
 
 	apiRate, err := limiter.NewRateFromFormatted(cfg.APIRate)
 	if err != nil {
 		if closeErr := client.Close(); closeErr != nil {
-			logger.Warn("Failed to close Redis client", zap.Error(closeErr))
+			log.Warn("Failed to close Redis client", zap.Error(closeErr))
 		}
-		logger.Error("Invalid API rate format", zap.String("rate", cfg.APIRate), zap.Error(err))
+		log.Error("Invalid API rate format", zap.String("rate", cfg.APIRate), zap.Error(err))
 		return nil, err
 	}
 
@@ -198,7 +198,7 @@ func NewRateLimiters(cfg config.RateLimitConfig, redisCfg config.RedisConfig, lo
 		registerUserMiddleware(c)
 	}
 
-	logger.Info("Rate limiters initialized",
+	log.Info("Rate limiters initialized",
 		zap.String("login_rate", cfg.LoginRate),
 		zap.String("register_rate", cfg.RegisterRate),
 		zap.String("api_rate", cfg.APIRate),

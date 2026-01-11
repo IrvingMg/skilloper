@@ -34,7 +34,7 @@ const (
 type Server struct {
 	config     *config.Config
 	db         *gorm.DB
-	logger     *zap.Logger
+	log        *zap.Logger
 	router     *gin.Engine
 	httpServer *http.Server
 	embeddedFS embed.FS
@@ -52,20 +52,20 @@ func (s *Server) SetStaticFS(fs embed.FS) {
 	s.embeddedFS = fs
 }
 
-func New(cfg *config.Config, db *gorm.DB, logger *zap.Logger) *Server {
+func New(cfg *config.Config, db *gorm.DB, log *zap.Logger) *Server {
 	if cfg.IsProduction() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
 	router := gin.New()
 	if err := router.SetTrustedProxies(nil); err != nil {
-		logger.Fatal("Failed to set trusted proxies", zap.Error(err))
+		log.Fatal("Failed to set trusted proxies", zap.Error(err))
 	}
 
 	return &Server{
 		config: cfg,
 		db:     db,
-		logger: logger,
+		log:    log,
 		router: router,
 	}
 }
@@ -84,7 +84,7 @@ func (s *Server) Initialize() error {
 }
 
 func (s *Server) setupMiddleware() {
-	s.logger.Info("Setting up middleware")
+	s.log.Info("Setting up middleware")
 
 	s.router.Use(gin.Recovery())
 
@@ -97,14 +97,14 @@ func (s *Server) setupMiddleware() {
 
 	s.router.Use(cors.New(corsConfig))
 
-	s.logger.Info("CORS middleware configured",
+	s.log.Info("CORS middleware configured",
 		zap.Strings("allowed_origins", s.config.AllowedOrigins),
 		zap.Strings("allowed_methods", s.config.AllowedMethods),
 	)
 }
 
 func (s *Server) setupRateLimiters() error {
-	rateLimiters, err := middleware.NewRateLimiters(s.config.RateLimit, s.config.Redis, s.logger)
+	rateLimiters, err := middleware.NewRateLimiters(s.config.RateLimit, s.config.Redis, s.log)
 	if err != nil {
 		return err
 	}
@@ -113,23 +113,23 @@ func (s *Server) setupRateLimiters() error {
 }
 
 func (s *Server) setupServices() {
-	s.logger.Info("Setting up services and handlers")
+	s.log.Info("Setting up services and handlers")
 
-	s.authService = services.NewAuthService(s.db, s.config.JWTSecret, s.config.JWTExpiry, s.logger)
+	s.authService = services.NewAuthService(s.db, s.config.JWTSecret, s.config.JWTExpiry, s.log)
 	quizService := services.NewQuizService(s.db)
-	attemptService := services.NewAttemptService(s.db, s.logger)
-	answerService := services.NewAnswerService(s.db, s.logger)
+	attemptService := services.NewAttemptService(s.db, s.log)
+	answerService := services.NewAnswerService(s.db, s.log)
 	healthService := services.NewHealthService()
 
-	s.authHandler = handlers.NewAuthHandler(s.authService, s.logger)
-	s.quizHandler = handlers.NewQuizHandler(quizService, s.logger)
-	s.attemptHandler = handlers.NewAttemptHandler(attemptService, s.logger)
-	s.answerHandler = handlers.NewAnswerHandler(answerService, s.logger)
-	s.healthHandler = handlers.NewHealthHandler(healthService, s.logger)
+	s.authHandler = handlers.NewAuthHandler(s.authService, s.log)
+	s.quizHandler = handlers.NewQuizHandler(quizService, s.log)
+	s.attemptHandler = handlers.NewAttemptHandler(attemptService, s.log)
+	s.answerHandler = handlers.NewAnswerHandler(answerService, s.log)
+	s.healthHandler = handlers.NewHealthHandler(healthService, s.log)
 }
 
 func (s *Server) setupRoutes() {
-	s.logger.Info("Setting up routes")
+	s.log.Info("Setting up routes")
 
 	api := s.router.Group("/api/v1")
 
@@ -166,7 +166,7 @@ func (s *Server) setupRoutes() {
 		protected.POST("/answers", s.answerHandler.CreateAnswer)
 	}
 
-	s.logger.Info("Routes configured successfully")
+	s.log.Info("Routes configured successfully")
 }
 
 func (s *Server) Start() error {
@@ -180,7 +180,7 @@ func (s *Server) Start() error {
 	}
 
 	if s.config.TLS.Enabled() {
-		s.logger.Info("Server starting with TLS",
+		s.log.Info("Server starting with TLS",
 			zap.String("port", s.config.Port),
 			zap.String("cert_file", s.config.TLS.CertFile),
 		)
@@ -188,7 +188,7 @@ func (s *Server) Start() error {
 			return err
 		}
 	} else {
-		s.logger.Info("Server starting",
+		s.log.Info("Server starting",
 			zap.String("port", s.config.Port),
 			zap.String("health_check", "/api/v1/health"),
 		)
@@ -202,7 +202,7 @@ func (s *Server) Start() error {
 func (s *Server) setupStaticFiles() error {
 	switch s.config.StaticMode {
 	case config.StaticModeNone:
-		s.logger.Info("Static file serving disabled")
+		s.log.Info("Static file serving disabled")
 		return nil
 	case config.StaticModeDir:
 		return s.setupDirStaticFiles()
@@ -223,7 +223,7 @@ func (s *Server) setupEmbedStaticFiles() error {
 		return fmt.Errorf("no index.html in embedded files (use STATIC_MODE=none for API-only or build with 'make build')")
 	}
 
-	s.logger.Info("Serving embedded static files")
+	s.log.Info("Serving embedded static files")
 	s.router.NoRoute(s.embeddedFileHandler(staticFS))
 	return nil
 }
@@ -242,7 +242,7 @@ func (s *Server) setupDirStaticFiles() error {
 		return fmt.Errorf("no index.html in static directory: %s", absStaticDir)
 	}
 
-	s.logger.Info("Serving static files from directory", zap.String("path", absStaticDir))
+	s.log.Info("Serving static files from directory", zap.String("path", absStaticDir))
 	s.router.NoRoute(s.dirFileHandler(absStaticDir))
 	return nil
 }
@@ -258,7 +258,7 @@ func (s *Server) embeddedFileHandler(staticFS fs.FS) gin.HandlerFunc {
 		}
 		defer func() {
 			if err := file.Close(); err != nil {
-				s.logger.Warn("Failed to close embedded file", zap.Error(err))
+				s.log.Warn("Failed to close embedded file", zap.Error(err))
 			}
 		}()
 
@@ -286,7 +286,7 @@ func (s *Server) embeddedFileHandler(staticFS fs.FS) gin.HandlerFunc {
 
 		if file, err := staticFS.Open(cleanPath); err == nil {
 			if closeErr := file.Close(); closeErr != nil {
-				s.logger.Warn("Failed to close static file", zap.Error(closeErr))
+				s.log.Warn("Failed to close static file", zap.Error(closeErr))
 			}
 			s.setCacheHeaders(c, path)
 			serveFile(c, cleanPath)
@@ -355,14 +355,14 @@ func (s *Server) setCacheHeaders(c *gin.Context, path string) {
 }
 
 func (s *Server) Shutdown() {
-	s.logger.Info("Shutting down server")
+	s.log.Info("Shutting down server")
 
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 
 	if s.httpServer != nil {
 		if err := s.httpServer.Shutdown(ctx); err != nil {
-			s.logger.Error("HTTP server shutdown error", zap.Error(err))
+			s.log.Error("HTTP server shutdown error", zap.Error(err))
 		}
 	}
 
@@ -370,5 +370,5 @@ func (s *Server) Shutdown() {
 		s.rateLimiters.Close()
 	}
 
-	s.logger.Info("Server shutdown complete")
+	s.log.Info("Server shutdown complete")
 }

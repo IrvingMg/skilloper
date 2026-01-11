@@ -17,15 +17,15 @@ import (
 	"github.com/irvingmg/skilloper/skilloper-api/internal/models"
 )
 
-func openConnection(cfg *config.Config, logger *zap.Logger) (*gorm.DB, error) {
+func openConnection(cfg *config.Config, log *zap.Logger) (*gorm.DB, error) {
 	var dialector gorm.Dialector
 
 	switch cfg.DBDriver {
 	case config.DBDriverPostgres:
-		logger.Info("Connecting to PostgreSQL database")
+		log.Info("Connecting to PostgreSQL database")
 		dialector = postgres.Open(cfg.DatabaseURL)
 	case config.DBDriverSQLite:
-		logger.Info("Connecting to SQLite database", zap.String("path", cfg.DatabasePath))
+		log.Info("Connecting to SQLite database", zap.String("path", cfg.DatabasePath))
 		dialector = sqlite.Open(cfg.DatabasePath + "?_foreign_keys=on")
 	default:
 		return nil, fmt.Errorf("unsupported database driver: %s", cfg.DBDriver)
@@ -40,21 +40,21 @@ func openConnection(cfg *config.Config, logger *zap.Logger) (*gorm.DB, error) {
 		Logger: gormlogger.Default.LogMode(gormLogLevel),
 	})
 	if err != nil {
-		logger.Error("Failed to connect to database", zap.Error(err))
+		log.Error("Failed to connect to database", zap.Error(err))
 		return nil, err
 	}
 
 	if cfg.DBDriver == config.DBDriverPostgres {
 		sqlDB, err := db.DB()
 		if err != nil {
-			logger.Error("Failed to get underlying DB connection", zap.Error(err))
+			log.Error("Failed to get underlying DB connection", zap.Error(err))
 			return nil, err
 		}
 		sqlDB.SetMaxOpenConns(25)
 		sqlDB.SetMaxIdleConns(10)
 		sqlDB.SetConnMaxLifetime(30 * time.Minute)
 		sqlDB.SetConnMaxIdleTime(5 * time.Minute)
-		logger.Info("PostgreSQL connection pool configured",
+		log.Info("PostgreSQL connection pool configured",
 			zap.Int("max_open", 25),
 			zap.Int("max_idle", 10))
 	}
@@ -62,13 +62,13 @@ func openConnection(cfg *config.Config, logger *zap.Logger) (*gorm.DB, error) {
 	return db, nil
 }
 
-func New(cfg *config.Config, logger *zap.Logger) (*gorm.DB, error) {
-	db, err := openConnection(cfg, logger)
+func New(cfg *config.Config, log *zap.Logger) (*gorm.DB, error) {
+	db, err := openConnection(cfg, log)
 	if err != nil {
 		return nil, err
 	}
 
-	logger.Info("Running database migrations")
+	log.Info("Running database migrations")
 	err = db.AutoMigrate(
 		&models.User{},
 		&models.TokenBlacklist{},
@@ -78,28 +78,28 @@ func New(cfg *config.Config, logger *zap.Logger) (*gorm.DB, error) {
 		&models.AttemptAnswer{},
 	)
 	if err != nil {
-		logger.Error("Failed to migrate database", zap.Error(err))
+		log.Error("Failed to migrate database", zap.Error(err))
 		return nil, err
 	}
 
-	if err := ensureAdminUser(db, cfg, logger); err != nil {
-		logger.Error("Failed to ensure admin user", zap.Error(err))
+	if err := ensureAdminUser(db, cfg, log); err != nil {
+		log.Error("Failed to ensure admin user", zap.Error(err))
 		return nil, err
 	}
 
-	logger.Info("Database initialized successfully")
+	log.Info("Database initialized successfully")
 	return db, nil
 }
 
-func ensureAdminUser(db *gorm.DB, cfg *config.Config, logger *zap.Logger) error {
+func ensureAdminUser(db *gorm.DB, cfg *config.Config, log *zap.Logger) error {
 	if !models.ValidateUsername(cfg.AdminUsername) {
-		logger.Error("Invalid ADMIN_USERNAME",
+		log.Error("Invalid ADMIN_USERNAME",
 			zap.String("requirement", "6-30 chars, alphanumeric and underscore only"))
 		return apperrors.ErrInvalidAdminUsername
 	}
 
 	if !models.ValidatePassword(cfg.AdminPassword) {
-		logger.Error("Invalid ADMIN_PASSWORD",
+		log.Error("Invalid ADMIN_PASSWORD",
 			zap.String("requirement", "8-72 chars with uppercase, lowercase, and digit"))
 		return apperrors.ErrInvalidAdminPassword
 	}
@@ -117,9 +117,9 @@ func ensureAdminUser(db *gorm.DB, cfg *config.Config, logger *zap.Logger) error 
 			}).Error; err != nil {
 				return err
 			}
-			logger.Info("Updated existing user to admin")
+			log.Info("Updated existing user to admin")
 		} else {
-			logger.Info("Admin user already exists")
+			log.Info("Admin user already exists")
 		}
 		return nil
 	}
@@ -142,6 +142,6 @@ func ensureAdminUser(db *gorm.DB, cfg *config.Config, logger *zap.Logger) error 
 		return err
 	}
 
-	logger.Info("Created admin user")
+	log.Info("Created admin user")
 	return nil
 }

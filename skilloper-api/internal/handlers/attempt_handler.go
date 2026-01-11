@@ -16,13 +16,13 @@ import (
 
 type AttemptHandler struct {
 	service *services.AttemptService
-	logger  *zap.Logger
+	log     *zap.Logger
 }
 
-func NewAttemptHandler(service *services.AttemptService, logger *zap.Logger) *AttemptHandler {
+func NewAttemptHandler(service *services.AttemptService, log *zap.Logger) *AttemptHandler {
 	return &AttemptHandler{
 		service: service,
-		logger:  logger,
+		log:     log,
 	}
 }
 
@@ -31,20 +31,20 @@ func (h *AttemptHandler) handleError(c *gin.Context, err error, operation string
 	if errors.As(err, &appErr) {
 		switch appErr.Type {
 		case apperrors.ErrTypeValidation:
-			h.logger.Warn("Validation error", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
+			h.log.Warn("Validation error", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
 			c.JSON(http.StatusBadRequest, gin.H{"error": appErr.Message, "code": appErr.Code})
 		case apperrors.ErrTypeNotFound:
-			h.logger.Warn("Resource not found", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
+			h.log.Warn("Resource not found", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
 			c.JSON(http.StatusNotFound, gin.H{"error": appErr.Message, "code": appErr.Code})
 		case apperrors.ErrTypeDatabase, apperrors.ErrTypeInternal:
-			h.logger.Error("Internal error", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
+			h.log.Error("Internal error", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error", "code": appErr.Code})
 		default:
-			h.logger.Error("Unknown error type", zap.String("operation", operation), zap.Error(err))
+			h.log.Error("Unknown error type", zap.String("operation", operation), zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 		}
 	} else {
-		h.logger.Error("Unexpected error", zap.String("operation", operation), zap.Error(err))
+		h.log.Error("Unexpected error", zap.String("operation", operation), zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 	}
 }
@@ -52,7 +52,7 @@ func (h *AttemptHandler) handleError(c *gin.Context, err error, operation string
 // CreateAttempt handles POST /attempts
 func (h *AttemptHandler) CreateAttempt(c *gin.Context) {
 	userID := middleware.GetUserID(c)
-	h.logger.Debug("Creating new quiz attempt", zap.Uint("user_id", userID))
+	h.log.Debug("Creating new quiz attempt", zap.Uint("user_id", userID))
 
 	var req models.StartAttemptRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -60,7 +60,7 @@ func (h *AttemptHandler) CreateAttempt(c *gin.Context) {
 		return
 	}
 
-	h.logger.Debug("Creating attempt",
+	h.log.Debug("Creating attempt",
 		zap.Uint("user_id", userID),
 		zap.Uint("quiz_id", req.QuizID))
 
@@ -70,7 +70,7 @@ func (h *AttemptHandler) CreateAttempt(c *gin.Context) {
 		return
 	}
 
-	h.logger.Debug("Successfully created attempt",
+	h.log.Debug("Successfully created attempt",
 		zap.Uint("id", attempt.ID),
 		zap.Uint("user_id", attempt.UserID))
 	c.JSON(http.StatusCreated, attempt)
@@ -91,7 +91,7 @@ func (h *AttemptHandler) UpdateAttempt(c *gin.Context) {
 		return
 	}
 
-	h.logger.Debug("Updating quiz attempt", zap.Uint("user_id", userID), zap.Int("id", id), zap.String("status", string(req.Status)))
+	h.log.Debug("Updating quiz attempt", zap.Uint("user_id", userID), zap.Int("id", id), zap.String("status", string(req.Status)))
 
 	attempt, err := h.service.Update(userID, uint(id), req)
 	if err != nil {
@@ -99,7 +99,7 @@ func (h *AttemptHandler) UpdateAttempt(c *gin.Context) {
 		return
 	}
 
-	h.logger.Debug("Successfully updated attempt",
+	h.log.Debug("Successfully updated attempt",
 		zap.Int("id", id),
 		zap.String("status", string(attempt.Status)))
 	c.JSON(http.StatusOK, attempt)
@@ -119,7 +119,7 @@ func (h *AttemptHandler) GetAttempts(c *gin.Context) {
 		return
 	}
 
-	h.logger.Debug("Fetching attempts for user",
+	h.log.Debug("Fetching attempts for user",
 		zap.Uint("user_id", userID),
 		zap.Int("limit", params.Limit),
 		zap.Int("offset", params.Offset),
@@ -132,7 +132,7 @@ func (h *AttemptHandler) GetAttempts(c *gin.Context) {
 		return
 	}
 
-	h.logger.Debug("Successfully fetched attempts",
+	h.log.Debug("Successfully fetched attempts",
 		zap.Uint("user_id", userID),
 		zap.Int("count", len(result.Data)),
 		zap.Int("total", result.Pagination.TotalCount))
@@ -148,7 +148,7 @@ func (h *AttemptHandler) GetAttempt(c *gin.Context) {
 		return
 	}
 
-	h.logger.Debug("Fetching attempt", zap.Uint("user_id", userID), zap.Int("id", id))
+	h.log.Debug("Fetching attempt", zap.Uint("user_id", userID), zap.Int("id", id))
 
 	attempt, err := h.service.GetByID(userID, uint(id))
 	if err != nil {
@@ -156,7 +156,7 @@ func (h *AttemptHandler) GetAttempt(c *gin.Context) {
 		return
 	}
 
-	h.logger.Debug("Successfully fetched attempt",
+	h.log.Debug("Successfully fetched attempt",
 		zap.Int("id", id),
 		zap.String("quiz_title", attempt.QuizTitle))
 	c.JSON(http.StatusOK, attempt)

@@ -16,13 +16,13 @@ import (
 
 type AuthHandler struct {
 	service *services.AuthService
-	logger  *zap.Logger
+	log     *zap.Logger
 }
 
-func NewAuthHandler(service *services.AuthService, logger *zap.Logger) *AuthHandler {
+func NewAuthHandler(service *services.AuthService, log *zap.Logger) *AuthHandler {
 	return &AuthHandler{
 		service: service,
-		logger:  logger,
+		log:     log,
 	}
 }
 
@@ -31,35 +31,35 @@ func (h *AuthHandler) handleError(c *gin.Context, err error, operation string) {
 	if errors.As(err, &appErr) {
 		switch appErr.Code {
 		case "USERNAME_TAKEN":
-			h.logger.Warn("Username taken", zap.String("operation", operation), zap.Error(err))
+			h.log.Warn("Username taken", zap.String("operation", operation), zap.Error(err))
 			c.JSON(http.StatusConflict, gin.H{"error": appErr.Message, "code": appErr.Code})
 			return
 		case "INVALID_CREDENTIALS":
-			h.logger.Warn("Invalid credentials", zap.String("operation", operation), zap.Error(err))
+			h.log.Warn("Invalid credentials", zap.String("operation", operation), zap.Error(err))
 			c.JSON(http.StatusUnauthorized, gin.H{"error": appErr.Message, "code": appErr.Code})
 			return
 		case "ACCOUNT_LOCKED":
-			h.logger.Warn("Account locked", zap.String("operation", operation), zap.Error(err))
+			h.log.Warn("Account locked", zap.String("operation", operation), zap.Error(err))
 			c.JSON(http.StatusTooManyRequests, gin.H{"error": appErr.Message, "code": appErr.Code})
 			return
 		}
 
 		switch appErr.Type {
 		case apperrors.ErrTypeValidation:
-			h.logger.Warn("Validation error", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
+			h.log.Warn("Validation error", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
 			c.JSON(http.StatusBadRequest, gin.H{"error": appErr.Message, "code": appErr.Code})
 		case apperrors.ErrTypeNotFound:
-			h.logger.Warn("Resource not found", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
+			h.log.Warn("Resource not found", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
 			c.JSON(http.StatusNotFound, gin.H{"error": appErr.Message, "code": appErr.Code})
 		case apperrors.ErrTypeDatabase, apperrors.ErrTypeInternal:
-			h.logger.Error("Internal error", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
+			h.log.Error("Internal error", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error", "code": appErr.Code})
 		default:
-			h.logger.Error("Unknown error type", zap.String("operation", operation), zap.Error(err))
+			h.log.Error("Unknown error type", zap.String("operation", operation), zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 		}
 	} else {
-		h.logger.Error("Unexpected error", zap.String("operation", operation), zap.Error(err))
+		h.log.Error("Unexpected error", zap.String("operation", operation), zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 	}
 }
@@ -107,16 +107,16 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		token := strings.TrimPrefix(authHeader, "Bearer ")
 		if expiry, err := h.service.GetTokenExpiry(token); err == nil {
 			if err := h.service.BlacklistToken(token, expiry); err != nil {
-				h.logger.Warn("Failed to blacklist token",
+				h.log.Warn("Failed to blacklist token",
 					zap.Error(err))
 			}
 		} else {
-			h.logger.Warn("Failed to get token expiry for blacklisting",
+			h.log.Warn("Failed to get token expiry for blacklisting",
 				zap.Error(err))
 		}
 	}
 
-	h.logger.Debug("User logged out",
+	h.log.Debug("User logged out",
 		zap.Uint("user_id", userID))
 
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})

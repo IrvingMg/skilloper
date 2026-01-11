@@ -11,23 +11,23 @@ import (
 
 type HealthHandler struct {
 	service *services.HealthService
-	logger  *zap.Logger
+	log     *zap.Logger
 }
 
-func NewHealthHandler(service *services.HealthService, logger *zap.Logger) *HealthHandler {
+func NewHealthHandler(service *services.HealthService, log *zap.Logger) *HealthHandler {
 	return &HealthHandler{
 		service: service,
-		logger:  logger,
+		log:     log,
 	}
 }
 
 // HealthCheck handles GET /health
 func (h *HealthHandler) HealthCheck(c *gin.Context) {
-	h.logger.Debug("Health check requested")
+	h.log.Debug("Health check requested")
 
 	response := h.service.GetHealth()
 
-	h.logger.Debug("Health check completed",
+	h.log.Debug("Health check completed",
 		zap.String("status", response.Status),
 	)
 

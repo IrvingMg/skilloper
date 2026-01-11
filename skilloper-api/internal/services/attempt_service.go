@@ -15,14 +15,14 @@ import (
 )
 
 type AttemptService struct {
-	db     *gorm.DB
-	logger *zap.Logger
+	db  *gorm.DB
+	log *zap.Logger
 }
 
-func NewAttemptService(db *gorm.DB, logger *zap.Logger) *AttemptService {
+func NewAttemptService(db *gorm.DB, log *zap.Logger) *AttemptService {
 	return &AttemptService{
-		db:     db,
-		logger: logger,
+		db:  db,
+		log: log,
 	}
 }
 
@@ -62,7 +62,7 @@ func (s *AttemptService) Start(userID uint, req models.StartAttemptRequest) (*mo
 				"status":       models.AttemptStatusAbandoned,
 				"completed_at": time.Now(),
 			}).Error; err != nil {
-			s.logger.Warn("Failed to clean up stale attempts", zap.Error(err))
+			s.log.Warn("Failed to clean up stale attempts", zap.Error(err))
 		}
 
 		var existingCount int64
@@ -190,7 +190,7 @@ func (s *AttemptService) complete(userID uint, attemptID uint, answers []models.
 		correctCount := 0
 		for _, answerReq := range answers {
 			if seenQuestions[answerReq.QuestionID] {
-				s.logger.Debug("Duplicate question submission ignored",
+				s.log.Debug("Duplicate question submission ignored",
 					zap.Uint("question_id", answerReq.QuestionID),
 					zap.Uint("attempt_id", attemptID))
 				continue
@@ -199,7 +199,7 @@ func (s *AttemptService) complete(userID uint, attemptID uint, answers []models.
 
 			question, found := questionMap[answerReq.QuestionID]
 			if !found {
-				s.logger.Debug("Question not found in quiz",
+				s.log.Debug("Question not found in quiz",
 					zap.Uint("question_id", answerReq.QuestionID),
 					zap.Uint("quiz_id", attempt.QuizID))
 				continue
@@ -207,7 +207,7 @@ func (s *AttemptService) complete(userID uint, attemptID uint, answers []models.
 
 			var options []string
 			if err := json.Unmarshal([]byte(question.Options), &options); err != nil {
-				s.logger.Debug("Failed to unmarshal options",
+				s.log.Debug("Failed to unmarshal options",
 					zap.Uint("question_id", question.ID),
 					zap.Error(err))
 				options = []string{}
@@ -220,7 +220,7 @@ func (s *AttemptService) complete(userID uint, attemptID uint, answers []models.
 
 			if question.QuestionType == models.QuestionTypeMultipleChoice {
 				if err := json.Unmarshal([]byte(question.CorrectAnswers), &correctAnswers); err != nil {
-					s.logger.Debug("Failed to unmarshal correct answers",
+					s.log.Debug("Failed to unmarshal correct answers",
 						zap.Uint("question_id", question.ID),
 						zap.Error(err))
 					correctAnswers = []int{}
@@ -230,7 +230,7 @@ func (s *AttemptService) complete(userID uint, attemptID uint, answers []models.
 
 				if len(answerReq.UserAnswers) > 0 {
 					if userAnswersBytes, err := json.Marshal(answerReq.UserAnswers); err != nil {
-						s.logger.Debug("Failed to marshal user answers",
+						s.log.Debug("Failed to marshal user answers",
 							zap.Uint("question_id", question.ID),
 							zap.Error(err))
 					} else {
@@ -239,7 +239,7 @@ func (s *AttemptService) complete(userID uint, attemptID uint, answers []models.
 				}
 				if len(correctAnswers) > 0 {
 					if correctAnswersBytes, err := json.Marshal(correctAnswers); err != nil {
-						s.logger.Debug("Failed to marshal correct answers",
+						s.log.Debug("Failed to marshal correct answers",
 							zap.Uint("question_id", question.ID),
 							zap.Error(err))
 					} else {
@@ -261,7 +261,7 @@ func (s *AttemptService) complete(userID uint, attemptID uint, answers []models.
 
 			if len(options) > 0 {
 				if optionsBytes, err := json.Marshal(options); err != nil {
-					s.logger.Debug("Failed to marshal options",
+					s.log.Debug("Failed to marshal options",
 						zap.Uint("question_id", question.ID),
 						zap.Error(err))
 				} else {
@@ -399,7 +399,7 @@ func (s *AttemptService) convertToResponse(attempt models.QuizAttempt) models.At
 		userAnswers := []int{}
 		if answer.UserAnswers != "" {
 			if err := json.Unmarshal([]byte(answer.UserAnswers), &userAnswers); err != nil {
-				s.logger.Debug("Failed to unmarshal user answers",
+				s.log.Debug("Failed to unmarshal user answers",
 					zap.Uint("answer_id", answer.ID),
 					zap.Error(err))
 			}
@@ -408,7 +408,7 @@ func (s *AttemptService) convertToResponse(attempt models.QuizAttempt) models.At
 		correctAnswers := []int{}
 		if answer.CorrectAnswers != "" {
 			if err := json.Unmarshal([]byte(answer.CorrectAnswers), &correctAnswers); err != nil {
-				s.logger.Debug("Failed to unmarshal correct answers",
+				s.log.Debug("Failed to unmarshal correct answers",
 					zap.Uint("answer_id", answer.ID),
 					zap.Error(err))
 			}
@@ -417,7 +417,7 @@ func (s *AttemptService) convertToResponse(attempt models.QuizAttempt) models.At
 		options := []string{}
 		if answer.Options != "" {
 			if err := json.Unmarshal([]byte(answer.Options), &options); err != nil {
-				s.logger.Debug("Failed to unmarshal options",
+				s.log.Debug("Failed to unmarshal options",
 					zap.Uint("answer_id", answer.ID),
 					zap.Error(err))
 			}

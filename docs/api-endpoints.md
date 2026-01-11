@@ -18,6 +18,9 @@ Authorization: Bearer <token>
 ### Protected Endpoints (require authentication)
 All other endpoints require a valid JWT token:
 - `GET /users/me` - Get current user
+- `PUT /users/me/password` - Update password
+- `POST /users/me/history-clearance` - Clear quiz history
+- `POST /users/me/deletion` - Delete account
 - `DELETE /sessions` - Logout
 - All quiz endpoints (`/quizzes/*`)
 - All attempt endpoints (`/attempts/*`)
@@ -37,6 +40,9 @@ All other endpoints require a valid JWT token:
 |--------|----------|-------------|
 | `POST` | `/users` | Create user account (register) |
 | `GET` | `/users/me` | Get current user info (protected) |
+| `PUT` | `/users/me/password` | Update password (protected) |
+| `POST` | `/users/me/history-clearance` | Clear quiz history (protected) |
+| `POST` | `/users/me/deletion` | Delete account (protected) |
 | `POST` | `/sessions` | Create session (login) |
 | `DELETE` | `/sessions` | Destroy session (logout, protected) |
 
@@ -169,6 +175,53 @@ curl http://localhost:8080/api/v1/users/me \
 ```bash
 curl -X DELETE http://localhost:8080/api/v1/sessions \
   -H "Authorization: Bearer <token>"
+```
+
+### Update Password
+```bash
+curl -X PUT http://localhost:8080/api/v1/users/me/password \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"current_password": "OldPassword123", "new_password": "NewPassword456"}'
+```
+
+Response (includes new token since password change invalidates old tokens):
+```json
+{
+  "message": "Password updated successfully",
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+### Clear Quiz History
+```bash
+curl -X POST http://localhost:8080/api/v1/users/me/history-clearance \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"password": "MyPassword123"}'
+```
+
+Response:
+```json
+{
+  "message": "Quiz history cleared successfully",
+  "deleted_count": 15
+}
+```
+
+### Delete Account
+```bash
+curl -X POST http://localhost:8080/api/v1/users/me/deletion \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"password": "MyPassword123"}'
+```
+
+Response:
+```json
+{
+  "message": "Account deleted successfully"
+}
 ```
 
 ### Get Quiz Summaries

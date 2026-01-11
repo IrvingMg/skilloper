@@ -14,13 +14,13 @@ import (
 
 type AnswerHandler struct {
 	service *services.AnswerService
-	logger  *zap.Logger
+	log     *zap.Logger
 }
 
-func NewAnswerHandler(service *services.AnswerService, logger *zap.Logger) *AnswerHandler {
+func NewAnswerHandler(service *services.AnswerService, log *zap.Logger) *AnswerHandler {
 	return &AnswerHandler{
 		service: service,
-		logger:  logger,
+		log:     log,
 	}
 }
 
@@ -29,20 +29,20 @@ func (h *AnswerHandler) handleError(c *gin.Context, err error, operation string)
 	if errors.As(err, &appErr) {
 		switch appErr.Type {
 		case apperrors.ErrTypeValidation:
-			h.logger.Warn("Validation error", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
+			h.log.Warn("Validation error", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
 			c.JSON(http.StatusBadRequest, gin.H{"error": appErr.Message, "code": appErr.Code})
 		case apperrors.ErrTypeNotFound:
-			h.logger.Warn("Resource not found", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
+			h.log.Warn("Resource not found", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
 			c.JSON(http.StatusNotFound, gin.H{"error": appErr.Message, "code": appErr.Code})
 		case apperrors.ErrTypeDatabase, apperrors.ErrTypeInternal:
-			h.logger.Error("Internal error", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
+			h.log.Error("Internal error", zap.String("operation", operation), zap.String("code", appErr.Code), zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error", "code": appErr.Code})
 		default:
-			h.logger.Error("Unknown error type", zap.String("operation", operation), zap.Error(err))
+			h.log.Error("Unknown error type", zap.String("operation", operation), zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 		}
 	} else {
-		h.logger.Error("Unexpected error", zap.String("operation", operation), zap.Error(err))
+		h.log.Error("Unexpected error", zap.String("operation", operation), zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 	}
 }
@@ -60,7 +60,7 @@ func (h *AnswerHandler) CreateAnswer(c *gin.Context) {
 		return
 	}
 
-	h.logger.Debug("Validating answer for question", zap.Uint("question_id", req.QuestionID))
+	h.log.Debug("Validating answer for question", zap.Uint("question_id", req.QuestionID))
 
 	result, err := h.service.ValidateAnswer(req)
 	if err != nil {
@@ -68,7 +68,7 @@ func (h *AnswerHandler) CreateAnswer(c *gin.Context) {
 		return
 	}
 
-	h.logger.Debug("Answer validated",
+	h.log.Debug("Answer validated",
 		zap.Uint("question_id", req.QuestionID),
 		zap.Bool("is_correct", result.IsCorrect))
 	c.JSON(http.StatusOK, result)

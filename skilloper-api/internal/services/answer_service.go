@@ -13,14 +13,14 @@ import (
 )
 
 type AnswerService struct {
-	db     *gorm.DB
-	logger *zap.Logger
+	db  *gorm.DB
+	log *zap.Logger
 }
 
-func NewAnswerService(db *gorm.DB, logger *zap.Logger) *AnswerService {
+func NewAnswerService(db *gorm.DB, log *zap.Logger) *AnswerService {
 	return &AnswerService{
-		db:     db,
-		logger: logger,
+		db:  db,
+		log: log,
 	}
 }
 
@@ -43,7 +43,7 @@ func (s *AnswerService) ValidateAnswer(req models.CreateAnswerRequest) (*models.
 	if question.QuestionType == models.QuestionTypeMultipleChoice {
 		var correctAnswers []int
 		if err := json.Unmarshal([]byte(question.CorrectAnswers), &correctAnswers); err != nil {
-			s.logger.Debug("Failed to unmarshal correct answers",
+			s.log.Debug("Failed to unmarshal correct answers",
 				zap.Uint("question_id", req.QuestionID),
 				zap.Error(err))
 			return nil, apperrors.ErrFetchQuestionFailed
