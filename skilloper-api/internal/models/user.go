@@ -10,13 +10,18 @@ import (
 type User struct {
 	ID                  uint       `json:"id" gorm:"primaryKey"`
 	Username            string     `json:"username" gorm:"uniqueIndex;not null;size:30"`
-	PasswordHash        string     `json:"-" gorm:"not null"`
+	PasswordHash        string     `json:"-" gorm:"not null;size:60"` // bcrypt hash is always 60 chars
 	IsAdmin             bool       `json:"is_admin" gorm:"default:false"`
 	FailedAttempts      int        `json:"-" gorm:"default:0"`
 	LockedUntil         *time.Time `json:"-"`
 	TokensInvalidatedAt *time.Time `json:"-" gorm:"index"`
 	CreatedAt           time.Time  `json:"created_at"`
 	UpdatedAt           time.Time  `json:"updated_at"`
+}
+
+// IsLocked returns true if the user account is currently locked
+func (u *User) IsLocked() bool {
+	return u.LockedUntil != nil && time.Now().Before(*u.LockedUntil)
 }
 
 // TokenBlacklist stores invalidated tokens for logout
@@ -61,8 +66,8 @@ const (
 	MaxFailedAttempts = 5
 	LockoutDuration   = 15 * time.Minute
 
-	// Password hashing
-	BcryptCost = 12
+	// Password hashing - OWASP recommends cost 13+ for new systems
+	BcryptCost = 13
 )
 
 // UsernameRegex validates username format: alphanumeric and underscore only

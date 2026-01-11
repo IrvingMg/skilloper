@@ -1,4 +1,3 @@
-/// Pagination metadata from API responses
 class PaginationMeta {
   final int limit;
   final int offset;
@@ -13,15 +12,42 @@ class PaginationMeta {
   });
 
   factory PaginationMeta.fromJson(Map<String, dynamic> json) {
+    final limit = json['limit'];
+    final offset = json['offset'];
+    final totalCount = json['total_count'];
+    final hasMore = json['has_more'];
+
+    if (limit == null) {
+      throw const FormatException(
+        'PaginationMeta missing required field: limit',
+      );
+    }
+    if (offset == null) {
+      throw const FormatException(
+        'PaginationMeta missing required field: offset',
+      );
+    }
+    if (totalCount == null) {
+      throw const FormatException(
+        'PaginationMeta missing required field: total_count',
+      );
+    }
+    if (hasMore == null) {
+      throw const FormatException(
+        'PaginationMeta missing required field: has_more',
+      );
+    }
+
     return PaginationMeta(
-      limit: json['limit'] as int,
-      offset: json['offset'] as int,
-      totalCount: json['total_count'] as int,
-      hasMore: json['has_more'] as bool,
+      limit: limit is int ? limit : int.parse(limit.toString()),
+      offset: offset is int ? offset : int.parse(offset.toString()),
+      totalCount: totalCount is int
+          ? totalCount
+          : int.parse(totalCount.toString()),
+      hasMore: hasMore is bool ? hasMore : hasMore.toString() == 'true',
     );
   }
 
-  /// Initial empty state (hasMore is false until first load succeeds)
   factory PaginationMeta.initial() {
     return const PaginationMeta(
       limit: 20,
@@ -31,11 +57,9 @@ class PaginationMeta {
     );
   }
 
-  /// Get next offset for loading more
   int get nextOffset => offset + limit;
 }
 
-/// Generic paginated response wrapper
 class PaginatedResponse<T> {
   final List<T> data;
   final PaginationMeta pagination;

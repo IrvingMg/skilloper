@@ -76,6 +76,15 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
   }
 
   @override
+  void didUpdateWidget(SearchFilterBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.searchController != widget.searchController) {
+      oldWidget.searchController.removeListener(_onControllerChanged);
+      widget.searchController.addListener(_onControllerChanged);
+    }
+  }
+
+  @override
   void dispose() {
     widget.searchController.removeListener(_onControllerChanged);
     super.dispose();

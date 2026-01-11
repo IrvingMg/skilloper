@@ -88,23 +88,31 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 		token := strings.TrimPrefix(authHeader, "Bearer ")
 		if expiry, err := h.service.GetTokenExpiry(token); err == nil {
 			if err := h.service.BlacklistToken(token, expiry); err != nil {
-				h.log.Warn("Failed to blacklist token",
+				h.log.Warn("Failed to blacklist token during logout",
+					zap.Uint("user_id", userID),
 					zap.Error(err))
+			} else {
+				h.log.Debug("Access token blacklisted",
+					zap.Uint("user_id", userID))
 			}
 		} else {
 			h.log.Warn("Failed to get token expiry for blacklisting",
+				zap.Uint("user_id", userID),
 				zap.Error(err))
 		}
 	}
 
 	// Revoke all refresh tokens for this user
 	if err := h.service.RevokeUserRefreshTokens(userID); err != nil {
-		h.log.Warn("Failed to revoke refresh tokens",
-			zap.Error(err),
+		h.log.Warn("Failed to revoke refresh tokens during logout",
+			zap.Uint("user_id", userID),
+			zap.Error(err))
+	} else {
+		h.log.Debug("Refresh tokens revoked",
 			zap.Uint("user_id", userID))
 	}
 
-	h.log.Debug("User logged out",
+	h.log.Info("User logged out",
 		zap.Uint("user_id", userID))
 
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
@@ -189,6 +197,9 @@ func (h *AuthHandler) DeleteAccount(c *gin.Context) {
 			_ = h.service.BlacklistToken(token, expiry)
 		}
 	}
+
+	h.log.Info("Account deleted",
+		zap.Uint("user_id", userID))
 
 	c.JSON(http.StatusOK, gin.H{"message": "Account deleted successfully"})
 }

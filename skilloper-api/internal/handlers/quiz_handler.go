@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -17,6 +18,21 @@ import (
 const (
 	ViewModeEdit = "edit"
 )
+
+func isAllowedImportMimeType(mimeType string) bool {
+	allowedTypes := []string{
+		"text/csv",
+		"text/plain", // Some systems send CSV as text/plain
+		"application/json",
+		"application/octet-stream", // Fallback for unknown types
+	}
+	for _, allowed := range allowedTypes {
+		if strings.HasPrefix(mimeType, allowed) {
+			return true
+		}
+	}
+	return false
+}
 
 type QuizHandler struct {
 	service *services.QuizService
@@ -197,6 +213,13 @@ func (h *QuizHandler) handleImport(c *gin.Context, userID uint) {
 
 	if file.Size > models.MaxImportFileSize {
 		h.errH.Handle(c, apperrors.ErrFileTooLarge, "validate_file_size")
+		return
+	}
+
+	mimeType := file.Header.Get("Content-Type")
+	if !isAllowedImportMimeType(mimeType) {
+		h.errH.Handle(c, apperrors.NewValidationError("INVALID_FILE_TYPE",
+			"only CSV and JSON files are allowed"), "validate_file_type")
 		return
 	}
 

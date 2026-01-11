@@ -1,11 +1,12 @@
 package services
 
 import (
-	"crypto/rand"
+	cryptorand "crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"math/rand/v2"
 	"strings"
 	"time"
 
@@ -17,6 +18,10 @@ import (
 
 	apperrors "github.com/irvingmg/skilloper/skilloper-api/internal/errors"
 	"github.com/irvingmg/skilloper/skilloper-api/internal/models"
+)
+
+const (
+	cleanupProbabilityDenominator = 20 // 1/20 = 5% chance of cleanup per token refresh
 )
 
 var (
@@ -184,23 +189,36 @@ func (s *AuthService) Login(req models.LoginRequest) (*models.LoginResponse, err
 	}, nil
 }
 
+// recordFailedAttempt fails silently (logs errors but doesn't return them) so database
+// issues don't break the login flow. The security feature degrades gracefully.
 func (s *AuthService) recordFailedAttempt(user *models.User) {
-	user.FailedAttempts++
+	if err := s.db.Model(user).Update("failed_attempts", gorm.Expr("failed_attempts + 1")).Error; err != nil {
+		s.log.Warn("Failed to increment failed attempts counter",
+			zap.Uint("user_id", user.ID),
+			zap.Error(err))
+		return
+	}
 
-	updates := map[string]any{
-		"failed_attempts": user.FailedAttempts,
+	if err := s.db.First(user, user.ID).Error; err != nil {
+		s.log.Warn("Failed to refresh user after incrementing failed attempts",
+			zap.Uint("user_id", user.ID),
+			zap.Error(err))
+		return
 	}
 
 	if user.FailedAttempts >= models.MaxFailedAttempts {
 		lockUntil := time.Now().Add(models.LockoutDuration)
-		updates["locked_until"] = lockUntil
+		if err := s.db.Model(user).Update("locked_until", lockUntil).Error; err != nil {
+			s.log.Warn("Failed to lock account",
+				zap.Uint("user_id", user.ID),
+				zap.Error(err))
+			return
+		}
 		s.log.Warn("Account locked due to too many failed attempts",
 			zap.Uint("user_id", user.ID),
 			zap.Int("failed_attempts", user.FailedAttempts),
 			zap.Time("locked_until", lockUntil))
 	}
-
-	s.db.Model(user).Updates(updates)
 }
 
 func (s *AuthService) ValidateToken(tokenString string) (*Claims, error) {
@@ -273,9 +291,40 @@ func (s *AuthService) hashToken(token string) string {
 	return hex.EncodeToString(hash[:])
 }
 
-// CleanupExpiredBlacklist removes expired entries from the blacklist
-func (s *AuthService) CleanupExpiredBlacklist() error {
-	return s.db.Where("expires_at < ?", time.Now()).Delete(&models.TokenBlacklist{}).Error
+func (s *AuthService) CleanupExpiredBlacklist() (int64, error) {
+	result := s.db.Where("expires_at < ?", time.Now()).Delete(&models.TokenBlacklist{})
+	return result.RowsAffected, result.Error
+}
+
+func (s *AuthService) CleanupExpiredRefreshTokens() (int64, error) {
+	result := s.db.Where("expires_at < ?", time.Now()).Delete(&models.RefreshToken{})
+	return result.RowsAffected, result.Error
+}
+
+func (s *AuthService) RunCleanupTasks() (int64, int64) {
+	blacklistDeleted, err := s.CleanupExpiredBlacklist()
+	if err != nil {
+		s.log.Warn("Failed to cleanup expired blacklist entries", zap.Error(err))
+	}
+
+	refreshTokensDeleted, err := s.CleanupExpiredRefreshTokens()
+	if err != nil {
+		s.log.Warn("Failed to cleanup expired refresh tokens", zap.Error(err))
+	}
+
+	return blacklistDeleted, refreshTokensDeleted
+}
+
+// maybeRunCleanup runs cleanup with ~5% probability for opportunistic garbage collection.
+func (s *AuthService) maybeRunCleanup() {
+	if rand.IntN(cleanupProbabilityDenominator) == 0 {
+		blacklistDeleted, refreshTokensDeleted := s.RunCleanupTasks()
+		if blacklistDeleted > 0 || refreshTokensDeleted > 0 {
+			s.log.Debug("Opportunistic cleanup completed",
+				zap.Int64("blacklist_deleted", blacklistDeleted),
+				zap.Int64("refresh_tokens_deleted", refreshTokensDeleted))
+		}
+	}
 }
 
 func (s *AuthService) GetUserByID(id uint) (*models.UserResponse, error) {
@@ -321,6 +370,10 @@ func (s *AuthService) generateToken(user models.User) (string, error) {
 
 func (s *AuthService) GetTokenExpiry(tokenString string) (time.Time, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (any, error) {
+		// Validate signing method to prevent algorithm confusion attacks
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, apperrors.ErrInvalidToken
+		}
 		return s.jwtSecret, nil
 	})
 
@@ -363,13 +416,13 @@ func (s *AuthService) getUserAndVerifyPassword(userID uint, password string, ope
 	}
 
 	if user.LockedUntil != nil && time.Now().Before(*user.LockedUntil) {
-		s.log.Debug(operation + ": account locked")
+		s.log.Debug("Account locked", zap.String("operation", operation))
 		return nil, apperrors.ErrAccountLocked
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
 		s.recordFailedAttempt(&user)
-		s.log.Debug(operation + ": invalid password")
+		s.log.Debug("Invalid password", zap.String("operation", operation))
 		return nil, apperrors.ErrInvalidCredentials
 	}
 
@@ -467,51 +520,16 @@ func (s *AuthService) DeleteAccount(userID uint, password string) error {
 	}
 
 	err = s.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Exec(`
-			DELETE FROM attempt_answers
-			WHERE attempt_id IN (
-				SELECT qa.id FROM quiz_attempts qa
-				JOIN quizzes q ON qa.quiz_id = q.id
-				WHERE q.user_id = ?
-			)
-		`, userID).Error; err != nil {
+		if err := s.deleteUserQuizAttempts(tx, userID); err != nil {
 			return err
 		}
-
-		if err := tx.Exec(`
-			DELETE FROM quiz_attempts
-			WHERE quiz_id IN (SELECT id FROM quizzes WHERE user_id = ?)
-		`, userID).Error; err != nil {
+		if err := s.deleteUserAttempts(tx, userID); err != nil {
 			return err
 		}
-
-		if err := tx.Exec(`
-			DELETE FROM attempt_answers
-			WHERE attempt_id IN (SELECT id FROM quiz_attempts WHERE user_id = ?)
-		`, userID).Error; err != nil {
+		if err := s.deleteUserQuizzes(tx, userID); err != nil {
 			return err
 		}
-
-		if err := tx.Where("user_id = ?", userID).Delete(&models.QuizAttempt{}).Error; err != nil {
-			return err
-		}
-
-		if err := tx.Exec(`
-			DELETE FROM questions
-			WHERE quiz_id IN (SELECT id FROM quizzes WHERE user_id = ?)
-		`, userID).Error; err != nil {
-			return err
-		}
-
-		if err := tx.Where("user_id = ?", userID).Delete(&models.Quiz{}).Error; err != nil {
-			return err
-		}
-
-		if err := tx.Delete(user).Error; err != nil {
-			return err
-		}
-
-		return nil
+		return tx.Delete(user).Error
 	})
 
 	if err != nil {
@@ -524,10 +542,59 @@ func (s *AuthService) DeleteAccount(userID uint, password string) error {
 	return nil
 }
 
+// deleteUserQuizAttempts deletes all attempt answers for quizzes owned by the user
+func (s *AuthService) deleteUserQuizAttempts(tx *gorm.DB, userID uint) error {
+	// Delete attempt answers for attempts on quizzes owned by this user
+	if err := tx.Exec(`
+		DELETE FROM attempt_answers
+		WHERE attempt_id IN (
+			SELECT qa.id FROM quiz_attempts qa
+			JOIN quizzes q ON qa.quiz_id = q.id
+			WHERE q.user_id = ?
+		)
+	`, userID).Error; err != nil {
+		return err
+	}
+
+	// Delete quiz attempts on quizzes owned by this user
+	return tx.Exec(`
+		DELETE FROM quiz_attempts
+		WHERE quiz_id IN (SELECT id FROM quizzes WHERE user_id = ?)
+	`, userID).Error
+}
+
+// deleteUserAttempts deletes all attempts made by the user
+func (s *AuthService) deleteUserAttempts(tx *gorm.DB, userID uint) error {
+	// Delete attempt answers for this user's attempts
+	if err := tx.Exec(`
+		DELETE FROM attempt_answers
+		WHERE attempt_id IN (SELECT id FROM quiz_attempts WHERE user_id = ?)
+	`, userID).Error; err != nil {
+		return err
+	}
+
+	// Delete this user's quiz attempts
+	return tx.Where("user_id = ?", userID).Delete(&models.QuizAttempt{}).Error
+}
+
+// deleteUserQuizzes deletes all quizzes and their questions owned by the user
+func (s *AuthService) deleteUserQuizzes(tx *gorm.DB, userID uint) error {
+	// Delete questions for quizzes owned by this user
+	if err := tx.Exec(`
+		DELETE FROM questions
+		WHERE quiz_id IN (SELECT id FROM quizzes WHERE user_id = ?)
+	`, userID).Error; err != nil {
+		return err
+	}
+
+	// Delete quizzes owned by this user
+	return tx.Where("user_id = ?", userID).Delete(&models.Quiz{}).Error
+}
+
 // generateRefreshToken creates a new refresh token and stores it in the database
 func (s *AuthService) generateRefreshToken(userID uint, familyID string) (string, error) {
 	tokenBytes := make([]byte, 32)
-	if _, err := rand.Read(tokenBytes); err != nil {
+	if _, err := cryptorand.Read(tokenBytes); err != nil {
 		return "", apperrors.NewInternalError("REFRESH_TOKEN_GENERATION_FAILED", "Failed to generate refresh token", err)
 	}
 
@@ -615,6 +682,9 @@ func (s *AuthService) RefreshTokens(refreshTokenString string) (*models.TokenPai
 
 	s.log.Debug("Tokens refreshed successfully",
 		zap.Uint("user_id", user.ID))
+
+	// Opportunistic cleanup on token operations
+	s.maybeRunCleanup()
 
 	return &models.TokenPairResponse{
 		AccessToken:  accessToken,

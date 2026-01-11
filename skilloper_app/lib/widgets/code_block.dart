@@ -72,31 +72,6 @@ class CodeBlock extends StatelessWidget {
     }
   }
 
-  IconData _getLanguageIcon(String? language) {
-    switch (language?.toLowerCase()) {
-      case 'javascript':
-      case 'js':
-        return Icons.code;
-      case 'python':
-      case 'py':
-        return Icons.psychology;
-      case 'java':
-        return Icons.coffee;
-      case 'go':
-        return Icons.speed;
-      case 'dart':
-        return Icons.flutter_dash;
-      case 'html':
-        return Icons.web;
-      case 'css':
-        return Icons.palette;
-      case 'sql':
-        return Icons.storage;
-      default:
-        return Icons.code;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -135,7 +110,7 @@ class CodeBlock extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        _getLanguageIcon(language),
+                        AppIcons.getLanguageIcon(language),
                         size: AppIconSizes.xs,
                         color: AppColors.primary,
                       ),

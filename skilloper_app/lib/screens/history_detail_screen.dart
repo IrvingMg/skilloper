@@ -3,6 +3,7 @@ import '../models/attempt.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
+import '../utils/date_formatter.dart';
 import '../widgets/summary_card.dart';
 
 class HistoryDetailScreen extends StatefulWidget {
@@ -44,10 +45,6 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
         _isLoading = false;
       });
     }
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year} at ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
   Color _getScoreColor(int score) {
@@ -168,7 +165,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                 ),
                 const SizedBox(height: AppSpacing.xs),
                 Text(
-                  _formatDate(_attempt!.createdAt),
+                  formatFullDate(_attempt!.createdAt),
                   style: TextStyle(
                     fontSize: 14,
                     color: AppColors.textOnPrimary.withValues(alpha: 0.8),

@@ -46,12 +46,20 @@ func NewRateLimiters(cfg config.RateLimitConfig, redisCfg config.RedisConfig, lo
 	}
 
 	if redisCfg.URL == "" {
+		if cfg.GracefulFallback {
+			log.Warn("REDIS_URL not set, rate limiting disabled (graceful fallback)")
+			return &RateLimiters{Login: noop, Register: noop, API: noop}, nil
+		}
 		log.Error("REDIS_URL is required when RATE_LIMIT_ENABLED=true")
 		return nil, fmt.Errorf("REDIS_URL is required when RATE_LIMIT_ENABLED=true")
 	}
 
 	opt, err := redis.ParseURL(redisCfg.URL)
 	if err != nil {
+		if cfg.GracefulFallback {
+			log.Warn("Failed to parse Redis URL, rate limiting disabled (graceful fallback)", zap.Error(err))
+			return &RateLimiters{Login: noop, Register: noop, API: noop}, nil
+		}
 		log.Error("Failed to parse Redis URL", zap.Error(err))
 		return nil, err
 	}
@@ -62,6 +70,11 @@ func NewRateLimiters(cfg config.RateLimitConfig, redisCfg config.RedisConfig, lo
 	if err := client.Ping(ctx).Err(); err != nil {
 		if closeErr := client.Close(); closeErr != nil {
 			log.Warn("Failed to close Redis client", zap.Error(closeErr))
+		}
+		if cfg.GracefulFallback {
+			log.Warn("Failed to connect to Redis, rate limiting disabled (graceful fallback)",
+				zap.Error(err), zap.Duration("timeout", redisConnectTimeout))
+			return &RateLimiters{Login: noop, Register: noop, API: noop}, nil
 		}
 		log.Error("Failed to connect to Redis", zap.Error(err), zap.Duration("timeout", redisConnectTimeout))
 		return nil, err

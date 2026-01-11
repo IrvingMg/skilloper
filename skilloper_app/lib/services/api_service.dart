@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
+import '../constants/api_endpoints.dart';
 import '../models/attempt.dart';
 import '../models/pagination.dart';
 import '../models/quiz.dart';
@@ -154,21 +156,27 @@ class ApiService {
   }
 
   /// Converts caught exceptions to user-friendly ApiException
-  ApiException _handleException(dynamic e, String operation) {
+  ApiException _handleException(Object e, String operation) {
     if (e is TimeoutException) {
       return const ApiException(
         'Request timed out - please check your connection and try again',
       );
     }
-    final errorStr = e.toString().toLowerCase();
-    if (errorStr.contains('socketexception') ||
-        errorStr.contains('connection refused') ||
-        errorStr.contains('network is unreachable')) {
+    if (e is SocketException) {
       return const ApiException(
         'Unable to connect to server - please check if the API is running',
       );
     }
-    return ApiException('Failed to $operation: $e');
+    if (e is FormatException || e is TypeError) {
+      return ApiException(
+        'Invalid response from server while trying to $operation',
+      );
+    }
+    // Fallback for network-related errors that might not be SocketException
+    if (e is HttpException) {
+      return const ApiException('Network error - please check your connection');
+    }
+    return ApiException('Failed to $operation - please try again');
   }
 
   /// Get paginated quiz summaries with search and filter
@@ -195,7 +203,7 @@ class ApiService {
       }
 
       final uri = Uri.parse(
-        '$baseUrl/quizzes/summaries',
+        '$baseUrl${ApiEndpoints.quizSummaries}',
       ).replace(queryParameters: queryParams);
 
       final response = await _authenticatedGet(uri);
@@ -233,7 +241,7 @@ class ApiService {
 
     try {
       final response = await _authenticatedGet(
-        Uri.parse('$baseUrl/quizzes/$id'),
+        Uri.parse('$baseUrl${ApiEndpoints.quiz(id)}'),
       );
 
       _handleHttpResponse(response, 'load quiz');
@@ -256,7 +264,7 @@ class ApiService {
 
     try {
       final response = await _authenticatedGet(
-        Uri.parse('$baseUrl/quizzes/$id?view=$_viewModeEdit'),
+        Uri.parse('$baseUrl${ApiEndpoints.quiz(id)}?view=$_viewModeEdit'),
       );
 
       _handleHttpResponse(response, 'load quiz for edit');
@@ -288,7 +296,7 @@ class ApiService {
     }
 
     try {
-      final uri = Uri.parse('$baseUrl/quizzes').replace(
+      final uri = Uri.parse('$baseUrl${ApiEndpoints.quizzes}').replace(
         queryParameters: {
           if (title != null && title.isNotEmpty) 'title': title,
           if (description != null && description.isNotEmpty)
@@ -368,7 +376,7 @@ class ApiService {
   Future<QuizAttempt> startAttempt(StartAttemptRequest request) async {
     try {
       final response = await _authenticatedPost(
-        Uri.parse('$baseUrl/attempts'),
+        Uri.parse('$baseUrl${ApiEndpoints.attempts}'),
         body: json.encode(request.toJson()),
       );
 
@@ -390,7 +398,7 @@ class ApiService {
   ) async {
     try {
       final response = await _authenticatedPatch(
-        Uri.parse('$baseUrl/attempts/$attemptId'),
+        Uri.parse('$baseUrl${ApiEndpoints.attempt(attemptId)}'),
         body: json.encode({
           'status': 'completed',
           'answers': request.toJson()['answers'],
@@ -412,7 +420,7 @@ class ApiService {
   Future<QuizAttempt> abandonAttempt(int attemptId) async {
     try {
       final response = await _authenticatedPatch(
-        Uri.parse('$baseUrl/attempts/$attemptId'),
+        Uri.parse('$baseUrl${ApiEndpoints.attempt(attemptId)}'),
         body: json.encode({'status': 'completed'}),
       );
 
@@ -452,7 +460,7 @@ class ApiService {
       }
 
       final uri = Uri.parse(
-        '$baseUrl/attempts',
+        '$baseUrl${ApiEndpoints.attempts}',
       ).replace(queryParameters: queryParams);
 
       final response = await _authenticatedGet(uri);
@@ -493,7 +501,7 @@ class ApiService {
 
     try {
       final response = await _authenticatedGet(
-        Uri.parse('$baseUrl/attempts/$attemptId'),
+        Uri.parse('$baseUrl${ApiEndpoints.attempt(attemptId)}'),
       );
 
       _handleHttpResponse(response, 'load attempt details');
@@ -509,16 +517,17 @@ class ApiService {
   }
 
   /// Create a new quiz using simplified JSON format
-  Future<Map<String, dynamic>> createQuiz(Map<String, dynamic> data) async {
+  Future<QuizSummary> createQuiz(Map<String, dynamic> data) async {
     try {
       final response = await _authenticatedPost(
-        Uri.parse('$baseUrl/quizzes'),
+        Uri.parse('$baseUrl${ApiEndpoints.quizzes}'),
         body: json.encode(data),
       );
 
       _handleHttpResponse(response, 'create quiz');
 
-      return json.decode(response.body) as Map<String, dynamic>;
+      final responseData = json.decode(response.body) as Map<String, dynamic>;
+      return QuizSummary.fromJson(responseData['quiz'] as Map<String, dynamic>);
     } on ApiException {
       rethrow;
     } on Exception catch (e) {
@@ -527,23 +536,21 @@ class ApiService {
   }
 
   /// Update an existing quiz
-  Future<Map<String, dynamic>> updateQuiz(
-    int id,
-    Map<String, dynamic> data,
-  ) async {
+  Future<QuizSummary> updateQuiz(int id, Map<String, dynamic> data) async {
     if (id <= 0) {
       throw ApiException('Invalid quiz ID: $id');
     }
 
     try {
       final response = await _authenticatedPut(
-        Uri.parse('$baseUrl/quizzes/$id'),
+        Uri.parse('$baseUrl${ApiEndpoints.quiz(id)}'),
         body: json.encode(data),
       );
 
       _handleHttpResponse(response, 'update quiz');
 
-      return json.decode(response.body) as Map<String, dynamic>;
+      final responseData = json.decode(response.body) as Map<String, dynamic>;
+      return QuizSummary.fromJson(responseData['quiz'] as Map<String, dynamic>);
     } on ApiException {
       rethrow;
     } on Exception catch (e) {
@@ -559,7 +566,7 @@ class ApiService {
 
     try {
       final response = await _authenticatedDelete(
-        Uri.parse('$baseUrl/quizzes/$id'),
+        Uri.parse('$baseUrl${ApiEndpoints.quiz(id)}'),
       );
 
       _handleHttpResponse(response, 'delete quiz');
@@ -583,7 +590,7 @@ class ApiService {
       body['question_id'] = questionId;
 
       final response = await _authenticatedPost(
-        Uri.parse('$baseUrl/answers'),
+        Uri.parse('$baseUrl${ApiEndpoints.answers}'),
         body: json.encode(body),
       );
 

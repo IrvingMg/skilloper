@@ -6,6 +6,7 @@ import '../models/pagination.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
+import '../utils/date_formatter.dart';
 import '../utils/debouncer.dart';
 import '../widgets/search_filter_bar.dart';
 import 'history_detail_screen.dart';
@@ -192,26 +193,6 @@ class HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final attemptDate = DateTime(date.year, date.month, date.day);
-
-    if (attemptDate == today) {
-      return 'Today at ${_formatTime(date)}';
-    } else if (attemptDate == today.subtract(const Duration(days: 1))) {
-      return 'Yesterday at ${_formatTime(date)}';
-    } else {
-      return '${date.day}/${date.month}/${date.year} at ${_formatTime(date)}';
-    }
-  }
-
-  String _formatTime(DateTime date) {
-    final hour = date.hour.toString().padLeft(2, '0');
-    final minute = date.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -373,7 +354,9 @@ class HistoryScreenState extends State<HistoryScreen> {
                       final attempt = _attempts[index];
                       return _AttemptListItem(
                         attempt: attempt,
-                        formattedDate: _formatDate(attempt.createdAt),
+                        formattedDate: formatRelativeDateWithTime(
+                          attempt.createdAt,
+                        ),
                         onTap: () => _viewAttemptDetails(attempt),
                       );
                     },

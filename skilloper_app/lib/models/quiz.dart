@@ -5,8 +5,10 @@ class Question {
   final String? code;
   final String? language;
   final List<String> options;
-  final int? correctAnswer; // For single_choice
-  final List<int>? correctAnswers; // For multiple_choice
+  final int?
+  correctAnswer; // For single_choice (null during play, present in results/edit)
+  final List<int>?
+  correctAnswers; // For multiple_choice (null during play, present in results/edit)
   final String? explanation;
 
   const Question({
@@ -22,10 +24,20 @@ class Question {
   });
 
   factory Question.fromJson(Map<String, dynamic> json) {
+    final id = json['id'];
+    final question = json['question'];
+
+    if (id == null) {
+      throw const FormatException('Question missing required field: id');
+    }
+    if (question == null) {
+      throw const FormatException('Question missing required field: question');
+    }
+
     return Question(
-      id: json['id'] as int,
+      id: id is int ? id : int.parse(id.toString()),
       questionType: json['question_type'] as String? ?? 'single_choice',
-      question: json['question'] as String,
+      question: question.toString(),
       code: json['code'] as String?,
       language: json['language'] as String?,
       options: json['options'] != null
@@ -65,15 +77,34 @@ class QuizSummary {
   });
 
   factory QuizSummary.fromJson(Map<String, dynamic> json) {
+    final id = json['id'];
+    final title = json['title'];
+    final createdAt = json['created_at'];
+    final updatedAt = json['updated_at'];
+
+    if (id == null) {
+      throw const FormatException('QuizSummary missing required field: id');
+    }
+    if (title == null) {
+      throw const FormatException('QuizSummary missing required field: title');
+    }
+    if (createdAt == null) {
+      throw const FormatException(
+        'QuizSummary missing required field: created_at',
+      );
+    }
+
     return QuizSummary(
-      id: json['id'] as int,
-      title: json['title'] as String,
-      description: json['description'] as String,
-      type: json['type'] as String,
-      maxOptions: json['max_options'] as int,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
-      questionCount: json['question_count'] as int,
+      id: id is int ? id : int.parse(id.toString()),
+      title: title.toString(),
+      description: (json['description'] ?? '').toString(),
+      type: (json['type'] ?? 'practice').toString(),
+      maxOptions: (json['max_options'] as int?) ?? 4,
+      createdAt: DateTime.parse(createdAt.toString()),
+      updatedAt: updatedAt != null
+          ? DateTime.parse(updatedAt.toString())
+          : DateTime.parse(createdAt.toString()),
+      questionCount: (json['question_count'] as int?) ?? 0,
     );
   }
 
@@ -104,15 +135,36 @@ class Quiz {
   });
 
   factory Quiz.fromJson(Map<String, dynamic> json) {
+    final id = json['id'];
+    final title = json['title'];
+    final createdAt = json['created_at'];
+    final updatedAt = json['updated_at'];
+    final questions = json['questions'];
+
+    if (id == null) {
+      throw const FormatException('Quiz missing required field: id');
+    }
+    if (title == null) {
+      throw const FormatException('Quiz missing required field: title');
+    }
+    if (createdAt == null) {
+      throw const FormatException('Quiz missing required field: created_at');
+    }
+    if (questions == null) {
+      throw const FormatException('Quiz missing required field: questions');
+    }
+
     return Quiz(
-      id: json['id'] as int,
-      title: json['title'] as String,
-      description: json['description'] as String,
-      type: json['type'] as String,
-      maxOptions: json['max_options'] as int? ?? 4,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
-      questions: (json['questions'] as List)
+      id: id is int ? id : int.parse(id.toString()),
+      title: title.toString(),
+      description: (json['description'] ?? '').toString(),
+      type: (json['type'] ?? 'practice').toString(),
+      maxOptions: (json['max_options'] as int?) ?? 4,
+      createdAt: DateTime.parse(createdAt.toString()),
+      updatedAt: updatedAt != null
+          ? DateTime.parse(updatedAt.toString())
+          : DateTime.parse(createdAt.toString()),
+      questions: (questions as List)
           .map((q) => Question.fromJson(q as Map<String, dynamic>))
           .toList(),
     );

@@ -88,6 +88,51 @@ void main() {
       expect(summary.status, AttemptStatus.inProgress);
       expect(summary.completedAt, isNull);
     });
+
+    test('uses defaults for optional fields', () {
+      final json = {'id': 1, 'created_at': '2024-01-15T10:30:00Z'};
+
+      final summary = AttemptSummary.fromJson(json);
+
+      expect(summary.userId, 0);
+      expect(summary.quizId, 0);
+      expect(summary.quizTitle, 'Unknown Quiz');
+      expect(summary.quizType, 'practice');
+      expect(summary.attemptNumber, 1);
+      expect(summary.score, 0);
+      expect(summary.correctCount, 0);
+      expect(summary.totalCount, 0);
+    });
+
+    test('throws FormatException when id is null', () {
+      final json = {'created_at': '2024-01-15T10:30:00Z'};
+
+      expect(
+        () => AttemptSummary.fromJson(json),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('id'),
+          ),
+        ),
+      );
+    });
+
+    test('throws FormatException when created_at is null', () {
+      final json = {'id': 1};
+
+      expect(
+        () => AttemptSummary.fromJson(json),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('created_at'),
+          ),
+        ),
+      );
+    });
   });
 
   group('AttemptAnswer.fromJson', () {

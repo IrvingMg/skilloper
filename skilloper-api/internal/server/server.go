@@ -20,6 +20,7 @@ import (
 	"github.com/irvingmg/skilloper/skilloper-api/internal/config"
 	"github.com/irvingmg/skilloper/skilloper-api/internal/handlers"
 	"github.com/irvingmg/skilloper/skilloper-api/internal/middleware"
+	"github.com/irvingmg/skilloper/skilloper-api/internal/models"
 	"github.com/irvingmg/skilloper/skilloper-api/internal/services"
 )
 
@@ -87,12 +88,14 @@ func (s *Server) setupMiddleware() {
 	s.log.Info("Setting up middleware")
 
 	s.router.Use(gin.Recovery())
+	s.router.Use(s.maxBodySizeMiddleware())
 
+	// CSRF not needed: using Authorization headers, not cookies
 	corsConfig := cors.Config{
 		AllowOrigins:     s.config.AllowedOrigins,
 		AllowMethods:     s.config.AllowedMethods,
 		AllowHeaders:     s.config.AllowedHeaders,
-		AllowCredentials: false, // Using Authorization headers, not cookies
+		AllowCredentials: false,
 	}
 
 	s.router.Use(cors.New(corsConfig))
@@ -116,7 +119,7 @@ func (s *Server) setupServices() {
 	s.log.Info("Setting up services and handlers")
 
 	s.authService = services.NewAuthService(s.db, s.config.JWTSecret, s.config.JWTExpiry, s.config.RefreshTokenExpiry, s.log)
-	quizService := services.NewQuizService(s.db)
+	quizService := services.NewQuizService(s.db, s.log)
 	attemptService := services.NewAttemptService(s.db, s.log)
 	answerService := services.NewAnswerService(s.db, s.log)
 	healthService := services.NewHealthService()
@@ -286,6 +289,13 @@ func (s *Server) embeddedFileHandler(staticFS fs.FS) gin.HandlerFunc {
 			cleanPath = "index.html"
 		}
 
+		// Prevent directory traversal attacks
+		cleanPath = filepath.Clean(cleanPath)
+		if strings.HasPrefix(cleanPath, "..") || strings.HasPrefix(cleanPath, "/") {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Not found"})
+			return
+		}
+
 		if file, err := staticFS.Open(cleanPath); err == nil {
 			if closeErr := file.Close(); closeErr != nil {
 				s.log.Warn("Failed to close static file", zap.Error(closeErr))
@@ -353,6 +363,17 @@ func (s *Server) setCacheHeaders(c *gin.Context, path string) {
 		c.Header("Cache-Control", "public, max-age=31536000, immutable")
 	default:
 		c.Header("Cache-Control", "public, max-age=3600")
+	}
+}
+
+func (s *Server) maxBodySizeMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		maxSize := int64(models.MaxRequestBodySize)
+		if strings.HasPrefix(c.ContentType(), "multipart/form-data") {
+			maxSize = models.MaxImportFileSize
+		}
+		c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxSize)
+		c.Next()
 	}
 }
 

@@ -26,6 +26,8 @@ const (
 	StaticModeNone  = "none"
 )
 
+const MinJWTSecretLength = 32
+
 var DefaultStaticMode = StaticModeEmbed
 
 func init() {
@@ -68,10 +70,11 @@ func (c *Config) StaticServing() bool {
 }
 
 type RateLimitConfig struct {
-	Enabled      bool
-	LoginRate    string
-	RegisterRate string
-	APIRate      string
+	Enabled          bool
+	GracefulFallback bool // If true, disable rate limiting when Redis is unavailable instead of failing
+	LoginRate        string
+	RegisterRate     string
+	APIRate          string
 }
 
 type RedisConfig struct {
@@ -140,6 +143,17 @@ func Load() *Config {
 	}
 	if cfg.StaticMode == StaticModeDir && cfg.StaticDir == "" {
 		log.Fatal("STATIC_DIR is required when STATIC_MODE=dir")
+	}
+	if len(cfg.JWTSecret) < MinJWTSecretLength {
+		log.Fatalf("JWT_SECRET must be at least %d characters long for security", MinJWTSecretLength)
+	}
+
+	if cfg.IsProduction() {
+		for _, origin := range cfg.AllowedOrigins {
+			if origin == "*" {
+				log.Fatal("Wildcard CORS origin (*) is not allowed in production")
+			}
+		}
 	}
 
 	return cfg
@@ -227,10 +241,11 @@ func getEnvBool(key string, defaultValue bool) bool {
 // parseRateLimitConfig parses rate limiting configuration
 func parseRateLimitConfig() RateLimitConfig {
 	return RateLimitConfig{
-		Enabled:      getEnvBool("RATE_LIMIT_ENABLED", false),
-		LoginRate:    getEnv("RATE_LIMIT_LOGIN", "5-M"),
-		RegisterRate: getEnv("RATE_LIMIT_REGISTER", "3-M"),
-		APIRate:      getEnv("RATE_LIMIT_API", "120-M"),
+		Enabled:          getEnvBool("RATE_LIMIT_ENABLED", false),
+		GracefulFallback: getEnvBool("RATE_LIMIT_GRACEFUL_FALLBACK", true),
+		LoginRate:        getEnv("RATE_LIMIT_LOGIN", "5-M"),
+		RegisterRate:     getEnv("RATE_LIMIT_REGISTER", "3-M"),
+		APIRate:          getEnv("RATE_LIMIT_API", "120-M"),
 	}
 }
 

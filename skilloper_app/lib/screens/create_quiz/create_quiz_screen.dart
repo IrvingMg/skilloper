@@ -4,6 +4,7 @@ import '../../models/quiz.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_icons.dart';
+import '../../utils/date_formatter.dart';
 import 'question_editor_dialog.dart';
 
 class CreateQuizScreen extends StatefulWidget {
@@ -88,15 +89,14 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
     });
 
     try {
-      final Map<String, dynamic> response;
       if (_isEditMode) {
-        response = await _apiService.updateQuiz(_draft.id!, _draft.toJson());
+        await _apiService.updateQuiz(_draft.id!, _draft.toJson());
       } else {
-        response = await _apiService.createQuiz(_draft.toJson());
+        await _apiService.createQuiz(_draft.toJson());
       }
 
       if (mounted) {
-        _showSuccessDialog(response);
+        _showSuccessDialog();
       }
     } on Exception catch (e) {
       if (mounted) {
@@ -111,7 +111,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
     }
   }
 
-  void _showSuccessDialog(Map<String, dynamic> response) {
+  void _showSuccessDialog() {
     final isEdit = _isEditMode;
     showDialog<void>(
       context: context,
@@ -246,10 +246,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
   }
 
   void _showErrorSnackBar(String error) {
-    String message = error;
-    if (message.startsWith('Exception: ')) {
-      message = message.substring('Exception: '.length);
-    }
+    final message = formatErrorMessage(error);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(

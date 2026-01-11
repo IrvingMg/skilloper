@@ -20,6 +20,7 @@ class ApiEndpoints {
 
   // User endpoints
   static const String users = '/users';
+  static const String usersMe = '/users/me';
   static const String userPassword = '/users/me/password';
   static const String userHistoryClearance = '/users/me/history-clearance';
   static const String userDeletion = '/users/me/deletion';

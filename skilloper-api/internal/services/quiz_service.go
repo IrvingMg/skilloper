@@ -9,6 +9,7 @@ import (
 	"mime/multipart"
 	"strings"
 
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 
 	apperrors "github.com/irvingmg/skilloper/skilloper-api/internal/errors"
@@ -16,25 +17,25 @@ import (
 	"github.com/irvingmg/skilloper/skilloper-api/internal/models"
 )
 
-type QuizService struct {
-	db *gorm.DB
+func escapeLikePattern(s string) string {
+	return strings.ReplaceAll(strings.ReplaceAll(s, "%", "\\%"), "_", "\\_")
 }
 
-func NewQuizService(db *gorm.DB) *QuizService {
+type QuizService struct {
+	db  *gorm.DB
+	log *zap.Logger
+}
+
+func NewQuizService(db *gorm.DB, log *zap.Logger) *QuizService {
 	return &QuizService{
-		db: db,
+		db:  db,
+		log: log,
 	}
 }
 
 type QuizSummaryRow struct {
 	models.Quiz
 	QuestionCount int64 `gorm:"column:question_count"`
-}
-
-func escapeLikePattern(s string) string {
-	s = strings.ReplaceAll(s, "%", "\\%")
-	s = strings.ReplaceAll(s, "_", "\\_")
-	return s
 }
 
 func (s *QuizService) GetPaginatedSummaries(params models.PaginationParams) (models.PaginatedQuizSummaries, error) {
@@ -144,6 +145,10 @@ func (s *QuizService) Create(req models.CreateQuizRequest, userID uint) (*models
 	}
 
 	if req.Type != models.QuizTypePractice && req.Type != models.QuizTypeExam {
+		if req.Type != "" {
+			return nil, apperrors.NewValidationError("INVALID_QUIZ_TYPE",
+				fmt.Sprintf("type must be '%s' or '%s'", models.QuizTypePractice, models.QuizTypeExam))
+		}
 		req.Type = models.QuizTypePractice
 	}
 
@@ -193,6 +198,10 @@ func (s *QuizService) Update(id uint, req models.CreateQuizRequest, userID uint,
 	}
 
 	if req.Type != models.QuizTypePractice && req.Type != models.QuizTypeExam {
+		if req.Type != "" {
+			return nil, apperrors.NewValidationError("INVALID_QUIZ_TYPE",
+				fmt.Sprintf("type must be '%s' or '%s'", models.QuizTypePractice, models.QuizTypeExam))
+		}
 		req.Type = models.QuizTypePractice
 	}
 
@@ -265,7 +274,7 @@ func (s *QuizService) Update(id uint, req models.CreateQuizRequest, userID uint,
 		if errors.As(err, &appErr) {
 			return nil, appErr
 		}
-		return nil, apperrors.ErrUpdateQuizFailed
+		return nil, apperrors.NewDatabaseError("UPDATE_QUIZ_FAILED", "Failed to update quiz", err)
 	}
 
 	response := s.convertToResponse(quiz)
@@ -365,34 +374,43 @@ func (s *QuizService) ImportFromFile(file *multipart.FileHeader, csvMeta CSVMeta
 	return summary, nil
 }
 
-func parseOptionsJSON(optionsJSON string) []string {
+func (s *QuizService) parseOptionsJSON(optionsJSON string) []string {
 	if optionsJSON == "" {
 		return []string{}
 	}
 	var options []string
 	if err := json.Unmarshal([]byte(optionsJSON), &options); err != nil {
+		s.log.Warn("Failed to parse options JSON",
+			zap.String("json", optionsJSON),
+			zap.Error(err))
 		return []string{}
 	}
 	return options
 }
 
-func parseCorrectAnswersJSON(answersJSON string) []int {
+func (s *QuizService) parseCorrectAnswersJSON(answersJSON string) []int {
 	if answersJSON == "" {
 		return []int{}
 	}
 	var answers []int
 	if err := json.Unmarshal([]byte(answersJSON), &answers); err != nil {
+		s.log.Warn("Failed to parse correct answers JSON",
+			zap.String("json", answersJSON),
+			zap.Error(err))
 		return []int{}
 	}
 	return answers
 }
 
-func parseStringArrayJSON(jsonStr string) []string {
+func (s *QuizService) parseStringArrayJSON(jsonStr string) []string {
 	if jsonStr == "" {
 		return nil
 	}
 	var result []string
 	if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
+		s.log.Warn("Failed to parse string array JSON",
+			zap.String("json", jsonStr),
+			zap.Error(err))
 		return nil
 	}
 	return result
@@ -534,24 +552,41 @@ func (s *QuizService) convertToResponse(q models.Quiz) models.QuizResponse {
 	questions := make([]models.QuestionResponse, 0, len(q.Questions))
 
 	for _, question := range q.Questions {
-		options := parseOptionsJSON(question.Options)
+		options := s.parseOptionsJSON(question.Options)
 
 		questionText := question.QuestionText
-		if alternatives := parseStringArrayJSON(question.AlternativeQuestions); len(alternatives) > 0 {
+		if alternatives := s.parseStringArrayJSON(question.AlternativeQuestions); len(alternatives) > 0 {
 			allTexts := append([]string{questionText}, alternatives...)
 			questionText = allTexts[rand.IntN(len(allTexts))]
 		}
 
-		if alternatives := parseStringArrayJSON(question.AlternativeAnswers); len(alternatives) > 0 {
-			if len(options) > 0 && question.CorrectAnswer >= 0 && question.CorrectAnswer < len(options) {
-				allTexts := append([]string{options[question.CorrectAnswer]}, alternatives...)
-				options[question.CorrectAnswer] = allTexts[rand.IntN(len(allTexts))]
-			}
-		}
-
 		correctAnswers := []int{}
 		if question.QuestionType == models.QuestionTypeMultipleChoice {
-			correctAnswers = parseCorrectAnswersJSON(question.CorrectAnswers)
+			correctAnswers = s.parseCorrectAnswersJSON(question.CorrectAnswers)
+		}
+
+		// Apply alternative answers for correct answer options
+		if alternatives := s.parseStringArrayJSON(question.AlternativeAnswers); len(alternatives) > 0 && len(options) > 0 {
+			if question.QuestionType == models.QuestionTypeMultipleChoice {
+				// For multiple choice, apply alternative to the first correct answer
+				if len(correctAnswers) > 0 {
+					idx := correctAnswers[0]
+					if idx >= 0 && idx < len(options) {
+						allTexts := make([]string, 0, 1+len(alternatives))
+						allTexts = append(allTexts, options[idx])
+						allTexts = append(allTexts, alternatives...)
+						options[idx] = allTexts[rand.IntN(len(allTexts))]
+					}
+				}
+			} else {
+				// For single choice
+				if question.CorrectAnswer >= 0 && question.CorrectAnswer < len(options) {
+					allTexts := make([]string, 0, 1+len(alternatives))
+					allTexts = append(allTexts, options[question.CorrectAnswer])
+					allTexts = append(allTexts, alternatives...)
+					options[question.CorrectAnswer] = allTexts[rand.IntN(len(allTexts))]
+				}
+			}
 		}
 
 		qr := models.QuestionResponse{}
@@ -583,11 +618,11 @@ func (s *QuizService) convertToResponseWithAnswers(q models.Quiz) models.QuizRes
 	questions := make([]models.QuestionResponseWithAnswers, 0, len(q.Questions))
 
 	for _, question := range q.Questions {
-		options := parseOptionsJSON(question.Options)
+		options := s.parseOptionsJSON(question.Options)
 
 		correctAnswers := []int{}
 		if question.QuestionType == models.QuestionTypeMultipleChoice {
-			correctAnswers = parseCorrectAnswersJSON(question.CorrectAnswers)
+			correctAnswers = s.parseCorrectAnswersJSON(question.CorrectAnswers)
 		}
 
 		qr := models.QuestionResponseWithAnswers{}

@@ -83,6 +83,50 @@ void main() {
 
       expect(question.options, isEmpty);
     });
+
+    test('throws FormatException when id is null', () {
+      final json = {
+        'question': 'Test',
+        'options': ['A', 'B'],
+      };
+
+      expect(
+        () => Question.fromJson(json),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('id'),
+          ),
+        ),
+      );
+    });
+
+    test('throws FormatException when question is null', () {
+      final json = {
+        'id': 1,
+        'options': ['A', 'B'],
+      };
+
+      expect(
+        () => Question.fromJson(json),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('question'),
+          ),
+        ),
+      );
+    });
+
+    test('handles string id by parsing to int', () {
+      final json = {'id': '42', 'question': 'Test'};
+
+      final question = Question.fromJson(json);
+
+      expect(question.id, 42);
+    });
   });
 
   group('QuizSummary.fromJson', () {
@@ -108,6 +152,78 @@ void main() {
       expect(summary.questionCount, 10);
       expect(summary.createdAt, DateTime.utc(2024, 1, 15, 10, 30, 0));
       expect(summary.updatedAt, DateTime.utc(2024, 1, 16, 14, 0, 0));
+    });
+
+    test('uses defaults for optional fields', () {
+      final json = {
+        'id': 1,
+        'title': 'Test Quiz',
+        'created_at': '2024-01-15T10:30:00Z',
+      };
+
+      final summary = QuizSummary.fromJson(json);
+
+      expect(summary.description, '');
+      expect(summary.type, 'practice');
+      expect(summary.maxOptions, 4);
+      expect(summary.questionCount, 0);
+    });
+
+    test('uses created_at as fallback for updated_at', () {
+      final json = {
+        'id': 1,
+        'title': 'Test Quiz',
+        'created_at': '2024-01-15T10:30:00Z',
+      };
+
+      final summary = QuizSummary.fromJson(json);
+
+      expect(summary.createdAt, summary.updatedAt);
+    });
+
+    test('throws FormatException when id is null', () {
+      final json = {'title': 'Test Quiz', 'created_at': '2024-01-15T10:30:00Z'};
+
+      expect(
+        () => QuizSummary.fromJson(json),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('id'),
+          ),
+        ),
+      );
+    });
+
+    test('throws FormatException when title is null', () {
+      final json = {'id': 1, 'created_at': '2024-01-15T10:30:00Z'};
+
+      expect(
+        () => QuizSummary.fromJson(json),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('title'),
+          ),
+        ),
+      );
+    });
+
+    test('throws FormatException when created_at is null', () {
+      final json = {'id': 1, 'title': 'Test Quiz'};
+
+      expect(
+        () => QuizSummary.fromJson(json),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('created_at'),
+          ),
+        ),
+      );
     });
   });
 

@@ -1,7 +1,3 @@
-// Draft quiz model for the create quiz wizard
-// Uses 1-based indexing for user-friendly display
-// Serializes to simplified JSON format for API submission
-
 import '../constants/limits.dart';
 import 'quiz.dart';
 
@@ -34,19 +30,15 @@ class DraftQuestion {
        correctAnswers = correctAnswers ?? [],
        alternativeAnswers = alternativeAnswers ?? [];
 
-  /// Whether this is a multiple choice question
   bool get isMultipleChoice => questionType == QuestionTypes.multipleChoice;
 
-  /// For single choice, get the single correct answer (1-based)
   int? get singleAnswer =>
       correctAnswers.length == 1 ? correctAnswers.first : null;
 
-  /// Set as single choice with given answer (1-based)
   void setSingleAnswer(int answer) {
     correctAnswers = [answer];
   }
 
-  /// Toggle an answer for multiple choice (1-based)
   void toggleAnswer(int answer) {
     if (correctAnswers.contains(answer)) {
       correctAnswers.remove(answer);
@@ -56,10 +48,8 @@ class DraftQuestion {
     }
   }
 
-  /// Check if question is valid
   bool get isValid => validationError == null;
 
-  /// Get validation error message, or null if valid
   String? get validationError {
     if (question.trim().isEmpty) {
       return 'Question text required';
@@ -84,14 +74,12 @@ class DraftQuestion {
     return null;
   }
 
-  /// Add an empty option
   void addOption() {
     if (options.length < QuizLimits.maxOptions) {
       options.add('');
     }
   }
 
-  /// Remove an option and adjust correct answers
   void removeOption(int index) {
     if (options.length > QuizLimits.minOptions) {
       options.removeAt(index);
@@ -104,8 +92,6 @@ class DraftQuestion {
     }
   }
 
-  /// Convert to API JSON format for creating/updating quizzes
-  /// Uses 0-based indices for correctAnswer/correct_answers as required by backend
   Map<String, dynamic> toJson() {
     // Filter out empty options and build mapping
     final nonEmptyOptions = <String>[];
@@ -179,7 +165,6 @@ class DraftQuestion {
     return json;
   }
 
-  /// Create a copy of this question
   DraftQuestion copy() {
     return DraftQuestion(
       question: question,
@@ -195,8 +180,6 @@ class DraftQuestion {
     );
   }
 
-  /// Create a DraftQuestion from an API Question object
-  /// Note: Alternative questions/options/answers are not preserved as they're not in API response
   factory DraftQuestion.fromQuestion(Question q) {
     // Convert correct answers from 0-based to 1-based indexing
     List<int> answers;
@@ -239,10 +222,8 @@ class DraftQuiz {
     List<DraftQuestion>? questions,
   }) : questions = questions ?? [];
 
-  /// Whether this is an existing quiz being edited
   bool get isEditMode => id != null;
 
-  /// Load data from an existing quiz for editing
   void loadFromQuiz(Quiz q) {
     id = q.id;
     title = q.title;
@@ -252,29 +233,24 @@ class DraftQuiz {
     questions = q.questions.map(DraftQuestion.fromQuestion).toList();
   }
 
-  /// Check if quiz is valid for submission
   bool get isValid {
     if (title.trim().isEmpty) return false;
     if (questions.isEmpty) return false;
     return questions.every((q) => q.isValid);
   }
 
-  /// Get count of valid questions
   int get validQuestionCount => questions.where((q) => q.isValid).length;
 
-  /// Add a new empty question
   void addQuestion() {
     questions.add(DraftQuestion());
   }
 
-  /// Remove a question by index
   void removeQuestion(int index) {
     if (index >= 0 && index < questions.length) {
       questions.removeAt(index);
     }
   }
 
-  /// Move a question up
   void moveQuestionUp(int index) {
     if (index > 0 && index < questions.length) {
       final q = questions.removeAt(index);
@@ -282,7 +258,6 @@ class DraftQuiz {
     }
   }
 
-  /// Move a question down
   void moveQuestionDown(int index) {
     if (index >= 0 && index < questions.length - 1) {
       final q = questions.removeAt(index);
@@ -290,7 +265,6 @@ class DraftQuiz {
     }
   }
 
-  /// Convert to simplified JSON format for API submission
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{
       'title': title,
@@ -309,7 +283,6 @@ class DraftQuiz {
     return json;
   }
 
-  /// Clear all data
   void clear() {
     id = null;
     title = '';

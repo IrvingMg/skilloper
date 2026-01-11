@@ -17,7 +17,8 @@ const (
 
 	ScorePercentage = 100
 
-	MaxImportFileSize = 10 * 1024 * 1024
+	MaxImportFileSize  = 10 * 1024 * 1024
+	MaxRequestBodySize = 1 * 1024 * 1024
 )
 
 const (

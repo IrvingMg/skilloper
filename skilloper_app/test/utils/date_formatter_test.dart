@@ -78,4 +78,126 @@ void main() {
       expect(formatRelativeDate(yesterdayUtc), 'Yesterday');
     });
   });
+
+  group('formatFullDate', () {
+    test('formats date with time correctly', () {
+      final date = DateTime(2024, 3, 15, 14, 30);
+      expect(formatFullDate(date), '15/3/2024 at 14:30');
+    });
+
+    test('pads hour and minute with zeros', () {
+      final date = DateTime(2024, 1, 5, 9, 5);
+      expect(formatFullDate(date), '5/1/2024 at 09:05');
+    });
+
+    test('handles midnight correctly', () {
+      final date = DateTime(2024, 12, 25, 0, 0);
+      expect(formatFullDate(date), '25/12/2024 at 00:00');
+    });
+
+    test('handles UTC dates by converting to local', () {
+      final utcDate = DateTime.utc(2024, 6, 15, 12, 30);
+      final result = formatFullDate(utcDate);
+      // Result should be in local time format
+      expect(result, contains('at'));
+      expect(
+        RegExp(r'^\d{1,2}/\d{1,2}/\d{4} at \d{2}:\d{2}$').hasMatch(result),
+        isTrue,
+      );
+    });
+  });
+
+  group('formatRelativeDateWithTime', () {
+    test('returns Today at HH:MM for current date', () {
+      final now = DateTime.now();
+      final result = formatRelativeDateWithTime(now);
+
+      expect(result, startsWith('Today at '));
+      expect(
+        RegExp(r'^Today at \d{2}:\d{2}$').hasMatch(result),
+        isTrue,
+        reason: 'Expected format like "Today at 14:30", got "$result"',
+      );
+    });
+
+    test('returns Yesterday at HH:MM for yesterday', () {
+      final now = DateTime.now();
+      final yesterday = DateTime(now.year, now.month, now.day - 1, 15, 45);
+      final result = formatRelativeDateWithTime(yesterday);
+
+      expect(result, 'Yesterday at 15:45');
+    });
+
+    test('returns D/M/YYYY at HH:MM for older dates', () {
+      final date = DateTime(2024, 3, 15, 9, 5);
+      final result = formatRelativeDateWithTime(date);
+
+      expect(result, '15/3/2024 at 09:05');
+    });
+
+    test('pads hour and minute with zeros', () {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day, 8, 3);
+      final result = formatRelativeDateWithTime(today);
+
+      expect(result, 'Today at 08:03');
+    });
+
+    test('handles UTC dates by converting to local', () {
+      final now = DateTime.now();
+      final yesterdayUtc = DateTime.utc(
+        now.year,
+        now.month,
+        now.day - 1,
+        12,
+        0,
+      );
+      final result = formatRelativeDateWithTime(yesterdayUtc);
+
+      // Should start with Yesterday (after local conversion)
+      expect(result, startsWith('Yesterday at '));
+    });
+
+    test('handles midnight correctly', () {
+      final now = DateTime.now();
+      final todayMidnight = DateTime(now.year, now.month, now.day, 0, 0);
+      final result = formatRelativeDateWithTime(todayMidnight);
+
+      expect(result, 'Today at 00:00');
+    });
+  });
+
+  group('formatErrorMessage', () {
+    test('strips Exception: prefix', () {
+      expect(
+        formatErrorMessage('Exception: Something went wrong'),
+        'Something went wrong',
+      );
+    });
+
+    test('preserves message without Exception: prefix', () {
+      expect(
+        formatErrorMessage('Something went wrong'),
+        'Something went wrong',
+      );
+    });
+
+    test('handles empty string', () {
+      expect(formatErrorMessage(''), '');
+    });
+
+    test('handles string that starts with Exception but not Exception:', () {
+      expect(
+        formatErrorMessage('Exceptional error occurred'),
+        'Exceptional error occurred',
+      );
+    });
+
+    test('only strips first Exception: prefix', () {
+      expect(
+        formatErrorMessage('Exception: Exception: Nested error'),
+        'Exception: Nested error',
+      );
+    });
+  });
 }
