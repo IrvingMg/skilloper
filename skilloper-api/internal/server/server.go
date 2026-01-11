@@ -115,7 +115,7 @@ func (s *Server) setupRateLimiters() error {
 func (s *Server) setupServices() {
 	s.log.Info("Setting up services and handlers")
 
-	s.authService = services.NewAuthService(s.db, s.config.JWTSecret, s.config.JWTExpiry, s.log)
+	s.authService = services.NewAuthService(s.db, s.config.JWTSecret, s.config.JWTExpiry, s.config.RefreshTokenExpiry, s.log)
 	quizService := services.NewQuizService(s.db)
 	attemptService := services.NewAttemptService(s.db, s.log)
 	answerService := services.NewAnswerService(s.db, s.log)
@@ -137,6 +137,7 @@ func (s *Server) setupRoutes() {
 	api.GET("/health", s.healthHandler.HealthCheck)
 	api.POST("/users", s.rateLimiters.Register, s.authHandler.Register)
 	api.POST("/sessions", s.rateLimiters.Login, s.authHandler.Login)
+	api.POST("/sessions/refresh", s.rateLimiters.Login, s.authHandler.RefreshToken)
 
 	// All other routes require authentication
 	protected := api.Group("")

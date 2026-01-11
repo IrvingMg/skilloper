@@ -72,6 +72,7 @@ func New(cfg *config.Config, log *zap.Logger) (*gorm.DB, error) {
 	err = db.AutoMigrate(
 		&models.User{},
 		&models.TokenBlacklist{},
+		&models.RefreshToken{},
 		&models.Quiz{},
 		&models.Question{},
 		&models.QuizAttempt{},

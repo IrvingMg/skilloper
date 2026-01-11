@@ -35,24 +35,25 @@ func init() {
 }
 
 type Config struct {
-	AppEnv         string
-	Port           string
-	DBDriver       string
-	DatabasePath   string
-	DatabaseURL    string
-	DBPool         DBPoolConfig
-	AllowedOrigins []string
-	AllowedMethods []string
-	AllowedHeaders []string
-	JWTSecret      string
-	JWTExpiry      time.Duration
-	AdminUsername  string
-	AdminPassword  string
-	RateLimit      RateLimitConfig
-	Redis          RedisConfig
-	TLS            TLSConfig
-	StaticMode     string
-	StaticDir      string
+	AppEnv             string
+	Port               string
+	DBDriver           string
+	DatabasePath       string
+	DatabaseURL        string
+	DBPool             DBPoolConfig
+	AllowedOrigins     []string
+	AllowedMethods     []string
+	AllowedHeaders     []string
+	JWTSecret          string
+	JWTExpiry          time.Duration
+	RefreshTokenExpiry time.Duration
+	AdminUsername      string
+	AdminPassword      string
+	RateLimit          RateLimitConfig
+	Redis              RedisConfig
+	TLS                TLSConfig
+	StaticMode         string
+	StaticDir          string
 }
 
 type DBPoolConfig struct {
@@ -107,24 +108,25 @@ func Load() *Config {
 	adminPassword := requireEnv("ADMIN_PASSWORD")
 
 	cfg := &Config{
-		AppEnv:         appEnv,
-		Port:           getEnv("PORT", "8080"),
-		DBDriver:       dbDriver,
-		DatabasePath:   getEnv("DATABASE_PATH", "skilloper.db"),
-		DatabaseURL:    getEnv("DATABASE_URL", ""),
-		DBPool:         parseDBPoolConfig(),
-		AllowedOrigins: parseAllowedOrigins(),
-		AllowedMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowedHeaders: []string{"Origin", "Content-Type", "Authorization"},
-		JWTSecret:      requireEnv("JWT_SECRET"),
-		JWTExpiry:      parseJWTExpiry(),
-		AdminUsername:  adminUsername,
-		AdminPassword:  adminPassword,
-		RateLimit:      parseRateLimitConfig(),
-		Redis:          parseRedisConfig(),
-		TLS:            parseTLSConfig(),
-		StaticMode:     getEnv("STATIC_MODE", DefaultStaticMode),
-		StaticDir:      getEnv("STATIC_DIR", ""),
+		AppEnv:             appEnv,
+		Port:               getEnv("PORT", "8080"),
+		DBDriver:           dbDriver,
+		DatabasePath:       getEnv("DATABASE_PATH", "skilloper.db"),
+		DatabaseURL:        getEnv("DATABASE_URL", ""),
+		DBPool:             parseDBPoolConfig(),
+		AllowedOrigins:     parseAllowedOrigins(),
+		AllowedMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowedHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		JWTSecret:          requireEnv("JWT_SECRET"),
+		JWTExpiry:          parseJWTExpiry(),
+		RefreshTokenExpiry: parseRefreshTokenExpiry(),
+		AdminUsername:      adminUsername,
+		AdminPassword:      adminPassword,
+		RateLimit:          parseRateLimitConfig(),
+		Redis:              parseRedisConfig(),
+		TLS:                parseTLSConfig(),
+		StaticMode:         getEnv("STATIC_MODE", DefaultStaticMode),
+		StaticDir:          getEnv("STATIC_DIR", ""),
 	}
 
 	if cfg.DBDriver != DBDriverSQLite && cfg.DBDriver != DBDriverPostgres {
@@ -145,10 +147,20 @@ func Load() *Config {
 
 // parseJWTExpiry parses the JWT_EXPIRY environment variable (in hours)
 func parseJWTExpiry() time.Duration {
-	expiryStr := getEnv("JWT_EXPIRY", "24")
+	expiryStr := getEnv("JWT_EXPIRY", "1")
 	hours, err := strconv.Atoi(expiryStr)
 	if err != nil || hours <= 0 {
-		hours = 24
+		hours = 1
+	}
+	return time.Duration(hours) * time.Hour
+}
+
+// parseRefreshTokenExpiry parses the REFRESH_TOKEN_EXPIRY environment variable (in hours)
+func parseRefreshTokenExpiry() time.Duration {
+	expiryStr := getEnv("REFRESH_TOKEN_EXPIRY", "168") // 168 hours = 7 days
+	hours, err := strconv.Atoi(expiryStr)
+	if err != nil || hours <= 0 {
+		hours = 168
 	}
 	return time.Duration(hours) * time.Hour
 }

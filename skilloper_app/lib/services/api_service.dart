@@ -35,18 +35,84 @@ class ApiService {
       timeout = timeout ?? _defaultTimeout;
 
   Map<String, String> get _headers {
-    _validateTokenBeforeRequest();
     return _authService.getAuthHeaders();
   }
 
-  void _validateTokenBeforeRequest() {
-    if (_authService.token != null && !_authService.isTokenValid) {
-      _authService.handleSessionExpired();
-      throw const ApiException(
-        'Session expired. Please log in again.',
-        isUnauthorized: true,
-      );
+  /// Executes a GET request with automatic token refresh on 401
+  Future<http.Response> _authenticatedGet(Uri url) async {
+    var response = await http.get(url, headers: _headers).timeout(timeout);
+
+    if (response.statusCode == 401) {
+      if (await _authService.refreshAccessToken()) {
+        response = await http.get(url, headers: _headers).timeout(timeout);
+      }
     }
+
+    return response;
+  }
+
+  /// Executes a POST request with automatic token refresh on 401
+  Future<http.Response> _authenticatedPost(Uri url, {Object? body}) async {
+    var response = await http
+        .post(url, headers: _headers, body: body)
+        .timeout(timeout);
+
+    if (response.statusCode == 401) {
+      if (await _authService.refreshAccessToken()) {
+        response = await http
+            .post(url, headers: _headers, body: body)
+            .timeout(timeout);
+      }
+    }
+
+    return response;
+  }
+
+  /// Executes a PUT request with automatic token refresh on 401
+  Future<http.Response> _authenticatedPut(Uri url, {Object? body}) async {
+    var response = await http
+        .put(url, headers: _headers, body: body)
+        .timeout(timeout);
+
+    if (response.statusCode == 401) {
+      if (await _authService.refreshAccessToken()) {
+        response = await http
+            .put(url, headers: _headers, body: body)
+            .timeout(timeout);
+      }
+    }
+
+    return response;
+  }
+
+  /// Executes a PATCH request with automatic token refresh on 401
+  Future<http.Response> _authenticatedPatch(Uri url, {Object? body}) async {
+    var response = await http
+        .patch(url, headers: _headers, body: body)
+        .timeout(timeout);
+
+    if (response.statusCode == 401) {
+      if (await _authService.refreshAccessToken()) {
+        response = await http
+            .patch(url, headers: _headers, body: body)
+            .timeout(timeout);
+      }
+    }
+
+    return response;
+  }
+
+  /// Executes a DELETE request with automatic token refresh on 401
+  Future<http.Response> _authenticatedDelete(Uri url) async {
+    var response = await http.delete(url, headers: _headers).timeout(timeout);
+
+    if (response.statusCode == 401) {
+      if (await _authService.refreshAccessToken()) {
+        response = await http.delete(url, headers: _headers).timeout(timeout);
+      }
+    }
+
+    return response;
   }
 
   /// Handles HTTP response and throws appropriate exceptions
@@ -132,7 +198,7 @@ class ApiService {
         '$baseUrl/quizzes/summaries',
       ).replace(queryParameters: queryParams);
 
-      final response = await http.get(uri, headers: _headers).timeout(timeout);
+      final response = await _authenticatedGet(uri);
 
       _handleHttpResponse(response, 'load quiz summaries');
 
@@ -166,9 +232,9 @@ class ApiService {
     }
 
     try {
-      final response = await http
-          .get(Uri.parse('$baseUrl/quizzes/$id'), headers: _headers)
-          .timeout(timeout);
+      final response = await _authenticatedGet(
+        Uri.parse('$baseUrl/quizzes/$id'),
+      );
 
       _handleHttpResponse(response, 'load quiz');
 
@@ -189,12 +255,9 @@ class ApiService {
     }
 
     try {
-      final response = await http
-          .get(
-            Uri.parse('$baseUrl/quizzes/$id?view=$_viewModeEdit'),
-            headers: _headers,
-          )
-          .timeout(timeout);
+      final response = await _authenticatedGet(
+        Uri.parse('$baseUrl/quizzes/$id?view=$_viewModeEdit'),
+      );
 
       _handleHttpResponse(response, 'load quiz for edit');
 
@@ -235,18 +298,27 @@ class ApiService {
         },
       );
 
-      final request = http.MultipartRequest('POST', uri);
-
-      final authHeaders = _authService.getAuthHeaders();
-      if (authHeaders.containsKey('Authorization')) {
-        request.headers['Authorization'] = authHeaders['Authorization']!;
+      // Helper to create and send the multipart request
+      Future<http.StreamedResponse> sendRequest() async {
+        final request = http.MultipartRequest('POST', uri);
+        final authHeaders = _authService.getAuthHeaders();
+        if (authHeaders.containsKey('Authorization')) {
+          request.headers['Authorization'] = authHeaders['Authorization']!;
+        }
+        request.files.add(
+          http.MultipartFile.fromBytes('file', fileBytes, filename: fileName),
+        );
+        return request.send().timeout(timeout);
       }
 
-      request.files.add(
-        http.MultipartFile.fromBytes('file', fileBytes, filename: fileName),
-      );
+      var response = await sendRequest();
 
-      final response = await request.send().timeout(timeout);
+      // Try refresh and retry on 401
+      if (response.statusCode == 401) {
+        if (await _authService.refreshAccessToken()) {
+          response = await sendRequest();
+        }
+      }
 
       if (response.statusCode == 401) {
         _authService.handleSessionExpired();
@@ -295,13 +367,10 @@ class ApiService {
 
   Future<QuizAttempt> startAttempt(StartAttemptRequest request) async {
     try {
-      final response = await http
-          .post(
-            Uri.parse('$baseUrl/attempts'),
-            headers: _headers,
-            body: json.encode(request.toJson()),
-          )
-          .timeout(timeout);
+      final response = await _authenticatedPost(
+        Uri.parse('$baseUrl/attempts'),
+        body: json.encode(request.toJson()),
+      );
 
       _handleHttpResponse(response, 'start attempt');
 
@@ -320,16 +389,13 @@ class ApiService {
     CompleteAttemptRequest request,
   ) async {
     try {
-      final response = await http
-          .patch(
-            Uri.parse('$baseUrl/attempts/$attemptId'),
-            headers: _headers,
-            body: json.encode({
-              'status': 'completed',
-              'answers': request.toJson()['answers'],
-            }),
-          )
-          .timeout(timeout);
+      final response = await _authenticatedPatch(
+        Uri.parse('$baseUrl/attempts/$attemptId'),
+        body: json.encode({
+          'status': 'completed',
+          'answers': request.toJson()['answers'],
+        }),
+      );
 
       _handleHttpResponse(response, 'complete attempt');
 
@@ -345,13 +411,10 @@ class ApiService {
 
   Future<QuizAttempt> abandonAttempt(int attemptId) async {
     try {
-      final response = await http
-          .patch(
-            Uri.parse('$baseUrl/attempts/$attemptId'),
-            headers: _headers,
-            body: json.encode({'status': 'completed'}),
-          )
-          .timeout(timeout);
+      final response = await _authenticatedPatch(
+        Uri.parse('$baseUrl/attempts/$attemptId'),
+        body: json.encode({'status': 'completed'}),
+      );
 
       _handleHttpResponse(response, 'abandon attempt');
 
@@ -392,7 +455,7 @@ class ApiService {
         '$baseUrl/attempts',
       ).replace(queryParameters: queryParams);
 
-      final response = await http.get(uri, headers: _headers).timeout(timeout);
+      final response = await _authenticatedGet(uri);
 
       _handleHttpResponse(response, 'load history');
 
@@ -429,9 +492,9 @@ class ApiService {
     }
 
     try {
-      final response = await http
-          .get(Uri.parse('$baseUrl/attempts/$attemptId'), headers: _headers)
-          .timeout(timeout);
+      final response = await _authenticatedGet(
+        Uri.parse('$baseUrl/attempts/$attemptId'),
+      );
 
       _handleHttpResponse(response, 'load attempt details');
 
@@ -448,13 +511,10 @@ class ApiService {
   /// Create a new quiz using simplified JSON format
   Future<Map<String, dynamic>> createQuiz(Map<String, dynamic> data) async {
     try {
-      final response = await http
-          .post(
-            Uri.parse('$baseUrl/quizzes'),
-            headers: _headers,
-            body: json.encode(data),
-          )
-          .timeout(timeout);
+      final response = await _authenticatedPost(
+        Uri.parse('$baseUrl/quizzes'),
+        body: json.encode(data),
+      );
 
       _handleHttpResponse(response, 'create quiz');
 
@@ -476,13 +536,10 @@ class ApiService {
     }
 
     try {
-      final response = await http
-          .put(
-            Uri.parse('$baseUrl/quizzes/$id'),
-            headers: _headers,
-            body: json.encode(data),
-          )
-          .timeout(timeout);
+      final response = await _authenticatedPut(
+        Uri.parse('$baseUrl/quizzes/$id'),
+        body: json.encode(data),
+      );
 
       _handleHttpResponse(response, 'update quiz');
 
@@ -501,9 +558,9 @@ class ApiService {
     }
 
     try {
-      final response = await http
-          .delete(Uri.parse('$baseUrl/quizzes/$id'), headers: _headers)
-          .timeout(timeout);
+      final response = await _authenticatedDelete(
+        Uri.parse('$baseUrl/quizzes/$id'),
+      );
 
       _handleHttpResponse(response, 'delete quiz');
     } on ApiException {
@@ -525,13 +582,10 @@ class ApiService {
       final body = request.toJson();
       body['question_id'] = questionId;
 
-      final response = await http
-          .post(
-            Uri.parse('$baseUrl/answers'),
-            headers: _headers,
-            body: json.encode(body),
-          )
-          .timeout(timeout);
+      final response = await _authenticatedPost(
+        Uri.parse('$baseUrl/answers'),
+        body: json.encode(body),
+      );
 
       _handleHttpResponse(response, 'validate answer');
 

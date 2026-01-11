@@ -4,16 +4,24 @@ Base URL: `http://localhost:8080/api/v1`
 
 ## Authentication
 
-The API uses JWT (JSON Web Token) authentication. After logging in, include the token in the `Authorization` header for protected endpoints.
+The API uses JWT (JSON Web Token) authentication with refresh tokens for session management.
+
+**Token Strategy:**
+- **Access Token**: Short-lived JWT (1 hour default), included in `Authorization` header
+- **Refresh Token**: Long-lived opaque token (7 days default), used to obtain new access tokens
 
 ```
-Authorization: Bearer <token>
+Authorization: Bearer <access_token>
 ```
+
+**Automatic Token Refresh:**
+When an access token expires, use the refresh token to obtain a new token pair without re-authenticating. The client should automatically retry failed 401 requests after refreshing.
 
 ### Public Endpoints
 - `GET /health` - Health check
 - `POST /users` - Register
 - `POST /sessions` - Login
+- `POST /sessions/refresh` - Refresh tokens
 
 ### Protected Endpoints (require authentication)
 All other endpoints require a valid JWT token:
@@ -44,6 +52,7 @@ All other endpoints require a valid JWT token:
 | `POST` | `/users/me/history-clearance` | Clear quiz history (protected) |
 | `POST` | `/users/me/deletion` | Delete account (protected) |
 | `POST` | `/sessions` | Create session (login) |
+| `POST` | `/sessions/refresh` | Refresh access token |
 | `DELETE` | `/sessions` | Destroy session (logout, protected) |
 
 ### Quizzes
@@ -134,10 +143,12 @@ curl -X POST http://localhost:8080/api/v1/users \
   -d '{"username": "john_doe", "password": "MyPassword123"}'
 ```
 
-Response (includes token for immediate login):
+Response (includes tokens for immediate login):
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4...",
+  "expires_in": 3600,
   "user": {
     "id": 1,
     "username": "john_doe",
@@ -145,6 +156,11 @@ Response (includes token for immediate login):
   }
 }
 ```
+
+**Response Fields:**
+- `token` - JWT access token for API authentication
+- `refresh_token` - Opaque token for obtaining new access tokens
+- `expires_in` - Access token validity in seconds (3600 = 1 hour)
 
 ### Login
 ```bash
@@ -157,6 +173,8 @@ Response:
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4...",
+  "expires_in": 3600,
   "user": {
     "id": 1,
     "username": "john_doe",
@@ -164,6 +182,29 @@ Response:
   }
 }
 ```
+
+### Refresh Tokens
+
+Use this endpoint to obtain a new access token when the current one expires. This allows users to stay logged in without re-entering credentials.
+
+```bash
+curl -X POST http://localhost:8080/api/v1/sessions/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"refresh_token": "dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4..."}'
+```
+
+Response:
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "bmV3IHJlZnJlc2ggdG9rZW4...",
+  "expires_in": 3600
+}
+```
+
+**Token Rotation:** Each refresh returns a new refresh token. The previous refresh token is immediately revoked. This limits the window of opportunity if a token is compromised.
+
+**Security:** If a revoked refresh token is used (indicating potential theft), all tokens in that session family are revoked, requiring re-authentication.
 
 ### Get Current User
 ```bash

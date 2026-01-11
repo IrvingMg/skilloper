@@ -14,11 +14,13 @@ class ApiEndpoints {
   // Answer validation
   static const String answers = '/answers';
 
-  // Auth endpoints
-  static const String login = '/auth/login';
-  static const String register = '/auth/register';
-  static const String currentUser = '/auth/me';
-  static String userPassword(int id) => '/users/$id/password';
-  static String userHistory(int id) => '/users/$id/history';
-  static String user(int id) => '/users/$id';
+  // Session endpoints (auth)
+  static const String sessions = '/sessions';
+  static const String sessionsRefresh = '/sessions/refresh';
+
+  // User endpoints
+  static const String users = '/users';
+  static const String userPassword = '/users/me/password';
+  static const String userHistoryClearance = '/users/me/history-clearance';
+  static const String userDeletion = '/users/me/deletion';
 }

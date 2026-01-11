@@ -1,13 +1,16 @@
 package services
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -40,18 +43,20 @@ type Claims struct {
 }
 
 type AuthService struct {
-	db        *gorm.DB
-	jwtSecret []byte
-	jwtExpiry time.Duration
-	log       *zap.Logger
+	db                 *gorm.DB
+	jwtSecret          []byte
+	jwtExpiry          time.Duration
+	refreshTokenExpiry time.Duration
+	log                *zap.Logger
 }
 
-func NewAuthService(db *gorm.DB, jwtSecret string, jwtExpiry time.Duration, log *zap.Logger) *AuthService {
+func NewAuthService(db *gorm.DB, jwtSecret string, jwtExpiry, refreshTokenExpiry time.Duration, log *zap.Logger) *AuthService {
 	return &AuthService{
-		db:        db,
-		jwtSecret: []byte(jwtSecret),
-		jwtExpiry: jwtExpiry,
-		log:       log,
+		db:                 db,
+		jwtSecret:          []byte(jwtSecret),
+		jwtExpiry:          jwtExpiry,
+		refreshTokenExpiry: refreshTokenExpiry,
+		log:                log,
 	}
 }
 
@@ -94,8 +99,16 @@ func (s *AuthService) Register(req models.RegisterRequest) (*models.LoginRespons
 		return nil, err
 	}
 
+	familyID := uuid.New().String()
+	refreshToken, err := s.generateRefreshToken(user.ID, familyID)
+	if err != nil {
+		return nil, err
+	}
+
 	return &models.LoginResponse{
-		Token: token,
+		Token:        token,
+		RefreshToken: refreshToken,
+		ExpiresIn:    int(s.jwtExpiry.Seconds()),
 		User: models.UserResponse{
 			ID:        user.ID,
 			Username:  user.Username,
@@ -149,11 +162,19 @@ func (s *AuthService) Login(req models.LoginRequest) (*models.LoginResponse, err
 		return nil, err
 	}
 
+	familyID := uuid.New().String()
+	refreshToken, err := s.generateRefreshToken(user.ID, familyID)
+	if err != nil {
+		return nil, err
+	}
+
 	s.log.Debug("User logged in successfully",
 		zap.Uint("user_id", user.ID))
 
 	return &models.LoginResponse{
-		Token: token,
+		Token:        token,
+		RefreshToken: refreshToken,
+		ExpiresIn:    int(s.jwtExpiry.Seconds()),
 		User: models.UserResponse{
 			ID:        user.ID,
 			Username:  user.Username,
@@ -501,4 +522,129 @@ func (s *AuthService) DeleteAccount(userID uint, password string) error {
 		zap.Uint("user_id", userID))
 
 	return nil
+}
+
+// generateRefreshToken creates a new refresh token and stores it in the database
+func (s *AuthService) generateRefreshToken(userID uint, familyID string) (string, error) {
+	tokenBytes := make([]byte, 32)
+	if _, err := rand.Read(tokenBytes); err != nil {
+		return "", apperrors.NewInternalError("REFRESH_TOKEN_GENERATION_FAILED", "Failed to generate refresh token", err)
+	}
+
+	tokenString := base64.URLEncoding.EncodeToString(tokenBytes)
+	tokenHash := s.hashToken(tokenString)
+
+	refreshToken := models.RefreshToken{
+		TokenHash: tokenHash,
+		UserID:    userID,
+		FamilyID:  familyID,
+		ExpiresAt: time.Now().Add(s.refreshTokenExpiry),
+	}
+
+	if err := s.db.Create(&refreshToken).Error; err != nil {
+		return "", apperrors.NewDatabaseError("REFRESH_TOKEN_CREATE_FAILED", "Failed to store refresh token", err)
+	}
+
+	return tokenString, nil
+}
+
+// RefreshTokens validates a refresh token and returns a new token pair
+func (s *AuthService) RefreshTokens(refreshTokenString string) (*models.TokenPairResponse, error) {
+	tokenHash := s.hashToken(refreshTokenString)
+
+	var storedToken models.RefreshToken
+	result := s.db.Where("token_hash = ?", tokenHash).First(&storedToken)
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, apperrors.ErrInvalidToken
+		}
+		return nil, apperrors.NewDatabaseError("REFRESH_TOKEN_LOOKUP_FAILED", "Failed to lookup refresh token", result.Error)
+	}
+
+	// Check if token is revoked (potential token reuse attack)
+	if storedToken.Revoked {
+		s.revokeTokenFamily(storedToken.FamilyID)
+		s.log.Warn("Refresh token reuse detected, revoking family",
+			zap.String("family_id", storedToken.FamilyID),
+			zap.Uint("user_id", storedToken.UserID))
+		return nil, apperrors.ErrInvalidToken
+	}
+
+	// Check expiration
+	if time.Now().After(storedToken.ExpiresAt) {
+		return nil, apperrors.ErrInvalidToken
+	}
+
+	// Verify user still exists and tokens haven't been invalidated
+	var user models.User
+	if err := s.db.First(&user, storedToken.UserID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, apperrors.ErrInvalidToken
+		}
+		return nil, apperrors.NewDatabaseError("USER_LOOKUP_FAILED", "Failed to lookup user", err)
+	}
+
+	// Check TokensInvalidatedAt (password change invalidates all tokens)
+	if user.TokensInvalidatedAt != nil && storedToken.CreatedAt.Before(*user.TokensInvalidatedAt) {
+		return nil, apperrors.ErrInvalidToken
+	}
+
+	// Revoke the current refresh token (rotation)
+	now := time.Now()
+	if err := s.db.Model(&storedToken).Updates(map[string]any{
+		"revoked":    true,
+		"revoked_at": now,
+	}).Error; err != nil {
+		s.log.Error("Failed to revoke refresh token during rotation",
+			zap.Error(err),
+			zap.Uint("token_id", storedToken.ID))
+		return nil, apperrors.NewDatabaseError("TOKEN_REVOCATION_FAILED", "Failed to revoke token", err)
+	}
+
+	// Generate new access token
+	accessToken, err := s.generateToken(user)
+	if err != nil {
+		return nil, err
+	}
+
+	// Generate new refresh token in same family
+	newRefreshToken, err := s.generateRefreshToken(user.ID, storedToken.FamilyID)
+	if err != nil {
+		return nil, err
+	}
+
+	s.log.Debug("Tokens refreshed successfully",
+		zap.Uint("user_id", user.ID))
+
+	return &models.TokenPairResponse{
+		AccessToken:  accessToken,
+		RefreshToken: newRefreshToken,
+		ExpiresIn:    int(s.jwtExpiry.Seconds()),
+	}, nil
+}
+
+// RevokeUserRefreshTokens revokes all refresh tokens for a user (used on logout)
+func (s *AuthService) RevokeUserRefreshTokens(userID uint) error {
+	now := time.Now()
+	return s.db.Model(&models.RefreshToken{}).
+		Where("user_id = ? AND revoked = false", userID).
+		Updates(map[string]any{
+			"revoked":    true,
+			"revoked_at": now,
+		}).Error
+}
+
+// revokeTokenFamily revokes all tokens in a family (used on token reuse detection)
+func (s *AuthService) revokeTokenFamily(familyID string) {
+	now := time.Now()
+	if err := s.db.Model(&models.RefreshToken{}).
+		Where("family_id = ? AND revoked = false", familyID).
+		Updates(map[string]any{
+			"revoked":    true,
+			"revoked_at": now,
+		}).Error; err != nil {
+		s.log.Error("Failed to revoke token family",
+			zap.Error(err),
+			zap.String("family_id", familyID))
+	}
 }

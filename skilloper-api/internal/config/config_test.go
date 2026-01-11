@@ -11,12 +11,12 @@ func TestParseJWTExpiry(t *testing.T) {
 		envValue string
 		want     time.Duration
 	}{
-		{"default when empty", "", 24 * time.Hour},
+		{"default when empty", "", 1 * time.Hour},
 		{"valid hours", "48", 48 * time.Hour},
 		{"single hour", "1", 1 * time.Hour},
-		{"invalid string", "invalid", 24 * time.Hour},
-		{"zero fallback", "0", 24 * time.Hour},
-		{"negative fallback", "-5", 24 * time.Hour},
+		{"invalid string", "invalid", 1 * time.Hour},
+		{"zero fallback", "0", 1 * time.Hour},
+		{"negative fallback", "-5", 1 * time.Hour},
 	}
 
 	for _, tt := range tests {
@@ -26,6 +26,32 @@ func TestParseJWTExpiry(t *testing.T) {
 			got := parseJWTExpiry()
 			if got != tt.want {
 				t.Errorf("parseJWTExpiry() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestParseRefreshTokenExpiry(t *testing.T) {
+	tests := []struct {
+		name     string
+		envValue string
+		want     time.Duration
+	}{
+		{"default when empty", "", 168 * time.Hour},
+		{"valid hours", "336", 336 * time.Hour},
+		{"single hour", "1", 1 * time.Hour},
+		{"invalid string", "invalid", 168 * time.Hour},
+		{"zero fallback", "0", 168 * time.Hour},
+		{"negative fallback", "-5", 168 * time.Hour},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("REFRESH_TOKEN_EXPIRY", tt.envValue)
+
+			got := parseRefreshTokenExpiry()
+			if got != tt.want {
+				t.Errorf("parseRefreshTokenExpiry() = %v, want %v", got, tt.want)
 			}
 		})
 	}

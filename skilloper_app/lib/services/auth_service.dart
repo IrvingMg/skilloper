@@ -4,6 +4,7 @@ import 'dart:ui' show VoidCallback;
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import '../constants/api_endpoints.dart';
 import 'api_config.dart';
 
 class User {
@@ -41,6 +42,7 @@ class AuthException implements Exception {
 
 class AuthService {
   static const String _tokenKey = 'skilloper_auth_token';
+  static const String _refreshTokenKey = 'skilloper_refresh_token';
   static const String _userKey = 'skilloper_user';
 
   static final AuthService _instance = AuthService._internal();
@@ -56,7 +58,11 @@ class AuthService {
   // Synchronization lock for auth operations
   Completer<void>? _operationLock;
 
+  // Prevents concurrent refresh attempts
+  Completer<bool>? _refreshCompleter;
+
   String? _token;
+  String? _refreshToken;
   User? _currentUser;
   VoidCallback? onSessionExpired;
 
@@ -83,34 +89,47 @@ class AuthService {
     await _acquireLock();
     try {
       final storedToken = await _secureStorage.read(key: _tokenKey);
+      final storedRefreshToken = await _secureStorage.read(
+        key: _refreshTokenKey,
+      );
       final userJson = await _secureStorage.read(key: _userKey);
 
-      // Both token and user must be present for a valid session
-      if (storedToken == null || userJson == null) {
+      // Must have refresh token and user for a valid session
+      if (storedRefreshToken == null || userJson == null) {
         await _clearStoredSession();
         return;
       }
 
-      // Check if token is expired
-      if (_isTokenExpired(storedToken)) {
-        await _clearStoredSession();
-        return;
-      }
-
-      // Parse user data
+      // Parse user data first
       try {
         _currentUser = User.fromJson(
           json.decode(userJson) as Map<String, dynamic>,
         );
-        _token = storedToken;
       } on Exception catch (e) {
         _debugLog('Failed to parse stored user: $e');
         await _clearStoredSession();
+        return;
+      }
+
+      _refreshToken = storedRefreshToken;
+
+      // If access token exists and is valid, use it
+      if (storedToken != null && !_isTokenExpired(storedToken)) {
+        _token = storedToken;
+      } else {
+        // Access token missing or expired, try to refresh
+        _releaseLock();
+        final refreshed = await refreshAccessToken();
+        await _acquireLock();
+
+        if (!refreshed) {
+          await _clearStoredSession();
+          return;
+        }
       }
     } on Exception catch (e) {
       _debugLog('Failed to load session: $e');
-      _token = null;
-      _currentUser = null;
+      await _clearStoredSession();
     } finally {
       _releaseLock();
     }
@@ -118,8 +137,10 @@ class AuthService {
 
   Future<void> _clearStoredSession() async {
     _token = null;
+    _refreshToken = null;
     _currentUser = null;
     await _secureStorage.delete(key: _tokenKey);
+    await _secureStorage.delete(key: _refreshTokenKey);
     await _secureStorage.delete(key: _userKey);
   }
 
@@ -187,11 +208,63 @@ class AuthService {
     }
   }
 
+  /// Attempts to refresh the access token using the refresh token.
+  /// Returns true if successful, false if refresh failed (requires re-login).
+  Future<bool> refreshAccessToken() async {
+    // Prevent concurrent refresh attempts
+    if (_refreshCompleter != null) {
+      return _refreshCompleter!.future;
+    }
+
+    _refreshCompleter = Completer<bool>();
+
+    try {
+      final refreshToken =
+          _refreshToken ?? await _secureStorage.read(key: _refreshTokenKey);
+      if (refreshToken == null) {
+        _refreshCompleter!.complete(false);
+        return false;
+      }
+
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}${ApiEndpoints.sessionsRefresh}'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'refresh_token': refreshToken}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        _token = data['access_token'] as String;
+        _refreshToken = data['refresh_token'] as String;
+
+        await _secureStorage.write(key: _tokenKey, value: _token);
+        await _secureStorage.write(key: _refreshTokenKey, value: _refreshToken);
+
+        _debugLog('Access token refreshed successfully');
+        _refreshCompleter!.complete(true);
+        return true;
+      } else {
+        _debugLog('Token refresh failed: ${response.statusCode}');
+        // Clear invalid refresh token from memory
+        _refreshToken = null;
+        await _secureStorage.delete(key: _refreshTokenKey);
+        _refreshCompleter!.complete(false);
+        return false;
+      }
+    } on Exception catch (e) {
+      _debugLog('Token refresh error: $e');
+      _refreshCompleter!.complete(false);
+      return false;
+    } finally {
+      _refreshCompleter = null;
+    }
+  }
+
   Future<void> register(String username, String password) async {
     await _acquireLock();
     try {
       final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/users'),
+        Uri.parse('${ApiConfig.baseUrl}${ApiEndpoints.users}'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'username': username, 'password': password}),
       );
@@ -199,9 +272,11 @@ class AuthService {
       if (response.statusCode == 201) {
         final data = json.decode(response.body) as Map<String, dynamic>;
         _token = data['token'] as String;
+        _refreshToken = data['refresh_token'] as String;
         _currentUser = User.fromJson(data['user'] as Map<String, dynamic>);
 
         await _secureStorage.write(key: _tokenKey, value: _token);
+        await _secureStorage.write(key: _refreshTokenKey, value: _refreshToken);
         await _secureStorage.write(
           key: _userKey,
           value: json.encode(data['user']),
@@ -222,7 +297,7 @@ class AuthService {
     await _acquireLock();
     try {
       final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/sessions'),
+        Uri.parse('${ApiConfig.baseUrl}${ApiEndpoints.sessions}'),
         headers: {'Content-Type': 'application/json'},
         body: json.encode({'username': username, 'password': password}),
       );
@@ -230,9 +305,11 @@ class AuthService {
       if (response.statusCode == 201) {
         final data = json.decode(response.body) as Map<String, dynamic>;
         _token = data['token'] as String;
+        _refreshToken = data['refresh_token'] as String;
         _currentUser = User.fromJson(data['user'] as Map<String, dynamic>);
 
         await _secureStorage.write(key: _tokenKey, value: _token);
+        await _secureStorage.write(key: _refreshTokenKey, value: _refreshToken);
         await _secureStorage.write(
           key: _userKey,
           value: json.encode(data['user']),
@@ -257,7 +334,7 @@ class AuthService {
       if (_token != null && !sessionExpired) {
         // Only call server logout if not due to session expiration
         await http.delete(
-          Uri.parse('${ApiConfig.baseUrl}/sessions'),
+          Uri.parse('${ApiConfig.baseUrl}${ApiEndpoints.sessions}'),
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer $_token',
@@ -268,9 +345,11 @@ class AuthService {
       _debugLog('Logout request failed: $e');
     } finally {
       _token = null;
+      _refreshToken = null;
       _currentUser = null;
 
       await _secureStorage.delete(key: _tokenKey);
+      await _secureStorage.delete(key: _refreshTokenKey);
       await _secureStorage.delete(key: _userKey);
 
       _releaseLock();
@@ -323,7 +402,7 @@ class AuthService {
     await _acquireLock();
     try {
       final response = await http.put(
-        Uri.parse('${ApiConfig.baseUrl}/users/me/password'),
+        Uri.parse('${ApiConfig.baseUrl}${ApiEndpoints.userPassword}'),
         headers: getAuthHeaders(),
         body: json.encode({
           'current_password': currentPassword,
@@ -358,7 +437,7 @@ class AuthService {
     await _acquireLock();
     try {
       final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/users/me/history-clearance'),
+        Uri.parse('${ApiConfig.baseUrl}${ApiEndpoints.userHistoryClearance}'),
         headers: getAuthHeaders(),
         body: json.encode({'password': password}),
       );
@@ -382,15 +461,17 @@ class AuthService {
     await _acquireLock();
     try {
       final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}/users/me/deletion'),
+        Uri.parse('${ApiConfig.baseUrl}${ApiEndpoints.userDeletion}'),
         headers: getAuthHeaders(),
         body: json.encode({'password': password}),
       );
 
       if (response.statusCode == 200) {
         _token = null;
+        _refreshToken = null;
         _currentUser = null;
         await _secureStorage.delete(key: _tokenKey);
+        await _secureStorage.delete(key: _refreshTokenKey);
         await _secureStorage.delete(key: _userKey);
         return;
       } else {

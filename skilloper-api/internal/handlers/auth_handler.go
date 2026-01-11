@@ -61,10 +61,28 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	c.JSON(http.StatusCreated, response)
 }
 
+// RefreshToken handles POST /sessions/refresh
+func (h *AuthHandler) RefreshToken(c *gin.Context) {
+	var req models.RefreshTokenRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.errH.Handle(c, apperrors.ErrInvalidJSONFormat, "parse_refresh_request")
+		return
+	}
+
+	response, err := h.service.RefreshTokens(req.RefreshToken)
+	if err != nil {
+		h.errH.Handle(c, err, "refresh_token")
+		return
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
 // Logout handles DELETE /sessions
 func (h *AuthHandler) Logout(c *gin.Context) {
 	userID := middleware.GetUserID(c)
 
+	// Blacklist current access token
 	authHeader := c.GetHeader("Authorization")
 	if strings.HasPrefix(authHeader, "Bearer ") {
 		token := strings.TrimPrefix(authHeader, "Bearer ")
@@ -77,6 +95,13 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 			h.log.Warn("Failed to get token expiry for blacklisting",
 				zap.Error(err))
 		}
+	}
+
+	// Revoke all refresh tokens for this user
+	if err := h.service.RevokeUserRefreshTokens(userID); err != nil {
+		h.log.Warn("Failed to revoke refresh tokens",
+			zap.Error(err),
+			zap.Uint("user_id", userID))
 	}
 
 	h.log.Debug("User logged out",
