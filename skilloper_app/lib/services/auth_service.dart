@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'dart:convert' show base64Url, json, utf8;
 import 'dart:ui' show VoidCallback;
-import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/api_endpoints.dart';
 import 'api_config.dart';
 
@@ -49,11 +50,41 @@ class AuthService {
   factory AuthService() => _instance;
   AuthService._internal();
 
-  // Secure storage for sensitive data
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
-    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
-  );
+  // Secure storage for native platforms
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+
+  // Cached SharedPreferences instance for web
+  SharedPreferences? _webPrefs;
+
+  Future<SharedPreferences> get _prefs async =>
+      _webPrefs ??= await SharedPreferences.getInstance();
+
+  // Storage helper methods that use SharedPreferences on web
+  Future<String?> _readStorage(String key) async {
+    if (kIsWeb) {
+      final prefs = await _prefs;
+      return prefs.getString(key);
+    }
+    return _secureStorage.read(key: key);
+  }
+
+  Future<void> _writeStorage(String key, String value) async {
+    if (kIsWeb) {
+      final prefs = await _prefs;
+      await prefs.setString(key, value);
+    } else {
+      await _secureStorage.write(key: key, value: value);
+    }
+  }
+
+  Future<void> _deleteStorage(String key) async {
+    if (kIsWeb) {
+      final prefs = await _prefs;
+      await prefs.remove(key);
+    } else {
+      await _secureStorage.delete(key: key);
+    }
+  }
 
   // Synchronization lock for auth operations
   Completer<void>? _operationLock;
@@ -72,8 +103,10 @@ class AuthService {
 
   /// Acquires lock for auth operations to prevent race conditions
   Future<void> _acquireLock() async {
-    while (_operationLock != null) {
-      await _operationLock!.future;
+    var currentLock = _operationLock;
+    while (currentLock != null) {
+      await currentLock.future;
+      currentLock = _operationLock;
     }
     _operationLock = Completer<void>();
   }
@@ -88,11 +121,9 @@ class AuthService {
   Future<void> loadStoredSession() async {
     await _acquireLock();
     try {
-      final storedToken = await _secureStorage.read(key: _tokenKey);
-      final storedRefreshToken = await _secureStorage.read(
-        key: _refreshTokenKey,
-      );
-      final userJson = await _secureStorage.read(key: _userKey);
+      final storedToken = await _readStorage(_tokenKey);
+      final storedRefreshToken = await _readStorage(_refreshTokenKey);
+      final userJson = await _readStorage(_userKey);
 
       // Must have refresh token and user for a valid session
       if (storedRefreshToken == null || userJson == null) {
@@ -127,7 +158,7 @@ class AuthService {
           return;
         }
       }
-    } on Exception catch (e) {
+    } on Object catch (e) {
       _debugLog('Failed to load session: $e');
       await _clearStoredSession();
     } finally {
@@ -139,9 +170,9 @@ class AuthService {
     _token = null;
     _refreshToken = null;
     _currentUser = null;
-    await _secureStorage.delete(key: _tokenKey);
-    await _secureStorage.delete(key: _refreshTokenKey);
-    await _secureStorage.delete(key: _userKey);
+    await _deleteStorage(_tokenKey);
+    await _deleteStorage(_refreshTokenKey);
+    await _deleteStorage(_userKey);
   }
 
   bool get isTokenValid => _token != null && !_isTokenExpired(_token!);
@@ -211,18 +242,20 @@ class AuthService {
   /// Attempts to refresh the access token using the refresh token.
   /// Returns true if successful, false if refresh failed (requires re-login).
   Future<bool> refreshAccessToken() async {
-    // Prevent concurrent refresh attempts
-    if (_refreshCompleter != null) {
-      return _refreshCompleter!.future;
+    // Prevent concurrent refresh attempts - capture in local var to avoid race
+    final existingCompleter = _refreshCompleter;
+    if (existingCompleter != null) {
+      return existingCompleter.future;
     }
 
-    _refreshCompleter = Completer<bool>();
+    final completer = Completer<bool>();
+    _refreshCompleter = completer;
 
     try {
       final refreshToken =
-          _refreshToken ?? await _secureStorage.read(key: _refreshTokenKey);
+          _refreshToken ?? await _readStorage(_refreshTokenKey);
       if (refreshToken == null) {
-        _refreshCompleter!.complete(false);
+        completer.complete(false);
         return false;
       }
 
@@ -234,26 +267,28 @@ class AuthService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body) as Map<String, dynamic>;
-        _token = data['access_token'] as String;
-        _refreshToken = data['refresh_token'] as String;
+        final token = data['access_token'] as String;
+        final newRefreshToken = data['refresh_token'] as String;
+        _token = token;
+        _refreshToken = newRefreshToken;
 
-        await _secureStorage.write(key: _tokenKey, value: _token);
-        await _secureStorage.write(key: _refreshTokenKey, value: _refreshToken);
+        await _writeStorage(_tokenKey, token);
+        await _writeStorage(_refreshTokenKey, newRefreshToken);
 
         _debugLog('Access token refreshed successfully');
-        _refreshCompleter!.complete(true);
+        completer.complete(true);
         return true;
       } else {
         _debugLog('Token refresh failed: ${response.statusCode}');
         // Clear invalid refresh token from memory
         _refreshToken = null;
-        await _secureStorage.delete(key: _refreshTokenKey);
-        _refreshCompleter!.complete(false);
+        await _deleteStorage(_refreshTokenKey);
+        completer.complete(false);
         return false;
       }
-    } on Exception catch (e) {
+    } on Object catch (e) {
       _debugLog('Token refresh error: $e');
-      _refreshCompleter!.complete(false);
+      completer.complete(false);
       return false;
     } finally {
       _refreshCompleter = null;
@@ -271,22 +306,22 @@ class AuthService {
 
       if (response.statusCode == 201) {
         final data = json.decode(response.body) as Map<String, dynamic>;
-        _token = data['token'] as String;
-        _refreshToken = data['refresh_token'] as String;
+        final token = data['token'] as String;
+        final refreshToken = data['refresh_token'] as String;
+        _token = token;
+        _refreshToken = refreshToken;
         _currentUser = User.fromJson(data['user'] as Map<String, dynamic>);
 
-        await _secureStorage.write(key: _tokenKey, value: _token);
-        await _secureStorage.write(key: _refreshTokenKey, value: _refreshToken);
-        await _secureStorage.write(
-          key: _userKey,
-          value: json.encode(data['user']),
-        );
+        await _writeStorage(_tokenKey, token);
+        await _writeStorage(_refreshTokenKey, refreshToken);
+        await _writeStorage(_userKey, json.encode(data['user']));
       } else {
         final error = _parseError(response);
         throw AuthException(error.message, code: error.code);
       }
-    } on Exception catch (e) {
-      if (e is AuthException) rethrow;
+    } on AuthException {
+      rethrow;
+    } on Object catch (e) {
       throw AuthException('Failed to register: $e');
     } finally {
       _releaseLock();
@@ -304,22 +339,22 @@ class AuthService {
 
       if (response.statusCode == 201) {
         final data = json.decode(response.body) as Map<String, dynamic>;
-        _token = data['token'] as String;
-        _refreshToken = data['refresh_token'] as String;
+        final token = data['token'] as String;
+        final refreshToken = data['refresh_token'] as String;
+        _token = token;
+        _refreshToken = refreshToken;
         _currentUser = User.fromJson(data['user'] as Map<String, dynamic>);
 
-        await _secureStorage.write(key: _tokenKey, value: _token);
-        await _secureStorage.write(key: _refreshTokenKey, value: _refreshToken);
-        await _secureStorage.write(
-          key: _userKey,
-          value: json.encode(data['user']),
-        );
+        await _writeStorage(_tokenKey, token);
+        await _writeStorage(_refreshTokenKey, refreshToken);
+        await _writeStorage(_userKey, json.encode(data['user']));
       } else {
         final error = _parseError(response);
         throw AuthException(error.message, code: error.code);
       }
-    } on Exception catch (e) {
-      if (e is AuthException) rethrow;
+    } on AuthException {
+      rethrow;
+    } on Object catch (e) {
       throw AuthException('Failed to login: $e');
     } finally {
       _releaseLock();
@@ -341,16 +376,16 @@ class AuthService {
           },
         );
       }
-    } on Exception catch (e) {
+    } on Object catch (e) {
       _debugLog('Logout request failed: $e');
     } finally {
       _token = null;
       _refreshToken = null;
       _currentUser = null;
 
-      await _secureStorage.delete(key: _tokenKey);
-      await _secureStorage.delete(key: _refreshTokenKey);
-      await _secureStorage.delete(key: _userKey);
+      await _deleteStorage(_tokenKey);
+      await _deleteStorage(_refreshTokenKey);
+      await _deleteStorage(_userKey);
 
       _releaseLock();
 
@@ -419,14 +454,15 @@ class AuthService {
           );
         }
         _token = newToken;
-        await _secureStorage.write(key: _tokenKey, value: _token);
+        await _writeStorage(_tokenKey, newToken);
         return;
       } else {
         final error = _parseError(response);
         throw AuthException(error.message, code: error.code);
       }
-    } on Exception catch (e) {
-      if (e is AuthException) rethrow;
+    } on AuthException {
+      rethrow;
+    } on Object catch (e) {
       throw AuthException('Failed to update password: $e');
     } finally {
       _releaseLock();
@@ -449,8 +485,9 @@ class AuthService {
         final error = _parseError(response);
         throw AuthException(error.message, code: error.code);
       }
-    } on Exception catch (e) {
-      if (e is AuthException) rethrow;
+    } on AuthException {
+      rethrow;
+    } on Object catch (e) {
       throw AuthException('Failed to reset history: $e');
     } finally {
       _releaseLock();
@@ -470,16 +507,17 @@ class AuthService {
         _token = null;
         _refreshToken = null;
         _currentUser = null;
-        await _secureStorage.delete(key: _tokenKey);
-        await _secureStorage.delete(key: _refreshTokenKey);
-        await _secureStorage.delete(key: _userKey);
+        await _deleteStorage(_tokenKey);
+        await _deleteStorage(_refreshTokenKey);
+        await _deleteStorage(_userKey);
         return;
       } else {
         final error = _parseError(response);
         throw AuthException(error.message, code: error.code);
       }
-    } on Exception catch (e) {
-      if (e is AuthException) rethrow;
+    } on AuthException {
+      rethrow;
+    } on Object catch (e) {
       throw AuthException('Failed to delete account: $e');
     } finally {
       _releaseLock();

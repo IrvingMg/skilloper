@@ -34,7 +34,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _register() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_formKey.currentState?.validate() != true) return;
 
     setState(() {
       _isLoading = true;
@@ -53,6 +53,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } on AuthException catch (e) {
       setState(() {
         _errorMessage = e.message;
+      });
+    } on Object {
+      setState(() {
+        _errorMessage = 'An unexpected error occurred. Please try again.';
       });
     } finally {
       if (mounted) {
