@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
+import 'copy_feedback.dart';
 
 class PromptCard extends StatefulWidget {
   final String title;
@@ -25,35 +26,24 @@ class _PromptCardState extends State<PromptCard> {
   bool _copied = false;
 
   Future<void> _copyToClipboard() async {
-    await Clipboard.setData(ClipboardData(text: widget.prompt));
-    if (!mounted) return;
-    setState(() => _copied = true);
+    try {
+      await Clipboard.setData(ClipboardData(text: widget.prompt));
+      if (!mounted) return;
+      setState(() => _copied = true);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              Icons.check,
-              color: AppColors.textOnPrimary,
-              size: AppIconSizes.sm,
-            ),
-            SizedBox(width: AppSpacing.sm),
-            Text('Prompt copied to clipboard'),
-          ],
-        ),
-        duration: Duration(seconds: 2),
-        backgroundColor: AppColors.success,
-      ),
-    );
+      showCopySuccessSnackBar(context, 'Prompt copied to clipboard');
 
-    unawaited(
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) {
-          setState(() => _copied = false);
-        }
-      }),
-    );
+      unawaited(
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) {
+            setState(() => _copied = false);
+          }
+        }),
+      );
+    } on PlatformException {
+      if (!mounted) return;
+      showCopyErrorSnackBar(context);
+    }
   }
 
   @override
