@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
@@ -26,6 +28,68 @@ class _ImportScreenState extends State<ImportScreen> {
   bool _isUploading = false;
   String? _message;
   bool _isSuccess = false;
+
+  // Paste JSON mode state
+  bool _isPasteMode = true;
+  final TextEditingController _jsonController = TextEditingController();
+  String? _jsonError;
+  bool _isJsonValid = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _jsonController.addListener(_onJsonTextChanged);
+  }
+
+  @override
+  void dispose() {
+    _jsonController.removeListener(_onJsonTextChanged);
+    _jsonController.dispose();
+    super.dispose();
+  }
+
+  void _onJsonTextChanged() {
+    _validateJson(_jsonController.text);
+  }
+
+  void _validateJson(String text) {
+    if (text.trim().isEmpty) {
+      setState(() {
+        _jsonError = null;
+        _isJsonValid = false;
+      });
+      return;
+    }
+
+    try {
+      json.decode(text);
+      setState(() {
+        _jsonError = null;
+        _isJsonValid = true;
+      });
+    } on FormatException catch (e) {
+      setState(() {
+        _jsonError = e.message;
+        _isJsonValid = false;
+      });
+    }
+  }
+
+  void _formatJson() {
+    try {
+      final decoded = json.decode(_jsonController.text);
+      final formatted = const JsonEncoder.withIndent('  ').convert(decoded);
+      _jsonController.text = formatted;
+    } catch (_) {
+      // Already showing error, do nothing
+    }
+  }
+
+  Future<void> _importPastedJson() async {
+    final jsonText = _jsonController.text.trim();
+    final bytes = utf8.encode(jsonText);
+    await _uploadFile(bytes, 'pasted-quiz.json');
+  }
 
   Future<void> _pickAndUploadFile() async {
     try {
@@ -647,6 +711,131 @@ class _ImportScreenState extends State<ImportScreen> {
     );
   }
 
+  Widget _buildPasteJsonSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Text area for pasting JSON
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: _jsonError != null
+                  ? AppColors.error
+                  : _isJsonValid
+                  ? AppColors.success
+                  : AppColors.outline,
+              width: 2,
+            ),
+            borderRadius: AppRadius.lgAll,
+            color: AppColors.surfaceWhite,
+          ),
+          child: TextField(
+            controller: _jsonController,
+            maxLines: 10,
+            enabled: !_isUploading,
+            style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
+            decoration: const InputDecoration(
+              hintText: 'Paste your quiz JSON here...',
+              hintStyle: TextStyle(
+                color: AppColors.textDisabled,
+                fontFamily: 'monospace',
+              ),
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.all(16),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Validation status and Format button row
+        Row(
+          children: [
+            // Validation status
+            if (_jsonController.text.trim().isNotEmpty) ...[
+              if (_isJsonValid)
+                const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.check_circle,
+                      color: AppColors.success,
+                      size: AppIconSizes.md,
+                    ),
+                    SizedBox(width: 6),
+                    Text(
+                      'Valid JSON',
+                      style: TextStyle(
+                        color: AppColors.success,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                )
+              else
+                Expanded(
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.error,
+                        color: AppColors.error,
+                        size: AppIconSizes.md,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          _jsonError ?? 'Invalid JSON',
+                          style: const TextStyle(
+                            color: AppColors.error,
+                            fontSize: 13,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+            const Spacer(),
+
+            // Format button
+            if (_isJsonValid)
+              TextButton.icon(
+                onPressed: _formatJson,
+                icon: const Icon(
+                  Icons.format_align_left,
+                  size: AppIconSizes.sm,
+                ),
+                label: const Text('Format'),
+                style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // Import button
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _isJsonValid && !_isUploading ? _importPastedJson : null,
+            icon: _isUploading
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.upload),
+            label: Text(_isUploading ? 'Importing...' : 'Import Quiz'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -672,7 +861,7 @@ class _ImportScreenState extends State<ImportScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Upload a quiz file created from your study notes',
+              'Paste JSON or upload a quiz file from your study notes',
               style: TextStyle(
                 fontSize: 16,
                 color: AppColors.textTertiary,
@@ -739,7 +928,7 @@ class _ImportScreenState extends State<ImportScreen> {
                           ),
                           const NumberedStep.compact(
                             number: '3',
-                            text: 'Download and import the file',
+                            text: 'Paste JSON or import file',
                           ),
                           const SizedBox(height: 12),
                           SizedBox(
@@ -776,93 +965,124 @@ class _ImportScreenState extends State<ImportScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Upload area
-                    Container(
+                    // Mode toggle
+                    SizedBox(
                       width: double.infinity,
-                      padding: EdgeInsets.all(
-                        MediaQuery.of(context).size.height < 700 ? 24 : 48,
-                      ),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: AppColors.outline,
-                          width: 2,
-                          style: BorderStyle.solid,
-                        ),
-                        borderRadius: AppRadius.lgAll,
-                        color: AppColors.surfaceWhite,
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.cloud_upload_outlined,
-                            size: MediaQuery.of(context).size.height < 700
-                                ? 48
-                                : 64,
-                            color: _isUploading
-                                ? AppColors.primary
-                                : AppColors.textDisabled,
+                      child: SegmentedButton<bool>(
+                        segments: const [
+                          ButtonSegment(
+                            value: true,
+                            label: Text('Paste JSON'),
+                            icon: Icon(Icons.paste, size: AppIconSizes.md),
                           ),
-                          SizedBox(
-                            height: MediaQuery.of(context).size.height < 700
-                                ? 12
-                                : 16,
-                          ),
-
-                          if (_isUploading)
-                            const Column(
-                              children: [
-                                CircularProgressIndicator(),
-                                SizedBox(height: 16),
-                                Text(
-                                  'Uploading...',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            )
-                          else
-                            Column(
-                              children: [
-                                const Text(
-                                  'Upload quiz file',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w500,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                const Text(
-                                  'Supports JSON and CSV formats',
-                                  style: TextStyle(
-                                    color: AppColors.textTertiary,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                SizedBox(
-                                  height:
-                                      MediaQuery.of(context).size.height < 700
-                                      ? 16
-                                      : 24,
-                                ),
-                                ElevatedButton.icon(
-                                  onPressed: _pickAndUploadFile,
-                                  icon: const Icon(Icons.upload_file),
-                                  label: const Text('Choose File'),
-                                  style: ElevatedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 24,
-                                      vertical: 12,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                          ButtonSegment(
+                            value: false,
+                            label: Text('Upload File'),
+                            icon: Icon(
+                              Icons.upload_file,
+                              size: AppIconSizes.md,
                             ),
+                          ),
                         ],
+                        selected: {_isPasteMode},
+                        onSelectionChanged: (value) {
+                          setState(() => _isPasteMode = value.first);
+                        },
                       ),
                     ),
+                    const SizedBox(height: 16),
+
+                    // Paste JSON area or Upload area based on mode
+                    if (_isPasteMode) ...[
+                      _buildPasteJsonSection(),
+                    ] else ...[
+                      // Upload area
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(
+                          MediaQuery.of(context).size.height < 700 ? 24 : 48,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: AppColors.outline,
+                            width: 2,
+                            style: BorderStyle.solid,
+                          ),
+                          borderRadius: AppRadius.lgAll,
+                          color: AppColors.surfaceWhite,
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.cloud_upload_outlined,
+                              size: MediaQuery.of(context).size.height < 700
+                                  ? 48
+                                  : 64,
+                              color: _isUploading
+                                  ? AppColors.primary
+                                  : AppColors.textDisabled,
+                            ),
+                            SizedBox(
+                              height: MediaQuery.of(context).size.height < 700
+                                  ? 12
+                                  : 16,
+                            ),
+                            if (_isUploading)
+                              const Column(
+                                children: [
+                                  CircularProgressIndicator(),
+                                  SizedBox(height: 16),
+                                  Text(
+                                    'Uploading...',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            else
+                              Column(
+                                children: [
+                                  const Text(
+                                    'Upload quiz file',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'Supports JSON and CSV formats',
+                                    style: TextStyle(
+                                      color: AppColors.textTertiary,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    height:
+                                        MediaQuery.of(context).size.height < 700
+                                        ? 16
+                                        : 24,
+                                  ),
+                                  ElevatedButton.icon(
+                                    onPressed: _pickAndUploadFile,
+                                    icon: const Icon(Icons.upload_file),
+                                    label: const Text('Choose File'),
+                                    style: ElevatedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 24,
+                                        vertical: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
 
                     SizedBox(
                       height: MediaQuery.of(context).size.height < 700

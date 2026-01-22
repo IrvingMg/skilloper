@@ -124,10 +124,10 @@ Format notes:
             // Step 3: Import
             const NumberedStep(
               number: '3',
-              text: 'Import the file',
+              text: 'Import the quiz',
               description:
-                  'Save the AI output as a .json file, then import it. '
-                  'You can also create CSV files manually.',
+                  'Copy the JSON and paste it directly, or save as a file and upload. '
+                  'CSV files are also supported.',
             ),
             const SizedBox(height: 12),
             SizedBox(
