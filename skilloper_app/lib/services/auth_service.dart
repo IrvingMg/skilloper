@@ -412,14 +412,17 @@ class AuthService {
 
   ({String message, String? code}) _parseError(http.Response response) {
     try {
-      final data = json.decode(response.body) as Map<String, dynamic>;
-      return (
-        message: data['error'] as String? ?? 'Unknown error',
-        code: data['code'] as String?,
-      );
-    } on Exception catch (e) {
+      final decoded = json.decode(response.body);
+      if (decoded is Map<String, dynamic>) {
+        return (
+          message: decoded['error'] as String? ?? 'Unknown error',
+          code: decoded['code'] as String?,
+        );
+      }
+      return (message: 'Request failed', code: 'REQUEST_FAILED');
+    } on Object catch (e) {
       _debugLog('Failed to parse error response: $e');
-      return (message: 'Request failed (${response.statusCode})', code: null);
+      return (message: 'Request failed', code: 'REQUEST_FAILED');
     }
   }
 
