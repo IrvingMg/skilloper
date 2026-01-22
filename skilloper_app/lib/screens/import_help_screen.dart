@@ -9,37 +9,48 @@ class ImportHelpScreen extends StatelessWidget {
   const ImportHelpScreen({super.key});
 
   static const String _universalPrompt = '''
-Convert the following study notes into a quiz in JSON format.
+Convert my study notes into a quiz using JSON format.
 
-Requirements:
-- Generate 10-15 questions based on the key concepts
-- Include an explanation for why each answer is correct
-- Mix single-choice and multiple-choice questions where appropriate
-- If my notes include code or technical content, include code snippets using "code" and "language" fields
+## Settings [customize these]
 
-Use this exact JSON format:
+Quiz type: practice
+Number of questions: 10-15
+
+My rules [edit or delete these]:
+- Make questions progressively harder
+- Avoid trivial or obvious questions
+
+## Requirements
+
+- Include an explanation for each correct answer
+- Mix single-choice and multiple-choice questions
+- For code/technical content, use "code" and "language" fields
+
+## JSON format
+
 {
-  "title": "Quiz Title Here",
+  "title": "Quiz Title",
   "type": "practice",
   "questions": [
     {
-      "question": "Question text here",
+      "question": "Question text",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "answer": ["2"],
-      "explanation": "Explanation of why this answer is correct"
+      "explanation": "Why this is correct"
     }
   ]
 }
 
-Important:
-- "answer" uses 1-based positions: ["1"] = first option, ["2"] = second option
-- For multiple correct answers: ["1", "3"] means options 1 and 3 are both correct
-- For code questions, add: "code": "your code here", "language": "javascript" (or python, etc.)
+Format notes:
+- "type": use "practice" (immediate feedback) or "exam" (results at end)
+- "answer" is 1-based: ["1"] = first option, ["2"] = second
+- Multiple correct: ["1", "3"] means options 1 and 3
+- Code questions: add "code": "...", "language": "python"
 
-My study notes:
----
-[PASTE YOUR NOTES HERE]
----''';
+## My notes [paste below]
+
+[Paste your notes here]
+''';
 
   static const String _jsonExample = r'''
 {
@@ -99,8 +110,8 @@ My study notes:
               number: '2',
               text: 'Generate with AI',
               description:
-                  'Copy the prompt below and paste it into ChatGPT or Claude, '
-                  'then add your notes at the end.',
+                  'Copy the prompt below into ChatGPT or Claude. '
+                  'Adjust the settings if needed, then paste your notes at the end.',
             ),
             const SizedBox(height: 12),
             const PromptCard(
