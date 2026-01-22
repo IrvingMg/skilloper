@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
 
 import '../models/attempt.dart';
@@ -21,7 +22,20 @@ class QuizScreen extends StatefulWidget {
 }
 
 class _QuizScreenState extends State<QuizScreen> {
+  static const _digitKeys = [
+    LogicalKeyboardKey.digit1,
+    LogicalKeyboardKey.digit2,
+    LogicalKeyboardKey.digit3,
+    LogicalKeyboardKey.digit4,
+    LogicalKeyboardKey.digit5,
+    LogicalKeyboardKey.digit6,
+    LogicalKeyboardKey.digit7,
+    LogicalKeyboardKey.digit8,
+    LogicalKeyboardKey.digit9,
+  ];
+
   final ApiService _apiService = ApiService();
+  final FocusNode _focusNode = FocusNode();
 
   int _currentQuestionIndex = 0;
   final Map<int, int> _userAnswers =
@@ -47,6 +61,49 @@ class _QuizScreenState extends State<QuizScreen> {
     } else {
       _startAttempt();
     }
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+
+    final optionCount = _currentQuestion.options.length;
+    final alreadyValidated = _validatedAnswers.containsKey(_currentQuestion.id);
+
+    // Number keys 1-9 to select answers
+    for (var i = 0; i < _digitKeys.length && i < optionCount; i++) {
+      if (event.logicalKey == _digitKeys[i]) {
+        if (!alreadyValidated && !_isValidating) {
+          final originalIndex = _toOriginalIndex(_currentQuestion.id, i);
+          _selectAnswer(originalIndex);
+        }
+        return KeyEventResult.handled;
+      }
+    }
+
+    // Enter to advance (check answer or next question)
+    if (event.logicalKey == LogicalKeyboardKey.enter) {
+      if (!_hasAnsweredCurrent || _isValidating) {
+        return KeyEventResult.ignored;
+      }
+
+      if (widget.quiz.isPracticeMode && !alreadyValidated) {
+        // Practice mode: check answer first
+        _checkAnswers();
+        return KeyEventResult.handled;
+      } else {
+        // Exam mode or already validated: go to next question
+        _nextQuestion();
+        return KeyEventResult.handled;
+      }
+    }
+
+    return KeyEventResult.ignored;
   }
 
   /// Initialize shuffle mappings for all questions
@@ -243,9 +300,6 @@ class _QuizScreenState extends State<QuizScreen> {
         }
       } else {
         _userAnswers[_currentQuestion.id] = answerIndex;
-        if (widget.quiz.isPracticeMode) {
-          _validateCurrentAnswer();
-        }
       }
     });
   }
@@ -359,257 +413,269 @@ class _QuizScreenState extends State<QuizScreen> {
     final userMultipleAnswers =
         _userMultipleAnswers[_currentQuestion.id] ?? <int>{};
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) {
-          _handleExit();
-        }
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              QuizModeIcon(
-                isExamMode: !widget.quiz.isPracticeMode,
-                size: AppIconSizes.appBarLogo,
-              ),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(widget.quiz.title, overflow: TextOverflow.ellipsis),
-              ),
-            ],
-          ),
-          leading: IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: _handleExit,
-          ),
-        ),
-        body: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                color: AppColors.surfaceWhite,
-                border: Border(bottom: BorderSide(color: AppColors.outline)),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Question ${_currentQuestionIndex + 1} of ${widget.quiz.questions.length}',
-                        style: const TextStyle(
-                          color: AppColors.textTertiary,
-                          fontSize: 14,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: const BoxDecoration(
-                          color: AppColors.surfaceContainerHigh,
-                          borderRadius: AppRadius.fullAll,
-                        ),
-                        child: Text(
-                          widget.quiz.type.toUpperCase(),
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.textTertiary,
-                          ),
-                        ),
-                      ),
-                    ],
+    return Focus(
+      focusNode: _focusNode,
+      autofocus: true,
+      onKeyEvent: _handleKeyEvent,
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop) {
+            _handleExit();
+          }
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            title: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                QuizModeIcon(
+                  isExamMode: !widget.quiz.isPracticeMode,
+                  size: AppIconSizes.appBarLogo,
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    widget.quiz.title,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 12),
-                  LinearPercentIndicator(
-                    width: MediaQuery.of(context).size.width - 32,
-                    lineHeight: 8.0,
-                    percent: progress,
-                    backgroundColor: AppColors.surfaceContainer,
-                    progressColor: AppColors.primary,
-                    barRadius: const Radius.circular(4),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-
-            Expanded(
-              child: SingleChildScrollView(
+            leading: IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: _handleExit,
+            ),
+          ),
+          body: Column(
+            children: [
+              Container(
                 padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  color: AppColors.surfaceWhite,
+                  border: Border(bottom: BorderSide(color: AppColors.outline)),
+                ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _currentQuestion.question,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                        height: 1.4,
-                      ),
-                    ),
-
-                    if (_currentQuestion.isMultipleChoice) ...[
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: const BoxDecoration(
-                          color: AppColors.infoContainer,
-                          borderRadius: AppRadius.xsAll,
-                        ),
-                        child: const Text(
-                          'Select all that apply',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.onInfoContainer,
-                            fontWeight: FontWeight.w500,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Question ${_currentQuestionIndex + 1} of ${widget.quiz.questions.length}',
+                          style: const TextStyle(
+                            color: AppColors.textTertiary,
+                            fontSize: 14,
                           ),
                         ),
-                      ),
-                    ],
-
-                    const SizedBox(height: 16),
-
-                    if (_currentQuestion.code != null) ...[
-                      CodeBlock(
-                        code: _currentQuestion.code!,
-                        language: _currentQuestion.language,
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-
-                    ..._buildShuffledAnswerOptions(
-                      userAnswer: userAnswer,
-                      userMultipleAnswers: userMultipleAnswers,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: const BoxDecoration(
+                            color: AppColors.surfaceContainerHigh,
+                            borderRadius: AppRadius.fullAll,
+                          ),
+                          child: Text(
+                            widget.quiz.type.toUpperCase(),
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textTertiary,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-
-                    if (_showFeedback &&
-                        _currentQuestion.explanation != null) ...[
-                      const SizedBox(height: 16),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.infoContainer,
-                          borderRadius: AppRadius.mdAll,
-                          border: Border.all(color: AppColors.info, width: 1),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Row(
-                              children: [
-                                Icon(
-                                  Icons.lightbulb_outlined,
-                                  color: AppColors.info,
-                                  size: AppIconSizes.md,
-                                ),
-                                SizedBox(width: 8),
-                                Text(
-                                  'Explanation',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.onInfoContainer,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              _currentQuestion.explanation!,
-                              style: const TextStyle(
-                                color: AppColors.onInfoContainer,
-                                height: 1.5,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                    const SizedBox(height: 12),
+                    LinearPercentIndicator(
+                      width: MediaQuery.of(context).size.width - 32,
+                      lineHeight: 8.0,
+                      percent: progress,
+                      backgroundColor: AppColors.surfaceContainer,
+                      progressColor: AppColors.primary,
+                      barRadius: const Radius.circular(4),
+                    ),
                   ],
                 ),
               ),
-            ),
 
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                color: AppColors.surfaceWhite,
-                border: Border(top: BorderSide(color: AppColors.outline)),
-              ),
-              child: Column(
-                children: [
-                  if (_currentQuestion.isMultipleChoice &&
-                      widget.quiz.isPracticeMode &&
-                      _hasAnsweredCurrent &&
-                      !_validatedAnswers.containsKey(_currentQuestion.id)) ...[
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: _isValidating ? null : _checkAnswers,
-                        icon: _isValidating
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.textOnPrimary,
-                                ),
-                              )
-                            : const Icon(Icons.fact_check),
-                        label: Text(
-                          _isValidating ? 'Checking...' : 'Check Answers',
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.info,
-                          foregroundColor: AppColors.textOnPrimary,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      TextButton.icon(
-                        onPressed: _currentQuestionIndex > 0
-                            ? _previousQuestion
-                            : null,
-                        icon: const Icon(Icons.arrow_back),
-                        label: const Text('Previous'),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed:
-                            (_hasAnsweredCurrent &&
-                                (!_currentQuestion.isMultipleChoice ||
-                                    !widget.quiz.isPracticeMode ||
-                                    _validatedAnswers.containsKey(
-                                      _currentQuestion.id,
-                                    )))
-                            ? _nextQuestion
-                            : null,
-                        icon: Icon(
-                          _isLastQuestion ? Icons.check : Icons.arrow_forward,
+                      Text(
+                        _currentQuestion.question,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                          height: 1.4,
                         ),
-                        label: Text(_isLastQuestion ? 'Finish' : 'Next'),
                       ),
+
+                      if (_currentQuestion.isMultipleChoice) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: const BoxDecoration(
+                            color: AppColors.infoContainer,
+                            borderRadius: AppRadius.xsAll,
+                          ),
+                          child: const Text(
+                            'Select all that apply',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.onInfoContainer,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+
+                      const SizedBox(height: 16),
+
+                      if (_currentQuestion.code != null) ...[
+                        CodeBlock(
+                          code: _currentQuestion.code!,
+                          language: _currentQuestion.language,
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+
+                      ..._buildShuffledAnswerOptions(
+                        userAnswer: userAnswer,
+                        userMultipleAnswers: userMultipleAnswers,
+                      ),
+
+                      if (_showFeedback &&
+                          _currentQuestion.explanation != null) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppColors.infoContainer,
+                            borderRadius: AppRadius.mdAll,
+                            border: Border.all(color: AppColors.info, width: 1),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Row(
+                                children: [
+                                  Icon(
+                                    Icons.lightbulb_outlined,
+                                    color: AppColors.info,
+                                    size: AppIconSizes.md,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Explanation',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.onInfoContainer,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                _currentQuestion.explanation!,
+                                style: const TextStyle(
+                                  color: AppColors.onInfoContainer,
+                                  height: 1.5,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ],
+
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  color: AppColors.surfaceWhite,
+                  border: Border(top: BorderSide(color: AppColors.outline)),
+                ),
+                child: Column(
+                  children: [
+                    if (widget.quiz.isPracticeMode &&
+                        _hasAnsweredCurrent &&
+                        !_validatedAnswers.containsKey(
+                          _currentQuestion.id,
+                        )) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _isValidating ? null : _checkAnswers,
+                          icon: _isValidating
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.textOnPrimary,
+                                  ),
+                                )
+                              : const Icon(Icons.fact_check),
+                          label: Text(
+                            _isValidating
+                                ? 'Checking...'
+                                : _currentQuestion.isMultipleChoice
+                                ? 'Check Answers'
+                                : 'Check Answer',
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.info,
+                            foregroundColor: AppColors.textOnPrimary,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextButton.icon(
+                          onPressed: _currentQuestionIndex > 0
+                              ? _previousQuestion
+                              : null,
+                          icon: const Icon(Icons.arrow_back),
+                          label: const Text('Previous'),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed:
+                              (_hasAnsweredCurrent &&
+                                  (!widget.quiz.isPracticeMode ||
+                                      _validatedAnswers.containsKey(
+                                        _currentQuestion.id,
+                                      )))
+                              ? _nextQuestion
+                              : null,
+                          icon: Icon(
+                            _isLastQuestion ? Icons.check : Icons.arrow_forward,
+                          ),
+                          label: Text(_isLastQuestion ? 'Finish' : 'Next'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
