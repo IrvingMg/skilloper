@@ -1,9 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
+import '../utils/web_clipboard.dart';
 import 'copy_feedback.dart';
 
 class PromptCard extends StatefulWidget {
@@ -26,13 +26,12 @@ class _PromptCardState extends State<PromptCard> {
   bool _copied = false;
 
   Future<void> _copyToClipboard() async {
-    try {
-      await Clipboard.setData(ClipboardData(text: widget.prompt));
-      if (!mounted) return;
+    final success = await copyToClipboard(widget.prompt);
+    if (!mounted) return;
+
+    if (success) {
       setState(() => _copied = true);
-
       showCopySuccessSnackBar(context, 'Prompt copied to clipboard');
-
       unawaited(
         Future.delayed(const Duration(seconds: 2), () {
           if (mounted) {
@@ -40,8 +39,7 @@ class _PromptCardState extends State<PromptCard> {
           }
         }),
       );
-    } on PlatformException {
-      if (!mounted) return;
+    } else {
       showCopyErrorSnackBar(context);
     }
   }

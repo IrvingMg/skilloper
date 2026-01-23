@@ -67,6 +67,7 @@ dependencies:
 
   # For secure token storage
   flutter_secure_storage: ^9.2.2
+  web: ^1.1.1
 
 dev_dependencies:
   flutter_test:

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_code_view/flutter_code_view.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
+import '../utils/web_clipboard.dart';
 import 'copy_feedback.dart';
 
 /// Code block widget for displaying code snippets in quiz questions
@@ -13,12 +13,12 @@ class CodeBlock extends StatelessWidget {
   const CodeBlock({required this.code, super.key, this.language});
 
   Future<void> _copyToClipboard(BuildContext context) async {
-    try {
-      await Clipboard.setData(ClipboardData(text: code));
-      if (!context.mounted) return;
+    final success = await copyToClipboard(code);
+    if (!context.mounted) return;
+
+    if (success) {
       showCopySuccessSnackBar(context, 'Code copied to clipboard');
-    } on PlatformException {
-      if (!context.mounted) return;
+    } else {
       showCopyErrorSnackBar(context);
     }
   }
