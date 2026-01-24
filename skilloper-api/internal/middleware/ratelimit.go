@@ -188,27 +188,48 @@ func NewRateLimiters(cfg config.RateLimitConfig, redisCfg config.RedisConfig, lo
 		return fmt.Sprintf("api:%s", c.ClientIP())
 	}
 
-	// Composite middleware: check IP limit first, then user limit
-	loginIPMiddleware := mgin.NewMiddleware(loginIPLimiter, mgin.WithLimitReachedHandler(limitReachedHandler), mgin.WithKeyGetter(loginIPKeyGetter))
-	loginUserMiddleware := mgin.NewMiddleware(loginLimiter, mgin.WithLimitReachedHandler(limitReachedHandler), mgin.WithKeyGetter(loginUserKeyGetter))
+	checkLimit := func(c *gin.Context, lim *limiter.Limiter, keyGetter func(*gin.Context) string) bool {
+		key := keyGetter(c)
+		ctx, err := lim.Get(c, key)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Rate limit check failed",
+				"code":  "RATE_LIMIT_ERROR",
+			})
+			c.Abort()
+			return false
+		}
 
-	registerIPMiddleware := mgin.NewMiddleware(registerIPLimiter, mgin.WithLimitReachedHandler(limitReachedHandler), mgin.WithKeyGetter(registerIPKeyGetter))
-	registerUserMiddleware := mgin.NewMiddleware(registerLimiter, mgin.WithLimitReachedHandler(limitReachedHandler), mgin.WithKeyGetter(registerUserKeyGetter))
+		c.Header("X-RateLimit-Limit", strconv.FormatInt(ctx.Limit, 10))
+		c.Header("X-RateLimit-Remaining", strconv.FormatInt(ctx.Remaining, 10))
+		c.Header("X-RateLimit-Reset", strconv.FormatInt(ctx.Reset, 10))
+
+		if ctx.Reached {
+			limitReachedHandler(c)
+			c.Abort()
+			return false
+		}
+		return true
+	}
 
 	loginComposite := func(c *gin.Context) {
-		loginIPMiddleware(c)
-		if c.IsAborted() {
+		if !checkLimit(c, loginIPLimiter, loginIPKeyGetter) {
 			return
 		}
-		loginUserMiddleware(c)
+		if !checkLimit(c, loginLimiter, loginUserKeyGetter) {
+			return
+		}
+		c.Next()
 	}
 
 	registerComposite := func(c *gin.Context) {
-		registerIPMiddleware(c)
-		if c.IsAborted() {
+		if !checkLimit(c, registerIPLimiter, registerIPKeyGetter) {
 			return
 		}
-		registerUserMiddleware(c)
+		if !checkLimit(c, registerLimiter, registerUserKeyGetter) {
+			return
+		}
+		c.Next()
 	}
 
 	log.Info("Rate limiters initialized",

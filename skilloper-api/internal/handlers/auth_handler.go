@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 	"go.uber.org/zap"
 
 	apperrors "github.com/irvingmg/skilloper/skilloper-api/internal/errors"
@@ -30,7 +31,7 @@ func NewAuthHandler(service *services.AuthService, errH *ErrorHandler, log *zap.
 // Register handles POST /users
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req models.RegisterRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBindBodyWith(&req, binding.JSON); err != nil {
 		h.errH.Handle(c, apperrors.ErrInvalidJSONFormat, "parse_register_request")
 		return
 	}
@@ -47,7 +48,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 // Login handles POST /sessions
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req models.LoginRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBindBodyWith(&req, binding.JSON); err != nil {
 		h.errH.Handle(c, apperrors.ErrInvalidJSONFormat, "parse_login_request")
 		return
 	}

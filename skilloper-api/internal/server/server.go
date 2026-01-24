@@ -96,6 +96,7 @@ func (s *Server) setupMiddleware() {
 		AllowMethods:     s.config.AllowedMethods,
 		AllowHeaders:     s.config.AllowedHeaders,
 		AllowCredentials: false,
+		MaxAge:           24 * time.Hour,
 	}
 
 	s.router.Use(cors.New(corsConfig))
