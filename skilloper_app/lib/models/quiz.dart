@@ -43,7 +43,7 @@ class Question {
       options: json['options'] != null
           ? List<String>.from(json['options'] as List)
           : <String>[],
-      correctAnswer: json['correctAnswer'] as int?,
+      correctAnswer: json['correct_answer'] as int?,
       correctAnswers: json['correct_answers'] != null
           ? List<int>.from(json['correct_answers'] as List)
           : null,
