@@ -126,9 +126,9 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _screens = [
-      HomeScreen(key: _homeKey, onNavigateToAdd: () => _onTabSelected(2)),
-      HistoryScreen(key: _historyKey),
+      HomeScreen(key: _homeKey, onNavigateToAdd: () => _onTabSelected(1)),
       const AddQuizScreen(),
+      HistoryScreen(key: _historyKey),
       ProfileScreen(onLogout: () => widget.onLogout?.call()),
     ];
   }
@@ -141,13 +141,13 @@ class _MainScreenState extends State<MainScreen> {
     });
 
     // Refresh Home when coming from Add tab (newly created/imported quizzes)
-    if (previousIndex == 2 && index == 0) {
+    if (previousIndex == 1 && index == 0) {
       _homeKey.currentState?.refresh();
     }
 
     // Always refresh History when navigating to it
     // Quiz attempts can be completed from Home at any time
-    if (index == 1 && previousIndex != 1) {
+    if (index == 2 && previousIndex != 2) {
       _historyKey.currentState?.refresh();
     }
   }
@@ -196,14 +196,14 @@ class _MainScreenState extends State<MainScreen> {
               label: 'Home',
             ),
             NavigationDestination(
-              icon: Icon(AppIcons.history),
-              selectedIcon: Icon(AppIcons.historySelected),
-              label: 'History',
-            ),
-            NavigationDestination(
               icon: Icon(AppIcons.add),
               selectedIcon: Icon(AppIcons.addSelected),
               label: 'Add',
+            ),
+            NavigationDestination(
+              icon: Icon(AppIcons.history),
+              selectedIcon: Icon(AppIcons.historySelected),
+              label: 'History',
             ),
             NavigationDestination(
               icon: Icon(Icons.person_outline),
