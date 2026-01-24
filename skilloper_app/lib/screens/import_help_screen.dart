@@ -25,6 +25,7 @@ My rules [edit or delete these]:
 - Include an explanation for each correct answer
 - Mix single-choice and multiple-choice questions
 - For code/technical content, use "code" and "language" fields
+- Add alternative texts for variety on repeat attempts
 
 ## JSON format
 
@@ -34,8 +35,11 @@ My rules [edit or delete these]:
   "questions": [
     {
       "question": "Question text",
+      "alternative_questions": ["Rephrased question", "Another phrasing"],
       "options": ["Option A", "Option B", "Option C", "Option D"],
+      "alternative_options": ["Extra wrong option", "Another distractor"],
       "answer": ["2"],
+      "alternative_answers": ["Correct answer rephrased", "Another way to say it"],
       "explanation": "Why this is correct"
     }
   ]
@@ -46,6 +50,9 @@ Format notes:
 - "answer" is 1-based: ["1"] = first option, ["2"] = second
 - Multiple correct: ["1", "3"] means options 1 and 3
 - Code questions: add "code": "...", "language": "python"
+- "alternative_questions": different phrasings of the same question
+- "alternative_options": extra wrong answers for shuffling variety
+- "alternative_answers": different phrasings of the correct answer(s)
 
 ## My notes [paste below]
 
