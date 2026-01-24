@@ -65,7 +65,7 @@ class AddQuizScreen extends StatelessWidget {
                                     icon: Icons.upload_file,
                                     title: 'Import',
                                     description:
-                                        'Upload a quiz file created from your notes',
+                                        'Paste JSON or upload a file from your notes',
                                     color: AppColors.info,
                                     onTap: () => _navigateToImport(context),
                                   ),
@@ -78,32 +78,36 @@ class AddQuizScreen extends StatelessWidget {
                         ],
                       );
                     } else {
-                      return Column(
-                        children: [
-                          Expanded(
-                            child: _OptionCard(
-                              icon: Icons.edit_note,
-                              title: 'Create',
-                              description:
-                                  'Build questions one at a time with the wizard',
-                              color: AppColors.primary,
-                              onTap: () => _navigateToCreate(context),
+                      return SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(minHeight: 180),
+                              child: _OptionCard(
+                                icon: Icons.edit_note,
+                                title: 'Create',
+                                description:
+                                    'Build questions one at a time with the wizard',
+                                color: AppColors.primary,
+                                onTap: () => _navigateToCreate(context),
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          Expanded(
-                            child: _OptionCard(
-                              icon: Icons.upload_file,
-                              title: 'Import',
-                              description:
-                                  'Upload a quiz file created from your notes',
-                              color: AppColors.info,
-                              onTap: () => _navigateToImport(context),
+                            const SizedBox(height: 16),
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(minHeight: 180),
+                              child: _OptionCard(
+                                icon: Icons.upload_file,
+                                title: 'Import',
+                                description:
+                                    'Paste JSON or upload a file from your notes',
+                                color: AppColors.info,
+                                onTap: () => _navigateToImport(context),
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 16),
-                          const _TipBanner(),
-                        ],
+                            const SizedBox(height: 16),
+                            const _TipBanner(),
+                          ],
+                        ),
                       );
                     }
                   },
