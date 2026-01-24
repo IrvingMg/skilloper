@@ -222,40 +222,63 @@ class _ResultsScreenState extends State<ResultsScreen> {
             padding: AppSpacing.allLg,
             child: Column(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: SummaryCard(
-                        title: 'Score',
-                        value: '${attempt.score}%',
-                        color: _getScoreColor(attempt.score),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: SummaryCard(
-                        title: 'Correct',
-                        value: '${attempt.correctCount}',
-                        color: AppColors.success,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: SummaryCard(
-                        title: 'Incorrect',
-                        value: '${attempt.totalCount - attempt.correctCount}',
-                        color: AppColors.error,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: SummaryCard(
-                        title: 'Total',
-                        value: '${attempt.totalCount}',
-                        color: AppColors.textTertiary,
-                      ),
-                    ),
-                  ],
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isNarrow = constraints.maxWidth < 400;
+                    final scoreCard = SummaryCard(
+                      title: 'Score',
+                      value: '${attempt.score}%',
+                      color: _getScoreColor(attempt.score),
+                    );
+                    final correctCard = SummaryCard(
+                      title: 'Correct',
+                      value: '${attempt.correctCount}',
+                      color: AppColors.success,
+                    );
+                    final incorrectCard = SummaryCard(
+                      title: 'Incorrect',
+                      value: '${attempt.totalCount - attempt.correctCount}',
+                      color: AppColors.error,
+                    );
+                    final totalCard = SummaryCard(
+                      title: 'Total',
+                      value: '${attempt.totalCount}',
+                      color: AppColors.textTertiary,
+                    );
+
+                    if (isNarrow) {
+                      return Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(child: scoreCard),
+                              const SizedBox(width: AppSpacing.md),
+                              Expanded(child: correctCard),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          Row(
+                            children: [
+                              Expanded(child: incorrectCard),
+                              const SizedBox(width: AppSpacing.md),
+                              Expanded(child: totalCard),
+                            ],
+                          ),
+                        ],
+                      );
+                    }
+                    return Row(
+                      children: [
+                        Expanded(child: scoreCard),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(child: correctCard),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(child: incorrectCard),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(child: totalCard),
+                      ],
+                    );
+                  },
                 ),
 
                 const SizedBox(height: AppSpacing.xxl),
@@ -660,32 +683,48 @@ class _CompactAnswerComparison extends StatelessWidget {
     final correctAnswerValid =
         correctAnswer >= 0 && correctAnswer < options.length;
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (userAnswerValid)
-          Expanded(
-            child: _AnswerDisplay(
-              label: 'Your answer',
-              option: String.fromCharCode(65 + userAnswer),
-              text: options[userAnswer],
-              isCorrect: false,
-              isUserAnswer: true,
-            ),
-          ),
-        if (userAnswerValid && correctAnswerValid)
-          const SizedBox(width: AppSpacing.sm),
-        if (correctAnswerValid)
-          Expanded(
-            child: _AnswerDisplay(
-              label: 'Correct answer',
-              option: String.fromCharCode(65 + correctAnswer),
-              text: options[correctAnswer],
-              isCorrect: true,
-              isUserAnswer: false,
-            ),
-          ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 380;
+        final userDisplay = userAnswerValid
+            ? _AnswerDisplay(
+                label: 'Your answer',
+                option: String.fromCharCode(65 + userAnswer),
+                text: options[userAnswer],
+                isCorrect: false,
+                isUserAnswer: true,
+              )
+            : null;
+        final correctDisplay = correctAnswerValid
+            ? _AnswerDisplay(
+                label: 'Correct answer',
+                option: String.fromCharCode(65 + correctAnswer),
+                text: options[correctAnswer],
+                isCorrect: true,
+                isUserAnswer: false,
+              )
+            : null;
+
+        if (isNarrow) {
+          return Column(
+            children: [
+              if (userDisplay != null) userDisplay,
+              if (userDisplay != null && correctDisplay != null)
+                const SizedBox(height: AppSpacing.sm),
+              if (correctDisplay != null) correctDisplay,
+            ],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (userDisplay != null) Expanded(child: userDisplay),
+            if (userDisplay != null && correctDisplay != null)
+              const SizedBox(width: AppSpacing.sm),
+            if (correctDisplay != null) Expanded(child: correctDisplay),
+          ],
+        );
+      },
     );
   }
 }
@@ -703,29 +742,42 @@ class _CompactMultipleAnswerComparison extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: _MultipleAnswerDisplay(
-            label: 'Your answers',
-            userAnswers: userAnswers,
-            options: options,
-            isCorrect: false,
-            isUserAnswer: true,
-          ),
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(
-          child: _MultipleAnswerDisplay(
-            label: 'Correct answers',
-            userAnswers: correctAnswers,
-            options: options,
-            isCorrect: true,
-            isUserAnswer: false,
-          ),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 380;
+        final userDisplay = _MultipleAnswerDisplay(
+          label: 'Your answers',
+          userAnswers: userAnswers,
+          options: options,
+          isCorrect: false,
+          isUserAnswer: true,
+        );
+        final correctDisplay = _MultipleAnswerDisplay(
+          label: 'Correct answers',
+          userAnswers: correctAnswers,
+          options: options,
+          isCorrect: true,
+          isUserAnswer: false,
+        );
+
+        if (isNarrow) {
+          return Column(
+            children: [
+              userDisplay,
+              const SizedBox(height: AppSpacing.sm),
+              correctDisplay,
+            ],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: userDisplay),
+            const SizedBox(width: AppSpacing.sm),
+            Expanded(child: correctDisplay),
+          ],
+        );
+      },
     );
   }
 }

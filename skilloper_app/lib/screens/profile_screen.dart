@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
@@ -195,7 +197,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         builder: (context) => AlertDialog(
           title: const Text('Change Password'),
           content: SizedBox(
-            width: 400,
+            width: min(400, MediaQuery.of(context).size.width * 0.85),
             child: Form(
               key: formKey,
               child: SingleChildScrollView(

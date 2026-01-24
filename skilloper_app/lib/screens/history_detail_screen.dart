@@ -180,40 +180,63 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
             child: Column(
               children: [
                 // Summary cards
-                Row(
-                  children: [
-                    Expanded(
-                      child: SummaryCard(
-                        title: 'Score',
-                        value: '${_attempt!.score}%',
-                        color: _getScoreColor(_attempt!.score),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: SummaryCard(
-                        title: 'Correct',
-                        value: '${_attempt!.correctCount}',
-                        color: AppColors.success,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: SummaryCard(
-                        title: 'Incorrect',
-                        value: '${_attempt!.incorrectCount}',
-                        color: AppColors.error,
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: SummaryCard(
-                        title: 'Total',
-                        value: '${_attempt!.totalCount}',
-                        color: AppColors.textTertiary,
-                      ),
-                    ),
-                  ],
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isNarrow = constraints.maxWidth < 400;
+                    final scoreCard = SummaryCard(
+                      title: 'Score',
+                      value: '${_attempt!.score}%',
+                      color: _getScoreColor(_attempt!.score),
+                    );
+                    final correctCard = SummaryCard(
+                      title: 'Correct',
+                      value: '${_attempt!.correctCount}',
+                      color: AppColors.success,
+                    );
+                    final incorrectCard = SummaryCard(
+                      title: 'Incorrect',
+                      value: '${_attempt!.incorrectCount}',
+                      color: AppColors.error,
+                    );
+                    final totalCard = SummaryCard(
+                      title: 'Total',
+                      value: '${_attempt!.totalCount}',
+                      color: AppColors.textTertiary,
+                    );
+
+                    if (isNarrow) {
+                      return Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(child: scoreCard),
+                              const SizedBox(width: AppSpacing.md),
+                              Expanded(child: correctCard),
+                            ],
+                          ),
+                          const SizedBox(height: AppSpacing.md),
+                          Row(
+                            children: [
+                              Expanded(child: incorrectCard),
+                              const SizedBox(width: AppSpacing.md),
+                              Expanded(child: totalCard),
+                            ],
+                          ),
+                        ],
+                      );
+                    }
+                    return Row(
+                      children: [
+                        Expanded(child: scoreCard),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(child: correctCard),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(child: incorrectCard),
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(child: totalCard),
+                      ],
+                    );
+                  },
                 ),
 
                 const SizedBox(height: AppSpacing.xxl),
@@ -342,27 +365,39 @@ class _AnswerReviewCard extends StatelessWidget {
         answer.userAnswer != null &&
         answer.correctAnswer != null) {
       // Show both user and correct answers
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: _AnswerDisplay(
-              label: 'Your answer',
-              answers: [answer.userAnswer!],
-              options: answer.options,
-              isCorrect: false,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: _AnswerDisplay(
-              label: 'Correct answer',
-              answers: [answer.correctAnswer!],
-              options: answer.options,
-              isCorrect: true,
-            ),
-          ),
-        ],
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 380;
+          final userDisplay = _AnswerDisplay(
+            label: 'Your answer',
+            answers: [answer.userAnswer!],
+            options: answer.options,
+            isCorrect: false,
+          );
+          final correctDisplay = _AnswerDisplay(
+            label: 'Correct answer',
+            answers: [answer.correctAnswer!],
+            options: answer.options,
+            isCorrect: true,
+          );
+          if (isNarrow) {
+            return Column(
+              children: [
+                userDisplay,
+                const SizedBox(height: AppSpacing.sm),
+                correctDisplay,
+              ],
+            );
+          }
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: userDisplay),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(child: correctDisplay),
+            ],
+          );
+        },
       );
     } else if (answer.userAnswer != null) {
       // Show only user answer (correct)
@@ -382,27 +417,39 @@ class _AnswerReviewCard extends StatelessWidget {
         answer.userAnswers!.isNotEmpty &&
         answer.correctAnswers != null) {
       // Show both user and correct answers
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: _AnswerDisplay(
-              label: 'Your answers',
-              answers: answer.userAnswers!,
-              options: answer.options,
-              isCorrect: false,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: _AnswerDisplay(
-              label: 'Correct answers',
-              answers: answer.correctAnswers!,
-              options: answer.options,
-              isCorrect: true,
-            ),
-          ),
-        ],
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 380;
+          final userDisplay = _AnswerDisplay(
+            label: 'Your answers',
+            answers: answer.userAnswers!,
+            options: answer.options,
+            isCorrect: false,
+          );
+          final correctDisplay = _AnswerDisplay(
+            label: 'Correct answers',
+            answers: answer.correctAnswers!,
+            options: answer.options,
+            isCorrect: true,
+          );
+          if (isNarrow) {
+            return Column(
+              children: [
+                userDisplay,
+                const SizedBox(height: AppSpacing.sm),
+                correctDisplay,
+              ],
+            );
+          }
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: userDisplay),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(child: correctDisplay),
+            ],
+          );
+        },
       );
     } else if (answer.userAnswers != null && answer.userAnswers!.isNotEmpty) {
       // Show only user answers (correct)

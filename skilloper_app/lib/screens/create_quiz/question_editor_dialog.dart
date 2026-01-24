@@ -190,11 +190,15 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
     final isEditing = widget.question != null;
     final canAddOption = _optionControllers.length < widget.maxOptions;
 
+    final screenHeight = MediaQuery.of(context).size.height;
     return Dialog(
       shape: const RoundedRectangleBorder(borderRadius: AppRadius.lgAll),
       child: Container(
         width: MediaQuery.of(context).size.width * 0.9,
-        constraints: const BoxConstraints(maxWidth: 600, maxHeight: 700),
+        constraints: BoxConstraints(
+          maxWidth: 600,
+          maxHeight: screenHeight * 0.85,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

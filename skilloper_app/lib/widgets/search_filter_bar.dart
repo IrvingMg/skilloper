@@ -137,190 +137,218 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
     final hasText = widget.searchController.text.isNotEmpty;
     final hasFilter = widget.selectedFilter.isNotEmpty;
 
-    return Row(
-      children: [
-        Expanded(
-          child: TextField(
-            controller: widget.searchController,
-            onChanged: widget.onSearchChanged,
-            decoration: InputDecoration(
-              hintText: widget.searchHint,
-              hintStyle: const TextStyle(
-                color: AppColors.textDisabled,
-                fontSize: 14,
-              ),
-              prefixIcon: const Icon(
-                Icons.search,
-                color: AppColors.textDisabled,
-                size: AppIconSizes.lg,
-              ),
-              suffixIcon: hasText
-                  ? IconButton(
-                      icon: const Icon(
-                        Icons.clear,
-                        color: AppColors.textDisabled,
-                        size: AppIconSizes.md,
-                      ),
-                      onPressed: () {
-                        widget.searchController.clear();
-                        widget.onSearchChanged('');
-                      },
-                    )
-                  : null,
-              filled: true,
-              fillColor: AppColors.surfaceVariant,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
-              ),
-              border: const OutlineInputBorder(
-                borderRadius: AppRadius.smAll,
-                borderSide: BorderSide.none,
-              ),
-              enabledBorder: const OutlineInputBorder(
-                borderRadius: AppRadius.smAll,
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: const OutlineInputBorder(
-                borderRadius: AppRadius.smAll,
-                borderSide: BorderSide(color: AppColors.primary, width: 1.5),
-              ),
-            ),
-          ),
-        ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // On narrow screens, hide labels in filter/sort buttons
+        final isNarrow = constraints.maxWidth < 480;
 
-        const SizedBox(width: AppSpacing.md),
-
-        PopupMenuButton<String>(
-          onSelected: widget.onFilterChanged,
-          offset: const Offset(0, 45),
-          shape: const RoundedRectangleBorder(borderRadius: AppRadius.smAll),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: hasFilter
-                  ? AppColors.primary.withValues(alpha: 0.1)
-                  : AppColors.surfaceVariant,
-              borderRadius: AppRadius.smAll,
-              border: hasFilter
-                  ? Border.all(color: AppColors.primary, width: 1.5)
-                  : null,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.filter_list,
-                  size: AppIconSizes.lg,
-                  color: hasFilter ? AppColors.primary : AppColors.textTertiary,
-                ),
-                const SizedBox(width: AppSpacing.xs + 2),
-                Text(
-                  _getSelectedFilterLabel(),
-                  style: TextStyle(
+        return Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: widget.searchController,
+                onChanged: widget.onSearchChanged,
+                decoration: InputDecoration(
+                  hintText: widget.searchHint,
+                  hintStyle: const TextStyle(
+                    color: AppColors.textDisabled,
                     fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: hasFilter
-                        ? AppColors.primary
-                        : AppColors.textTertiary,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    color: AppColors.textDisabled,
+                    size: AppIconSizes.lg,
+                  ),
+                  suffixIcon: hasText
+                      ? IconButton(
+                          icon: const Icon(
+                            Icons.clear,
+                            color: AppColors.textDisabled,
+                            size: AppIconSizes.md,
+                          ),
+                          onPressed: () {
+                            widget.searchController.clear();
+                            widget.onSearchChanged('');
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: AppColors.surfaceVariant,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  border: const OutlineInputBorder(
+                    borderRadius: AppRadius.smAll,
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: const OutlineInputBorder(
+                    borderRadius: AppRadius.smAll,
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: const OutlineInputBorder(
+                    borderRadius: AppRadius.smAll,
+                    borderSide: BorderSide(
+                      color: AppColors.primary,
+                      width: 1.5,
+                    ),
                   ),
                 ),
-                const SizedBox(width: AppSpacing.xs),
-                Icon(
-                  Icons.arrow_drop_down,
-                  size: AppIconSizes.lg,
-                  color: hasFilter ? AppColors.primary : AppColors.textTertiary,
-                ),
-              ],
-            ),
-          ),
-          itemBuilder: (context) => [
-            PopupMenuItem<String>(
-              value: '',
-              child: Row(
-                children: [
-                  _buildCheckIcon(widget.selectedFilter.isEmpty),
-                  const SizedBox(width: AppSpacing.sm),
-                  const Text('All'),
-                ],
               ),
             ),
-            ...widget.filterOptions.map(
-              (option) => PopupMenuItem<String>(
-                value: option.value,
+
+            const SizedBox(width: AppSpacing.md),
+
+            PopupMenuButton<String>(
+              onSelected: widget.onFilterChanged,
+              offset: const Offset(0, 45),
+              shape: const RoundedRectangleBorder(
+                borderRadius: AppRadius.smAll,
+              ),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: hasFilter
+                      ? AppColors.primary.withValues(alpha: 0.1)
+                      : AppColors.surfaceVariant,
+                  borderRadius: AppRadius.smAll,
+                  border: hasFilter
+                      ? Border.all(color: AppColors.primary, width: 1.5)
+                      : null,
+                ),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    _buildCheckIcon(widget.selectedFilter == option.value),
-                    const SizedBox(width: AppSpacing.sm),
-                    Text(option.label),
+                    Icon(
+                      Icons.filter_list,
+                      size: AppIconSizes.lg,
+                      color: hasFilter
+                          ? AppColors.primary
+                          : AppColors.textTertiary,
+                    ),
+                    if (!isNarrow) ...[
+                      const SizedBox(width: AppSpacing.xs + 2),
+                      Text(
+                        _getSelectedFilterLabel(),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: hasFilter
+                              ? AppColors.primary
+                              : AppColors.textTertiary,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(width: AppSpacing.xs),
+                    Icon(
+                      Icons.arrow_drop_down,
+                      size: AppIconSizes.lg,
+                      color: hasFilter
+                          ? AppColors.primary
+                          : AppColors.textTertiary,
+                    ),
                   ],
                 ),
               ),
-            ),
-          ],
-        ),
-
-        if (widget.sortOptions != null &&
-            widget.sortOptions!.isNotEmpty &&
-            widget.onSortChanged != null) ...[
-          const SizedBox(width: AppSpacing.sm),
-          PopupMenuButton<String>(
-            onSelected: widget.onSortChanged,
-            offset: const Offset(0, 45),
-            shape: const RoundedRectangleBorder(borderRadius: AppRadius.smAll),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: const BoxDecoration(
-                color: AppColors.surfaceVariant,
-                borderRadius: AppRadius.smAll,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.swap_vert,
-                    size: AppIconSizes.lg,
-                    color: AppColors.textTertiary,
+              itemBuilder: (context) => [
+                PopupMenuItem<String>(
+                  value: '',
+                  child: Row(
+                    children: [
+                      _buildCheckIcon(widget.selectedFilter.isEmpty),
+                      const SizedBox(width: AppSpacing.sm),
+                      const Text('All'),
+                    ],
                   ),
-                  const SizedBox(width: AppSpacing.xs + 2),
-                  Text(
-                    _getSelectedSortLabel(),
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textTertiary,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.xs),
-                  const Icon(
-                    Icons.arrow_drop_down,
-                    size: AppIconSizes.lg,
-                    color: AppColors.textTertiary,
-                  ),
-                ],
-              ),
-            ),
-            itemBuilder: (context) => widget.sortOptions!
-                .map(
+                ),
+                ...widget.filterOptions.map(
                   (option) => PopupMenuItem<String>(
                     value: option.value,
                     child: Row(
                       children: [
-                        _buildCheckIcon(
-                          widget.selectedSort == option.value ||
-                              (widget.selectedSort?.isEmpty ?? true) &&
-                                  option == widget.sortOptions!.first,
-                        ),
+                        _buildCheckIcon(widget.selectedFilter == option.value),
                         const SizedBox(width: AppSpacing.sm),
                         Text(option.label),
                       ],
                     ),
                   ),
-                )
-                .toList(),
-          ),
-        ],
-      ],
+                ),
+              ],
+            ),
+
+            if (widget.sortOptions != null &&
+                widget.sortOptions!.isNotEmpty &&
+                widget.onSortChanged != null) ...[
+              const SizedBox(width: AppSpacing.sm),
+              PopupMenuButton<String>(
+                onSelected: widget.onSortChanged,
+                offset: const Offset(0, 45),
+                shape: const RoundedRectangleBorder(
+                  borderRadius: AppRadius.smAll,
+                ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  decoration: const BoxDecoration(
+                    color: AppColors.surfaceVariant,
+                    borderRadius: AppRadius.smAll,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.swap_vert,
+                        size: AppIconSizes.lg,
+                        color: AppColors.textTertiary,
+                      ),
+                      if (!isNarrow) ...[
+                        const SizedBox(width: AppSpacing.xs + 2),
+                        Text(
+                          _getSelectedSortLabel(),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textTertiary,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(width: AppSpacing.xs),
+                      const Icon(
+                        Icons.arrow_drop_down,
+                        size: AppIconSizes.lg,
+                        color: AppColors.textTertiary,
+                      ),
+                    ],
+                  ),
+                ),
+                itemBuilder: (context) => widget.sortOptions!
+                    .map(
+                      (option) => PopupMenuItem<String>(
+                        value: option.value,
+                        child: Row(
+                          children: [
+                            _buildCheckIcon(
+                              widget.selectedSort == option.value ||
+                                  (widget.selectedSort?.isEmpty ?? true) &&
+                                      option == widget.sortOptions!.first,
+                            ),
+                            const SizedBox(width: AppSpacing.sm),
+                            Text(option.label),
+                          ],
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
+          ],
+        );
+      },
     );
   }
 }

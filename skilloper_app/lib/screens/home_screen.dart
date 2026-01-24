@@ -233,23 +233,7 @@ class HomeScreenState extends State<HomeScreen> {
       context: context,
       barrierDismissible: true,
       builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const QuizModeIcon(
-                isExamMode: true,
-                size: AppIconSizes.xxl,
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Text('Start Exam'),
-          ],
-        ),
+        title: const Text('Start Exam'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -744,27 +728,6 @@ class _QuizListItem extends StatelessWidget {
               padding: EdgeInsets.all(isNarrowScreen ? 12 : 20),
               child: Row(
                 children: [
-                  Container(
-                    width: isNarrowScreen ? 44 : 56,
-                    height: isNarrowScreen ? 44 : 56,
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(
-                        isNarrowScreen ? AppRadius.sm : AppRadius.md,
-                      ),
-                    ),
-                    child: Center(
-                      child: QuizModeIcon(
-                        isExamMode: quiz.type == 'exam',
-                        size: isNarrowScreen ? 32 : 40,
-                      ),
-                    ),
-                  ),
-
-                  SizedBox(
-                    width: isNarrowScreen ? AppSpacing.md : AppSpacing.lg,
-                  ),
-
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

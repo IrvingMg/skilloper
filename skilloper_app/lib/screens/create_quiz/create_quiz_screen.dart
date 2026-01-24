@@ -196,11 +196,6 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                           ),
                         ),
                         const SizedBox(width: 16),
-                        QuizModeIcon(
-                          isExamMode: _draft.type == 'exam',
-                          size: AppIconSizes.sm,
-                        ),
-                        const SizedBox(width: 4),
                         Text(
                           _draft.type.toUpperCase(),
                           style: const TextStyle(
@@ -354,19 +349,24 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
         color: AppColors.surfaceWhite,
         border: Border(bottom: BorderSide(color: AppColors.outline)),
       ),
-      child: Row(
-        children: [
-          _buildStepCircle(0, 'Details'),
-          _buildStepLine(0),
-          _buildStepCircle(1, 'Questions'),
-          _buildStepLine(1),
-          _buildStepCircle(2, 'Review'),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final showLabels = constraints.maxWidth > 280;
+          return Row(
+            children: [
+              _buildStepCircle(0, 'Details', showLabels),
+              _buildStepLine(0),
+              _buildStepCircle(1, 'Questions', showLabels),
+              _buildStepLine(1),
+              _buildStepCircle(2, 'Review', showLabels),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildStepCircle(int step, String label) {
+  Widget _buildStepCircle(int step, String label, bool showLabel) {
     final isActive = _currentStep >= step;
     final isCurrent = _currentStep == step;
 
@@ -403,17 +403,19 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                       ),
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: isActive
-                    ? AppColors.textPrimary
-                    : AppColors.textTertiary,
-                fontWeight: isCurrent ? FontWeight.w600 : FontWeight.normal,
+            if (showLabel) ...[
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isActive
+                      ? AppColors.textPrimary
+                      : AppColors.textTertiary,
+                  fontWeight: isCurrent ? FontWeight.w600 : FontWeight.normal,
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),
@@ -674,21 +676,12 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  QuizModeIcon(
-                    isExamMode: _draft.type == 'exam',
-                    size: AppIconSizes.xxl,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    _draft.type.toUpperCase(),
-                    style: const TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
+              Text(
+                _draft.type.toUpperCase(),
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 12),
               Text(
@@ -1051,8 +1044,6 @@ class _TypeCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            QuizModeIcon(isExamMode: isExamMode, size: AppIconSizes.xxxl),
-            const SizedBox(height: 8),
             Text(
               title,
               style: TextStyle(

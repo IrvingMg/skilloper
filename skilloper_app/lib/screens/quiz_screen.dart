@@ -426,22 +426,7 @@ class _QuizScreenState extends State<QuizScreen> {
         },
         child: Scaffold(
           appBar: AppBar(
-            title: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                QuizModeIcon(
-                  isExamMode: !widget.quiz.isPracticeMode,
-                  size: AppIconSizes.appBarLogo,
-                ),
-                const SizedBox(width: 8),
-                Flexible(
-                  child: Text(
-                    widget.quiz.title,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
+            title: Text(widget.quiz.title, overflow: TextOverflow.ellipsis),
             leading: IconButton(
               icon: const Icon(Icons.close),
               onPressed: _handleExit,
