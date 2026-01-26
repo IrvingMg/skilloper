@@ -24,6 +24,8 @@ My rules [edit or delete these]:
 
 - Include an explanation for each correct answer
 - Mix single-choice and multiple-choice questions
+- For multiple-choice: typically 20-75% of options should be correct (not all)
+- Include plausible but incorrect distractors (wrong answers that seem reasonable)
 - For code/technical content, use "code" and "language" fields
 - Add alternative texts for variety on repeat attempts
 
