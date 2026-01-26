@@ -113,10 +113,12 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
 
   void _showSuccessDialog() {
     final isEdit = _isEditMode;
+    final screenNavigator = Navigator.of(context);
     showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
+        final dialogNavigator = Navigator.of(dialogContext);
         return AlertDialog(
           shape: const RoundedRectangleBorder(borderRadius: AppRadius.lgAll),
           title: Row(
@@ -215,7 +217,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
             if (!isEdit)
               TextButton(
                 onPressed: () {
-                  Navigator.of(context).pop();
+                  dialogNavigator.pop();
                   _draft.clear();
                   _titleController.clear();
                   _descController.clear();
@@ -227,12 +229,10 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
               ),
             ElevatedButton(
               onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.of(
-                  context,
-                ).pushNamedAndRemoveUntil('/', (r) => false);
+                dialogNavigator.pop();
+                screenNavigator.pop();
               },
-              child: const Text('View Quizzes'),
+              child: Text(isEdit ? 'Done' : 'View Quizzes'),
             ),
           ],
         );

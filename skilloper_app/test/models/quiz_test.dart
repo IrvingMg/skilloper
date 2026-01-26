@@ -9,7 +9,7 @@ void main() {
         'question_type': 'single_choice',
         'question': 'What is 2 + 2?',
         'options': ['3', '4', '5', '6'],
-        'correctAnswer': 1,
+        'correct_answer': 1,
         'explanation': 'Basic math',
       };
 
@@ -394,31 +394,6 @@ void main() {
         questionResults: <QuestionResult>[],
       );
       expect(result.percentage, closeTo(33.33, 0.01));
-    });
-  });
-
-  group('ImportResponse', () {
-    test('fromJson parses correctly', () {
-      final json = {
-        'message': 'Quiz imported successfully',
-        'quiz': {
-          'id': 1,
-          'title': 'Test Quiz',
-          'description': 'A test',
-          'type': 'practice',
-          'max_options': 4,
-          'created_at': '2024-01-15T10:00:00Z',
-          'updated_at': '2024-01-15T10:00:00Z',
-          'question_count': 5,
-        },
-      };
-
-      final response = ImportResponse.fromJson(json);
-
-      expect(response.message, 'Quiz imported successfully');
-      expect(response.quiz.id, 1);
-      expect(response.quiz.title, 'Test Quiz');
-      expect(response.quiz.questionCount, 5);
     });
   });
 }

@@ -175,20 +175,6 @@ class Quiz {
   int get estimatedMinutes => (questions.length * 1.5).ceil();
 }
 
-class ImportResponse {
-  final String message;
-  final QuizSummary quiz;
-
-  const ImportResponse({required this.message, required this.quiz});
-
-  factory ImportResponse.fromJson(Map<String, dynamic> json) {
-    return ImportResponse(
-      message: json['message'] as String,
-      quiz: QuizSummary.fromJson(json['quiz'] as Map<String, dynamic>),
-    );
-  }
-}
-
 class QuizResult {
   final int score;
   final int correct;

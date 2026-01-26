@@ -266,8 +266,5 @@ func (h *QuizHandler) handleImport(c *gin.Context, userID uint) {
 		zap.String("title", quiz.Title),
 		zap.Int("questions", quiz.QuestionCount))
 
-	c.JSON(http.StatusCreated, gin.H{
-		"message": "Quiz imported successfully",
-		"quiz":    quiz,
-	})
+	c.JSON(http.StatusCreated, quiz)
 }

@@ -279,7 +279,7 @@ class ApiService {
     }
   }
 
-  Future<ImportResponse?> importQuiz(
+  Future<QuizSummary?> importQuiz(
     List<int> fileBytes,
     String fileName, {
     String? title,
@@ -340,7 +340,7 @@ class ApiService {
         final responseBody = await response.stream.bytesToString();
         final Map<String, dynamic> data =
             json.decode(responseBody) as Map<String, dynamic>;
-        return ImportResponse.fromJson(data);
+        return QuizSummary.fromJson(data);
       } else {
         final responseBody = await response.stream.bytesToString();
         String? errorMessage;
@@ -527,7 +527,7 @@ class ApiService {
       _handleHttpResponse(response, 'create quiz');
 
       final responseData = json.decode(response.body) as Map<String, dynamic>;
-      return QuizSummary.fromJson(responseData['quiz'] as Map<String, dynamic>);
+      return QuizSummary.fromJson(responseData);
     } on ApiException {
       rethrow;
     } on Exception catch (e) {
@@ -550,7 +550,7 @@ class ApiService {
       _handleHttpResponse(response, 'update quiz');
 
       final responseData = json.decode(response.body) as Map<String, dynamic>;
-      return QuizSummary.fromJson(responseData['quiz'] as Map<String, dynamic>);
+      return QuizSummary.fromJson(responseData);
     } on ApiException {
       rethrow;
     } on Exception catch (e) {

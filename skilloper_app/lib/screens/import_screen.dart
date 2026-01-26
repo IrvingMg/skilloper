@@ -571,7 +571,7 @@ class _ImportScreenState extends State<ImportScreen> {
     );
   }
 
-  void _showSuccessDialog(ImportResponse response) {
+  void _showSuccessDialog(QuizSummary quiz) {
     showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -614,16 +614,16 @@ class _ImportScreenState extends State<ImportScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      response.quiz.title,
+                      quiz.title,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    if (response.quiz.description.isNotEmpty) ...[
+                    if (quiz.description.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
-                        response.quiz.description,
+                        quiz.description,
                         style: const TextStyle(
                           fontSize: 14,
                           color: AppColors.textSecondary,
@@ -640,7 +640,7 @@ class _ImportScreenState extends State<ImportScreen> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          '${response.quiz.questionCount} questions',
+                          '${quiz.questionCount} questions',
                           style: const TextStyle(
                             fontSize: 14,
                             color: AppColors.textTertiary,
@@ -648,7 +648,7 @@ class _ImportScreenState extends State<ImportScreen> {
                         ),
                         const SizedBox(width: 16),
                         Text(
-                          response.quiz.type.toUpperCase(),
+                          quiz.type.toUpperCase(),
                           style: const TextStyle(
                             fontSize: 14,
                             color: AppColors.textTertiary,
