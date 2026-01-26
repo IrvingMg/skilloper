@@ -65,6 +65,8 @@ All other endpoints require a valid JWT token:
 | `PUT` | `/quizzes/{id}` | Update quiz |
 | `DELETE` | `/quizzes/{id}` | Delete quiz |
 
+**Ownership:** Quizzes are private to the user who created them. Users can only list, view, update, and delete their own quizzes. Admins can access all quizzes. Attempting to access another user's quiz returns `403 Forbidden` with code `NOT_QUIZ_OWNER`.
+
 ### Quiz Attempts (Protected)
 
 | Method | Endpoint | Description |
@@ -534,6 +536,7 @@ The API returns structured error responses:
 | Code | Description |
 |------|-------------|
 | `QUIZ_NOT_FOUND` | Quiz with given ID doesn't exist |
+| `NOT_QUIZ_OWNER` | User doesn't own this quiz (403) |
 | `INVALID_JSON_FORMAT` | Malformed JSON in request body |
 | `FILE_REQUIRED` | No file provided for import |
 | `QUESTION_TEXT_REQUIRED` | Question text is missing |
@@ -558,6 +561,7 @@ The API returns structured error responses:
 - `201` - Created (user registration, session creation)
 - `400` - Bad Request (validation errors)
 - `401` - Unauthorized (missing/invalid token, invalid credentials)
+- `403` - Forbidden (not quiz owner)
 - `404` - Not Found
 - `409` - Conflict (username taken)
 - `422` - Unprocessable Entity (file validation)

@@ -52,6 +52,9 @@ func NewQuizHandler(service *services.QuizService, errH *ErrorHandler, log *zap.
 func (h *QuizHandler) GetQuizSummaries(c *gin.Context) {
 	h.log.Debug("Fetching quiz summaries")
 
+	userID := middleware.GetUserID(c)
+	isAdmin := middleware.IsAdmin(c)
+
 	var params models.PaginationParams
 	if err := c.ShouldBindQuery(&params); err != nil {
 		h.errH.Handle(c, apperrors.ErrInvalidPaginationParams, "parse_pagination_params")
@@ -68,7 +71,7 @@ func (h *QuizHandler) GetQuizSummaries(c *gin.Context) {
 		zap.String("search", params.Search),
 		zap.String("type", params.Type))
 
-	result, err := h.service.GetPaginatedSummaries(params)
+	result, err := h.service.GetPaginatedSummaries(params, userID, isAdmin)
 	if err != nil {
 		h.errH.Handle(c, err, "fetch_quiz_summaries")
 		return
@@ -88,11 +91,11 @@ func (h *QuizHandler) GetQuiz(c *gin.Context) {
 		return
 	}
 
+	userID := middleware.GetUserID(c)
+	isAdmin := middleware.IsAdmin(c)
 	includeAnswers := c.Query("view") == ViewModeEdit
 
 	if includeAnswers {
-		userID := middleware.GetUserID(c)
-		isAdmin := middleware.IsAdmin(c)
 		h.log.Debug("Fetching quiz with answers for edit mode", zap.Int("id", id))
 
 		quiz, err := h.service.GetByIDWithAnswers(uint(id), userID, isAdmin)
@@ -110,7 +113,7 @@ func (h *QuizHandler) GetQuiz(c *gin.Context) {
 
 	h.log.Debug("Fetching quiz with dynamic shuffling", zap.Int("id", id))
 
-	quiz, err := h.service.GetByID(uint(id))
+	quiz, err := h.service.GetByID(uint(id), userID, isAdmin)
 	if err != nil {
 		h.errH.Handle(c, err, "fetch_quiz")
 		return

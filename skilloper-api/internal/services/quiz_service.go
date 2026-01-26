@@ -38,8 +38,11 @@ type QuizSummaryRow struct {
 	QuestionCount int64 `gorm:"column:question_count"`
 }
 
-func (s *QuizService) GetPaginatedSummaries(params models.PaginationParams) (models.PaginatedQuizSummaries, error) {
+func (s *QuizService) GetPaginatedSummaries(params models.PaginationParams, userID uint, isAdmin bool) (models.PaginatedQuizSummaries, error) {
 	baseQuery := s.db.Model(&models.Quiz{})
+	if !isAdmin {
+		baseQuery = baseQuery.Where("user_id = ?", userID)
+	}
 
 	if params.Search != "" {
 		searchPattern := "%" + escapeLikePattern(strings.ToLower(params.Search)) + "%"
@@ -63,6 +66,9 @@ func (s *QuizService) GetPaginatedSummaries(params models.PaginationParams) (mod
 	result := s.db.Table("quizzes").
 		Select("quizzes.*, COALESCE(q.cnt, 0) as question_count").
 		Joins("LEFT JOIN (?) as q ON quizzes.id = q.quiz_id", subquery)
+	if !isAdmin {
+		result = result.Where("quizzes.user_id = ?", userID)
+	}
 
 	if params.Search != "" {
 		searchPattern := "%" + escapeLikePattern(strings.ToLower(params.Search)) + "%"
@@ -98,7 +104,7 @@ func (s *QuizService) GetPaginatedSummaries(params models.PaginationParams) (mod
 	return models.NewPaginatedQuizSummaries(summaries, params.Limit, params.Offset, int(totalCount)), nil
 }
 
-func (s *QuizService) GetByID(id uint) (*models.QuizResponse, error) {
+func (s *QuizService) GetByID(id uint, userID uint, isAdmin bool) (*models.QuizResponse, error) {
 	var quiz models.Quiz
 	result := s.db.Preload("Questions").First(&quiz, id)
 	if result.Error != nil {
@@ -106,6 +112,10 @@ func (s *QuizService) GetByID(id uint) (*models.QuizResponse, error) {
 			return nil, apperrors.ErrQuizNotFound
 		}
 		return nil, apperrors.ErrFetchQuizFailed
+	}
+
+	if !isAdmin && quiz.UserID != userID {
+		return nil, apperrors.ErrNotQuizOwner
 	}
 
 	response := s.convertToResponse(quiz)
