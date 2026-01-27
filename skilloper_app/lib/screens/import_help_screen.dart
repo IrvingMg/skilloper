@@ -14,6 +14,7 @@ Convert my study notes into a quiz using JSON format.
 ## Settings [customize these]
 
 Quiz type: practice
+Max options per question: 4
 Number of questions: 10-15
 
 My rules [edit or delete these]:
@@ -34,6 +35,7 @@ My rules [edit or delete these]:
 {
   "title": "Quiz Title",
   "type": "practice",
+  "max_options": 4,
   "questions": [
     {
       "question": "Question text",
@@ -49,6 +51,7 @@ My rules [edit or delete these]:
 
 Format notes:
 - "type": use "practice" (immediate feedback) or "exam" (results at end)
+- "max_options": limits options per question (2-8, default 4)
 - "answer" is 1-based: ["1"] = first option, ["2"] = second
 - Multiple correct: ["1", "3"] means options 1 and 3
 - Code questions: add "code": "...", "language": "python"
@@ -66,6 +69,7 @@ Format notes:
   "title": "Go Fundamentals",
   "description": "Test your Go knowledge",
   "type": "practice",
+  "max_options": 4,
   "questions": [
     {
       "question": "Which keyword declares a constant in Go?",
