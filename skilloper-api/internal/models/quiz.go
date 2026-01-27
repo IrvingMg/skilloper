@@ -1,6 +1,8 @@
 package models
 
 import (
+	"encoding/json"
+	"math/rand/v2"
 	"time"
 )
 
@@ -40,6 +42,44 @@ type Question struct {
 	Explanation          string    `json:"explanation"`         // Explanation for the correct answer
 	CreatedAt            time.Time `json:"created_at"`
 	UpdatedAt            time.Time `json:"updated_at"`
+}
+
+// ApplyAlternativeAnswers modifies options in place, replacing the correct answer
+// option text with a randomly selected alternative (including the original).
+// Returns the modified options slice.
+func (q *Question) ApplyAlternativeAnswers(options []string, correctAnswers []int) []string {
+	if len(options) == 0 || q.AlternativeAnswers == "" {
+		return options
+	}
+
+	var alternatives []string
+	if err := json.Unmarshal([]byte(q.AlternativeAnswers), &alternatives); err != nil || len(alternatives) == 0 {
+		return options
+	}
+
+	// Determine the correct answer index to apply alternatives to
+	var correctIdx int
+	if q.QuestionType == QuestionTypeMultipleChoice {
+		if len(correctAnswers) > 0 {
+			correctIdx = correctAnswers[0]
+		} else {
+			return options
+		}
+	} else {
+		correctIdx = q.CorrectAnswer
+	}
+
+	if correctIdx < 0 || correctIdx >= len(options) {
+		return options
+	}
+
+	// Randomly select from original + alternatives
+	allTexts := make([]string, 0, 1+len(alternatives))
+	allTexts = append(allTexts, options[correctIdx])
+	allTexts = append(allTexts, alternatives...)
+	options[correctIdx] = allTexts[rand.IntN(len(allTexts))]
+
+	return options
 }
 
 type CreateQuizRequest struct {

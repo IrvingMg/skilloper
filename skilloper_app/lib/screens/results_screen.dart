@@ -295,14 +295,18 @@ class _ResultsScreenState extends State<ResultsScreen> {
 
                 ...List.generate(attempt.answers.length, (index) {
                   final answer = attempt.answers[index];
-                  final question = widget.quiz.questions
-                      .where((q) => q.id == answer.questionId)
-                      .firstOrNull;
+                  final questionIndex = widget.quiz.questions
+                      .indexWhere((q) => q.id == answer.questionId);
+                  final question = questionIndex >= 0
+                      ? widget.quiz.questions[questionIndex]
+                      : null;
 
                   return Padding(
                     padding: const EdgeInsets.only(bottom: AppSpacing.lg),
                     child: _AnswerReviewCard(
-                      questionNumber: index + 1,
+                      questionNumber: questionIndex >= 0
+                          ? questionIndex + 1
+                          : index + 1,
                       answer: answer,
                       question: question,
                     ),

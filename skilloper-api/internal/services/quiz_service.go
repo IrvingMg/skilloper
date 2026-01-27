@@ -562,28 +562,7 @@ func (s *QuizService) convertToResponse(q models.Quiz) models.QuizResponse {
 		}
 
 		// Apply alternative answers for correct answer options
-		if alternatives := s.parseStringArrayJSON(question.AlternativeAnswers); len(alternatives) > 0 && len(options) > 0 {
-			if question.QuestionType == models.QuestionTypeMultipleChoice {
-				// For multiple choice, apply alternative to the first correct answer
-				if len(correctAnswers) > 0 {
-					idx := correctAnswers[0]
-					if idx >= 0 && idx < len(options) {
-						allTexts := make([]string, 0, 1+len(alternatives))
-						allTexts = append(allTexts, options[idx])
-						allTexts = append(allTexts, alternatives...)
-						options[idx] = allTexts[rand.IntN(len(allTexts))]
-					}
-				}
-			} else {
-				// For single choice
-				if question.CorrectAnswer >= 0 && question.CorrectAnswer < len(options) {
-					allTexts := make([]string, 0, 1+len(alternatives))
-					allTexts = append(allTexts, options[question.CorrectAnswer])
-					allTexts = append(allTexts, alternatives...)
-					options[question.CorrectAnswer] = allTexts[rand.IntN(len(allTexts))]
-				}
-			}
-		}
+		options = question.ApplyAlternativeAnswers(options, correctAnswers)
 
 		qr := models.QuestionResponse{}
 		qr.ID = question.ID

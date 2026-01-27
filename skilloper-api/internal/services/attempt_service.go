@@ -40,17 +40,10 @@ func (s *AttemptService) Start(userID uint, req models.StartAttemptRequest) (*mo
 
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		var quiz models.Quiz
-		if err := tx.First(&quiz, req.QuizID).Error; err != nil {
+		if err := tx.Preload("Questions").First(&quiz, req.QuizID).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return apperrors.ErrQuizNotFound
 			}
-			return err
-		}
-
-		var questionCount int64
-		if err := tx.Model(&models.Question{}).
-			Where("quiz_id = ?", req.QuizID).
-			Count(&questionCount).Error; err != nil {
 			return err
 		}
 
@@ -73,14 +66,23 @@ func (s *AttemptService) Start(userID uint, req models.StartAttemptRequest) (*mo
 		}
 		attemptNumber := int(existingCount) + 1
 
+		// Generate displayed options for each question (with alternatives applied)
+		displayedOptionsMap := s.generateDisplayedOptions(quiz.Questions)
+		displayedOptionsJSON, err := json.Marshal(displayedOptionsMap)
+		if err != nil {
+			s.log.Warn("Failed to marshal displayed options", zap.Error(err))
+			displayedOptionsJSON = []byte("{}")
+		}
+
 		attempt = models.QuizAttempt{
-			UserID:        userID,
-			QuizID:        req.QuizID,
-			QuizTitle:     quiz.Title,
-			QuizType:      quiz.Type,
-			AttemptNumber: attemptNumber,
-			Status:        models.AttemptStatusInProgress,
-			TotalCount:    int(questionCount),
+			UserID:           userID,
+			QuizID:           req.QuizID,
+			QuizTitle:        quiz.Title,
+			QuizType:         quiz.Type,
+			AttemptNumber:    attemptNumber,
+			Status:           models.AttemptStatusInProgress,
+			TotalCount:       len(quiz.Questions),
+			DisplayedOptions: string(displayedOptionsJSON),
 		}
 
 		if err := tx.Create(&attempt).Error; err != nil {
@@ -186,6 +188,16 @@ func (s *AttemptService) complete(userID uint, attemptID uint, answers []models.
 			questionMap[q.ID] = q
 		}
 
+		// Parse stored displayed options from when the attempt was started
+		displayedOptionsMap := make(map[uint][]string)
+		if attempt.DisplayedOptions != "" {
+			if err := json.Unmarshal([]byte(attempt.DisplayedOptions), &displayedOptionsMap); err != nil {
+				s.log.Debug("Failed to unmarshal displayed options",
+					zap.Uint("attempt_id", attemptID),
+					zap.Error(err))
+			}
+		}
+
 		seenQuestions := make(map[uint]bool)
 		correctCount := 0
 		for _, answerReq := range answers {
@@ -205,12 +217,15 @@ func (s *AttemptService) complete(userID uint, attemptID uint, answers []models.
 				continue
 			}
 
-			var options []string
-			if err := json.Unmarshal([]byte(question.Options), &options); err != nil {
-				s.log.Debug("Failed to unmarshal options",
-					zap.Uint("question_id", question.ID),
-					zap.Error(err))
-				options = []string{}
+			// Use stored displayed options, fall back to original if not found
+			options, ok := displayedOptionsMap[question.ID]
+			if !ok {
+				if err := json.Unmarshal([]byte(question.Options), &options); err != nil {
+					s.log.Debug("Failed to unmarshal options",
+						zap.Uint("question_id", question.ID),
+						zap.Error(err))
+					options = []string{}
+				}
 			}
 
 			var isCorrect bool
@@ -452,4 +467,38 @@ func (s *AttemptService) convertToResponse(attempt models.QuizAttempt) models.At
 		CompletedAt:   attempt.CompletedAt,
 		Answers:       answers,
 	}
+}
+
+// generateDisplayedOptions generates the options to display for each question,
+// applying alternative text variants randomly. Returns a map of questionID -> options.
+func (s *AttemptService) generateDisplayedOptions(questions []models.Question) map[uint][]string {
+	result := make(map[uint][]string)
+
+	for _, question := range questions {
+		// Parse original options
+		var options []string
+		if err := json.Unmarshal([]byte(question.Options), &options); err != nil {
+			s.log.Debug("Failed to unmarshal options",
+				zap.Uint("question_id", question.ID),
+				zap.Error(err))
+			continue
+		}
+
+		// Parse correct answers for multiple choice
+		var correctAnswers []int
+		if question.QuestionType == models.QuestionTypeMultipleChoice {
+			if err := json.Unmarshal([]byte(question.CorrectAnswers), &correctAnswers); err != nil {
+				s.log.Debug("Failed to unmarshal correct answers",
+					zap.Uint("question_id", question.ID),
+					zap.Error(err))
+			}
+		}
+
+		// Apply alternative text to correct answer option
+		options = question.ApplyAlternativeAnswers(options, correctAnswers)
+
+		result[question.ID] = options
+	}
+
+	return result
 }
