@@ -96,8 +96,11 @@ type QuestionResponse struct {
 // QuestionResponseWithAnswers includes correct answers (for edit mode)
 type QuestionResponseWithAnswers struct {
 	questionResponseBase
-	CorrectAnswer  int   `json:"correct_answer"`            // 0-indexed
-	CorrectAnswers []int `json:"correct_answers,omitempty"` // 0-indexed
+	CorrectAnswer        int      `json:"correct_answer"`                      // 0-indexed
+	CorrectAnswers       []int    `json:"correct_answers,omitempty"`           // 0-indexed
+	AlternativeQuestions []string `json:"alternative_questions,omitempty"`     // Alternative question texts
+	AlternativeOptions   []string `json:"alternative_options,omitempty"`       // Additional distractor options
+	AlternativeAnswers   []string `json:"alternative_answers,omitempty"`       // Alternative correct answer texts
 }
 
 // quizResponseBase contains shared fields for quiz responses (unexported, for embedding only)

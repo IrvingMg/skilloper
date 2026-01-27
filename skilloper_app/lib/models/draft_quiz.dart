@@ -195,8 +195,11 @@ class DraftQuestion {
 
     return DraftQuestion(
       question: q.question,
+      alternativeQuestions: q.alternativeQuestions,
       options: List<String>.from(q.options),
+      alternativeOptions: q.alternativeOptions,
       correctAnswers: answers,
+      alternativeAnswers: q.alternativeAnswers,
       explanation: q.explanation ?? '',
       code: q.code ?? '',
       language: q.language ?? '',

@@ -384,18 +384,18 @@ func (s *QuizService) ImportFromFile(file *multipart.FileHeader, csvMeta CSVMeta
 	return summary, nil
 }
 
-func (s *QuizService) parseOptionsJSON(optionsJSON string) []string {
-	if optionsJSON == "" {
+func (s *QuizService) parseStringArrayJSON(jsonStr string) []string {
+	if jsonStr == "" {
 		return []string{}
 	}
-	var options []string
-	if err := json.Unmarshal([]byte(optionsJSON), &options); err != nil {
-		s.log.Warn("Failed to parse options JSON",
-			zap.String("json", optionsJSON),
+	var result []string
+	if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
+		s.log.Warn("Failed to parse string array JSON",
+			zap.String("json", jsonStr),
 			zap.Error(err))
 		return []string{}
 	}
-	return options
+	return result
 }
 
 func (s *QuizService) parseCorrectAnswersJSON(answersJSON string) []int {
@@ -410,20 +410,6 @@ func (s *QuizService) parseCorrectAnswersJSON(answersJSON string) []int {
 		return []int{}
 	}
 	return answers
-}
-
-func (s *QuizService) parseStringArrayJSON(jsonStr string) []string {
-	if jsonStr == "" {
-		return nil
-	}
-	var result []string
-	if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
-		s.log.Warn("Failed to parse string array JSON",
-			zap.String("json", jsonStr),
-			zap.Error(err))
-		return nil
-	}
-	return result
 }
 
 type validatedQuestion struct {
@@ -562,7 +548,7 @@ func (s *QuizService) convertToResponse(q models.Quiz) models.QuizResponse {
 	questions := make([]models.QuestionResponse, 0, len(q.Questions))
 
 	for _, question := range q.Questions {
-		options := s.parseOptionsJSON(question.Options)
+		options := s.parseStringArrayJSON(question.Options)
 
 		questionText := question.QuestionText
 		if alternatives := s.parseStringArrayJSON(question.AlternativeQuestions); len(alternatives) > 0 {
@@ -628,7 +614,7 @@ func (s *QuizService) convertToResponseWithAnswers(q models.Quiz) models.QuizRes
 	questions := make([]models.QuestionResponseWithAnswers, 0, len(q.Questions))
 
 	for _, question := range q.Questions {
-		options := s.parseOptionsJSON(question.Options)
+		options := s.parseStringArrayJSON(question.Options)
 
 		correctAnswers := []int{}
 		if question.QuestionType == models.QuestionTypeMultipleChoice {
@@ -645,6 +631,9 @@ func (s *QuizService) convertToResponseWithAnswers(q models.Quiz) models.QuizRes
 		qr.Explanation = question.Explanation
 		qr.CorrectAnswer = question.CorrectAnswer
 		qr.CorrectAnswers = correctAnswers
+		qr.AlternativeQuestions = s.parseStringArrayJSON(question.AlternativeQuestions)
+		qr.AlternativeOptions = s.parseStringArrayJSON(question.AlternativeOptions)
+		qr.AlternativeAnswers = s.parseStringArrayJSON(question.AlternativeAnswers)
 		questions = append(questions, qr)
 	}
 

@@ -10,6 +10,9 @@ class Question {
   final List<int>?
   correctAnswers; // For multiple_choice (null during play, present in results/edit)
   final String? explanation;
+  final List<String>? alternativeQuestions; // For edit mode
+  final List<String>? alternativeOptions; // For edit mode
+  final List<String>? alternativeAnswers; // For edit mode
 
   const Question({
     required this.id,
@@ -21,6 +24,9 @@ class Question {
     this.correctAnswer,
     this.correctAnswers,
     this.explanation,
+    this.alternativeQuestions,
+    this.alternativeOptions,
+    this.alternativeAnswers,
   });
 
   factory Question.fromJson(Map<String, dynamic> json) {
@@ -48,6 +54,15 @@ class Question {
           ? List<int>.from(json['correct_answers'] as List)
           : null,
       explanation: json['explanation'] as String?,
+      alternativeQuestions: json['alternative_questions'] != null
+          ? List<String>.from(json['alternative_questions'] as List)
+          : null,
+      alternativeOptions: json['alternative_options'] != null
+          ? List<String>.from(json['alternative_options'] as List)
+          : null,
+      alternativeAnswers: json['alternative_answers'] != null
+          ? List<String>.from(json['alternative_answers'] as List)
+          : null,
     );
   }
 
