@@ -44,9 +44,9 @@ class SearchFilterBar extends StatefulWidget {
   final String searchHint;
   final TextEditingController searchController;
   final ValueChanged<String> onSearchChanged;
-  final List<FilterOption> filterOptions;
-  final String selectedFilter; // Empty string means "All"
-  final ValueChanged<String> onFilterChanged;
+  final List<FilterOption>? filterOptions;
+  final String? selectedFilter; // Empty string means "All"
+  final ValueChanged<String>? onFilterChanged;
   final List<SortOption>? sortOptions;
   final String? selectedSort;
   final ValueChanged<String>? onSortChanged;
@@ -55,10 +55,10 @@ class SearchFilterBar extends StatefulWidget {
     required this.searchHint,
     required this.searchController,
     required this.onSearchChanged,
-    required this.filterOptions,
-    required this.selectedFilter,
-    required this.onFilterChanged,
     super.key,
+    this.filterOptions,
+    this.selectedFilter,
+    this.onFilterChanged,
     this.sortOptions,
     this.selectedSort,
     this.onSortChanged,
@@ -95,10 +95,13 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
   }
 
   String _getSelectedFilterLabel() {
-    if (widget.selectedFilter.isEmpty) return 'All';
-    return widget.filterOptions
+    final selectedFilter = widget.selectedFilter;
+    final filterOptions = widget.filterOptions;
+    if (selectedFilter == null || selectedFilter.isEmpty) return 'All';
+    if (filterOptions == null || filterOptions.isEmpty) return 'All';
+    return filterOptions
         .firstWhere(
-          (o) => o.value == widget.selectedFilter,
+          (o) => o.value == selectedFilter,
           orElse: () => const FilterOption(value: '', label: 'All'),
         )
         .label;
@@ -135,7 +138,11 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
   @override
   Widget build(BuildContext context) {
     final hasText = widget.searchController.text.isNotEmpty;
-    final hasFilter = widget.selectedFilter.isNotEmpty;
+    final hasFilter = widget.selectedFilter?.isNotEmpty ?? false;
+    final hasFilterOptions =
+        widget.filterOptions != null &&
+        widget.filterOptions!.isNotEmpty &&
+        widget.onFilterChanged != null;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -197,87 +204,91 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
               ),
             ),
 
-            const SizedBox(width: AppSpacing.md),
+            if (hasFilterOptions) ...[
+              const SizedBox(width: AppSpacing.md),
 
-            PopupMenuButton<String>(
-              onSelected: widget.onFilterChanged,
-              offset: const Offset(0, 45),
-              shape: const RoundedRectangleBorder(
-                borderRadius: AppRadius.smAll,
-              ),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: hasFilter
-                      ? AppColors.primary.withValues(alpha: 0.1)
-                      : AppColors.surfaceVariant,
+              PopupMenuButton<String>(
+                onSelected: widget.onFilterChanged,
+                offset: const Offset(0, 45),
+                shape: const RoundedRectangleBorder(
                   borderRadius: AppRadius.smAll,
-                  border: hasFilter
-                      ? Border.all(color: AppColors.primary, width: 1.5)
-                      : null,
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.filter_list,
-                      size: AppIconSizes.lg,
-                      color: hasFilter
-                          ? AppColors.primary
-                          : AppColors.textTertiary,
-                    ),
-                    if (!isNarrow) ...[
-                      const SizedBox(width: AppSpacing.xs + 2),
-                      Text(
-                        _getSelectedFilterLabel(),
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: hasFilter
-                              ? AppColors.primary
-                              : AppColors.textTertiary,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(width: AppSpacing.xs),
-                    Icon(
-                      Icons.arrow_drop_down,
-                      size: AppIconSizes.lg,
-                      color: hasFilter
-                          ? AppColors.primary
-                          : AppColors.textTertiary,
-                    ),
-                  ],
-                ),
-              ),
-              itemBuilder: (context) => [
-                PopupMenuItem<String>(
-                  value: '',
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: hasFilter
+                        ? AppColors.primary.withValues(alpha: 0.1)
+                        : AppColors.surfaceVariant,
+                    borderRadius: AppRadius.smAll,
+                    border: hasFilter
+                        ? Border.all(color: AppColors.primary, width: 1.5)
+                        : null,
+                  ),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      _buildCheckIcon(widget.selectedFilter.isEmpty),
-                      const SizedBox(width: AppSpacing.sm),
-                      const Text('All'),
+                      Icon(
+                        Icons.filter_list,
+                        size: AppIconSizes.lg,
+                        color: hasFilter
+                            ? AppColors.primary
+                            : AppColors.textTertiary,
+                      ),
+                      if (!isNarrow) ...[
+                        const SizedBox(width: AppSpacing.xs + 2),
+                        Text(
+                          _getSelectedFilterLabel(),
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: hasFilter
+                                ? AppColors.primary
+                                : AppColors.textTertiary,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(width: AppSpacing.xs),
+                      Icon(
+                        Icons.arrow_drop_down,
+                        size: AppIconSizes.lg,
+                        color: hasFilter
+                            ? AppColors.primary
+                            : AppColors.textTertiary,
+                      ),
                     ],
                   ),
                 ),
-                ...widget.filterOptions.map(
-                  (option) => PopupMenuItem<String>(
-                    value: option.value,
+                itemBuilder: (context) => [
+                  PopupMenuItem<String>(
+                    value: '',
                     child: Row(
                       children: [
-                        _buildCheckIcon(widget.selectedFilter == option.value),
+                        _buildCheckIcon(widget.selectedFilter?.isEmpty ?? true),
                         const SizedBox(width: AppSpacing.sm),
-                        Text(option.label),
+                        const Text('All'),
                       ],
                     ),
                   ),
-                ),
-              ],
-            ),
+                  ...widget.filterOptions!.map(
+                    (option) => PopupMenuItem<String>(
+                      value: option.value,
+                      child: Row(
+                        children: [
+                          _buildCheckIcon(
+                            widget.selectedFilter == option.value,
+                          ),
+                          const SizedBox(width: AppSpacing.sm),
+                          Text(option.label),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
 
             if (widget.sortOptions != null &&
                 widget.sortOptions!.isNotEmpty &&

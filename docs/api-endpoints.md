@@ -67,6 +67,21 @@ All other endpoints require a valid JWT token:
 
 **Ownership:** Quizzes are private to the user who created them. Users can only list, view, update, and delete their own quizzes. Admins can access all quizzes. Attempting to access another user's quiz returns `403 Forbidden` with code `NOT_QUIZ_OWNER`.
 
+### Collections (Protected)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/collections` | Get paginated collection summaries |
+| `GET` | `/collections/{id}` | Get specific collection |
+| `POST` | `/collections` | Create collection |
+| `PUT` | `/collections/{id}` | Update collection |
+| `DELETE` | `/collections/{id}` | Delete collection (quizzes become uncategorized) |
+| `PATCH` | `/quizzes/{id}/collection` | Set or remove quiz's collection |
+
+**Ownership:** Collections are private to the user who created them. Admins can access all collections.
+
+**Subcollections:** Collections support hierarchical organization via `parent_id`. A collection can have a parent collection, creating a tree structure.
+
 ### Quiz Attempts (Protected)
 
 | Method | Endpoint | Description |
@@ -84,7 +99,7 @@ All other endpoints require a valid JWT token:
 
 ### Pagination Parameters
 
-Both `/quizzes/summaries` and `/attempts` support pagination, filtering, and sorting:
+The endpoints `/quizzes/summaries`, `/attempts`, and `/collections` support pagination, filtering, and sorting:
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -113,6 +128,20 @@ Both `/quizzes/summaries` and `/attempts` support pagination, filtering, and sor
 | `score_asc` | Lowest score first |
 | `title_asc` | Quiz title A-Z |
 | `title_desc` | Quiz title Z-A |
+
+**For collections (`/collections`):**
+| Value | Description |
+|-------|-------------|
+| `date_desc` | Newest first (default) |
+| `date_asc` | Oldest first |
+| `name_asc` | Name A-Z |
+| `name_desc` | Name Z-A |
+
+**Additional collection parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `parent_id` | int | Filter by parent collection |
+| `root_only` | bool | Only return root collections (no parent) |
 
 #### Attempt Tracking Behavior
 
@@ -342,6 +371,86 @@ curl -X DELETE http://localhost:8080/api/v1/quizzes/1 \
   -H "Authorization: Bearer <token>"
 ```
 
+### Get Collections
+```bash
+# Basic request
+curl http://localhost:8080/api/v1/collections \
+  -H "Authorization: Bearer <token>"
+
+# With filters
+curl "http://localhost:8080/api/v1/collections?search=go&sort=name_asc&root_only=true" \
+  -H "Authorization: Bearer <token>"
+```
+
+Response:
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "parent_id": null,
+      "name": "Go Fundamentals",
+      "description": "Basic Go programming concepts",
+      "quiz_count": 5,
+      "subcollection_count": 2,
+      "created_at": "2025-01-15T10:00:00Z",
+      "updated_at": "2025-01-15T10:00:00Z"
+    }
+  ],
+  "pagination": {
+    "limit": 20,
+    "offset": 0,
+    "total_count": 1,
+    "has_more": false
+  }
+}
+```
+
+### Create Collection
+```bash
+curl -X POST http://localhost:8080/api/v1/collections \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"name": "Go Fundamentals", "description": "Basic Go concepts"}'
+
+# With parent (subcollection)
+curl -X POST http://localhost:8080/api/v1/collections \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"name": "Concurrency", "description": "Goroutines and channels", "parent_id": 1}'
+```
+
+### Update Collection
+```bash
+curl -X PUT http://localhost:8080/api/v1/collections/1 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"name": "Go Basics", "description": "Updated description"}'
+```
+
+### Delete Collection
+```bash
+curl -X DELETE http://localhost:8080/api/v1/collections/1 \
+  -H "Authorization: Bearer <token>"
+```
+
+**Note:** Deleting a collection does not delete its quizzes. Quizzes become uncategorized (`collection_id` set to null).
+
+### Set Quiz Collection
+```bash
+# Move quiz to a collection
+curl -X PATCH http://localhost:8080/api/v1/quizzes/1/collection \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"collection_id": 1}'
+
+# Remove quiz from collection
+curl -X PATCH http://localhost:8080/api/v1/quizzes/1/collection \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"collection_id": null}'
+```
+
 ### Create Quiz Attempt
 ```bash
 curl -X POST http://localhost:8080/api/v1/attempts \
@@ -549,6 +658,11 @@ The API returns structured error responses:
 | `INVALID_ANSWER_DATA` | Missing user_answer or user_answers in request |
 | `INVALID_CREDENTIALS` | Login failed (wrong username or password) |
 | `USERNAME_TAKEN` | Username already exists |
+| `COLLECTION_NOT_FOUND` | Collection with given ID doesn't exist |
+| `NOT_COLLECTION_OWNER` | User doesn't own this collection (403) |
+| `COLLECTION_NAME_REQUIRED` | Collection name is missing |
+| `PARENT_COLLECTION_NOT_FOUND` | Parent collection doesn't exist |
+| `CIRCULAR_COLLECTION_REFERENCE` | Operation would create a circular parent chain |
 | `UNAUTHORIZED` | Missing or invalid authentication token |
 | `INVALID_TOKEN` | Token is invalid, expired, or has been revoked |
 | `WEAK_PASSWORD` | Password doesn't meet complexity requirements |

@@ -17,7 +17,7 @@ class AddQuizScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Add Quiz',
+                'New Quiz',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w700,
@@ -27,7 +27,7 @@ class AddQuizScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Create from scratch or import from your study notes',
+                'Build from scratch or import from your study notes',
                 style: TextStyle(
                   fontSize: 16,
                   color: AppColors.textTertiary,
@@ -52,7 +52,7 @@ class AddQuizScreen extends StatelessWidget {
                                 Expanded(
                                   child: _OptionCard(
                                     icon: Icons.edit_note,
-                                    title: 'Create',
+                                    title: 'Build',
                                     description:
                                         'Build questions one at a time with the wizard',
                                     color: AppColors.primary,

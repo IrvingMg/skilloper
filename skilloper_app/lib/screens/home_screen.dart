@@ -3,13 +3,17 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../models/attempt.dart';
+import '../models/collection.dart';
 import '../models/pagination.dart';
 import '../models/quiz.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
-import '../theme/app_icons.dart';
-import '../utils/date_formatter.dart';
 import '../utils/debouncer.dart';
+import '../utils/snackbar_helper.dart';
+import '../widgets/collection_chip.dart';
+import '../widgets/collection_dialog.dart';
+import '../widgets/move_to_collection_sheet.dart';
+import '../widgets/quiz_list_item.dart';
 import '../widgets/search_filter_bar.dart';
 import 'create_quiz/create_quiz_screen.dart';
 import 'quiz_screen.dart';
@@ -28,6 +32,7 @@ class HomeScreenState extends State<HomeScreen> {
 
   void refresh() {
     _loadQuizzes(refresh: true);
+    _loadCollections();
   }
 
   final ScrollController _scrollController = ScrollController();
@@ -36,6 +41,7 @@ class HomeScreenState extends State<HomeScreen> {
   );
 
   List<QuizSummary> _quizzes = [];
+  List<Collection> _collections = [];
   PaginationMeta _pagination = PaginationMeta.initial();
 
   bool _isInitialLoading = false;
@@ -48,12 +54,28 @@ class HomeScreenState extends State<HomeScreen> {
   String _searchQuery = '';
   String _typeFilter = '';
   String _sortBy = 'date_desc';
+  int? _selectedCollectionId; // null means "All Quizzes"
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
     _loadQuizzes(refresh: true);
+    _loadCollections();
+  }
+
+  Future<void> _loadCollections() async {
+    try {
+      final result = await _apiService.getCollections(limit: 100);
+      if (mounted) {
+        setState(() {
+          _collections = result.data;
+        });
+      }
+    } on Exception catch (e) {
+      // Collections are optional for the move menu - log and continue
+      debugPrint('Failed to load collections for move menu: $e');
+    }
   }
 
   @override
@@ -89,10 +111,11 @@ class HomeScreenState extends State<HomeScreen> {
       }
     });
 
-    // Capture current search/filter/sort state for race condition detection
+    // Capture current search/filter/sort/collection state for race condition detection
     final requestSearch = _searchQuery;
     final requestType = _typeFilter;
     final requestSort = _sortBy;
+    final requestCollectionId = _selectedCollectionId;
 
     try {
       final result = await _apiService.getQuizSummaries(
@@ -101,13 +124,15 @@ class HomeScreenState extends State<HomeScreen> {
         search: _searchQuery,
         type: _typeFilter,
         sort: _sortBy,
+        collectionId: _selectedCollectionId,
       );
 
       if (!mounted) return;
-      // Check if search/filter/sort changed while request was in flight
+      // Check if search/filter/sort/collection changed while request was in flight
       if (requestSearch != _searchQuery ||
           requestType != _typeFilter ||
           requestSort != _sortBy ||
+          requestCollectionId != _selectedCollectionId ||
           _pendingRefresh) {
         // Query changed or refresh pending - discard stale results and load with current filters
         setState(() {
@@ -146,6 +171,7 @@ class HomeScreenState extends State<HomeScreen> {
     final requestSearch = _searchQuery;
     final requestType = _typeFilter;
     final requestSort = _sortBy;
+    final requestCollectionId = _selectedCollectionId;
     final requestOffset = _pagination.nextOffset;
 
     try {
@@ -155,13 +181,15 @@ class HomeScreenState extends State<HomeScreen> {
         search: _searchQuery,
         type: _typeFilter,
         sort: _sortBy,
+        collectionId: _selectedCollectionId,
       );
 
       if (!mounted) return;
-      // Check if search/filter/sort changed while request was in flight
+      // Check if search/filter/sort/collection changed while request was in flight
       if (requestSearch != _searchQuery ||
           requestType != _typeFilter ||
           requestSort != _sortBy ||
+          requestCollectionId != _selectedCollectionId ||
           _pendingRefresh) {
         // Query changed or refresh pending - discard stale results; a fresh load should already be in progress
         setState(() {
@@ -212,6 +240,118 @@ class HomeScreenState extends State<HomeScreen> {
       _sortBy = sort;
     });
     unawaited(_loadQuizzes(refresh: true));
+  }
+
+  void _onCollectionSelected(int? collectionId) {
+    if (_selectedCollectionId == collectionId) return;
+    setState(() {
+      _selectedCollectionId = collectionId;
+    });
+    unawaited(_loadQuizzes(refresh: true));
+  }
+
+  bool get _hasActiveFilters =>
+      _searchQuery.isNotEmpty ||
+      _typeFilter.isNotEmpty ||
+      _selectedCollectionId != null;
+
+  void _clearAllFilters() {
+    _searchController.clear();
+    setState(() {
+      _searchQuery = '';
+      _typeFilter = '';
+      _selectedCollectionId = null;
+    });
+    _loadQuizzes(refresh: true);
+  }
+
+  Future<void> _createCollection() async {
+    final result = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (context) => const CollectionDialog(),
+    );
+
+    if (result == null || !mounted) return;
+
+    try {
+      await _apiService.createCollection(result);
+      if (!mounted) return;
+
+      showSuccessSnackBar(context, 'Collection created');
+
+      unawaited(_loadCollections());
+    } on Exception catch (e) {
+      if (!mounted) return;
+      showErrorSnackBar(context, 'Error creating collection: $e');
+    }
+  }
+
+  Future<void> _renameCollection(Collection collection) async {
+    final result = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (context) => CollectionDialog(initialName: collection.name),
+    );
+
+    if (result == null || !mounted) return;
+
+    try {
+      await _apiService.updateCollection(collection.id, result);
+      if (!mounted) return;
+
+      showSuccessSnackBar(context, 'Collection updated');
+
+      unawaited(_loadCollections());
+    } on Exception catch (e) {
+      if (!mounted) return;
+      showErrorSnackBar(context, 'Error updating collection: $e');
+    }
+  }
+
+  Future<void> _deleteCollection(Collection collection) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Collection?'),
+        content: Text(
+          'Are you sure you want to delete "${collection.name}"? '
+          'Quizzes in this collection will become uncategorized.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await _apiService.deleteCollection(collection.id);
+
+      if (!mounted) return;
+
+      // If currently filtering by this collection, reset to "All"
+      if (_selectedCollectionId == collection.id) {
+        setState(() {
+          _selectedCollectionId = null;
+        });
+        unawaited(_loadQuizzes(refresh: true));
+      }
+
+      showSuccessSnackBar(context, 'Collection deleted');
+
+      unawaited(_loadCollections());
+    } on Exception catch (e) {
+      if (!mounted) return;
+      showErrorSnackBar(context, 'Error deleting collection: $e');
+    }
   }
 
   Future<void> _startQuiz(QuizSummary summary) async {
@@ -474,34 +614,49 @@ class HomeScreenState extends State<HomeScreen> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Row(
-            children: [
-              Icon(
-                Icons.check_circle,
-                color: AppColors.textOnPrimary,
-                size: AppIconSizes.lg,
-              ),
-              SizedBox(width: AppSpacing.sm),
-              Text('Quiz deleted'),
-            ],
-          ),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: AppRadius.smAll),
-        ),
-      );
+      showSuccessSnackBar(context, 'Quiz deleted');
 
       unawaited(_loadQuizzes(refresh: true));
     } on Exception catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error deleting quiz: $e'),
-          backgroundColor: AppColors.error,
-        ),
+      showErrorSnackBar(context, 'Error deleting quiz: $e');
+    }
+  }
+
+  Future<void> _moveQuizToCollection(QuizSummary quiz) async {
+    final selectedCollectionId = await showModalBottomSheet<int?>(
+      context: context,
+      builder: (context) => MoveToCollectionSheet(
+        collections: _collections,
+        currentCollectionId: quiz.collectionId,
+      ),
+    );
+
+    // -1 signals "remove from collection"
+    if (selectedCollectionId == -1 && quiz.collectionId != null) {
+      await _setQuizCollection(quiz.id, null);
+    } else if (selectedCollectionId != null &&
+        selectedCollectionId != -1 &&
+        selectedCollectionId != quiz.collectionId) {
+      await _setQuizCollection(quiz.id, selectedCollectionId);
+    }
+  }
+
+  Future<void> _setQuizCollection(int quizId, int? collectionId) async {
+    try {
+      await _apiService.setQuizCollection(quizId, collectionId);
+      if (!mounted) return;
+
+      showSuccessSnackBar(
+        context,
+        collectionId == null ? 'Removed from collection' : 'Moved to collection',
       );
+
+      unawaited(_loadQuizzes(refresh: true));
+      unawaited(_loadCollections());
+    } on Exception catch (e) {
+      if (!mounted) return;
+      showErrorSnackBar(context, 'Error updating quiz: $e');
     }
   }
 
@@ -533,6 +688,43 @@ class HomeScreenState extends State<HomeScreen> {
                   fontWeight: FontWeight.w400,
                 ),
               ),
+
+              // Collections section
+              const SizedBox(height: AppSpacing.lg),
+              SizedBox(
+                height: 36,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _collections.length + 2, // +1 for "All" chip, +1 for "Add" chip
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(width: AppSpacing.sm),
+                  itemBuilder: (context, index) {
+                    // First: "All" chip
+                    if (index == 0) {
+                      return CollectionChip(
+                        label: 'All',
+                        isSelected: _selectedCollectionId == null,
+                        onTap: () => _onCollectionSelected(null),
+                      );
+                    }
+                    // Last: "Add" chip
+                    if (index == _collections.length + 1) {
+                      return AddCollectionChip(onTap: _createCollection);
+                    }
+                    // Collection chips with actions
+                    final collection = _collections[index - 1];
+                    return CollectionChip(
+                      label: collection.name,
+                      isSelected: _selectedCollectionId == collection.id,
+                      color: AppColors.getCollectionColor(collection.id),
+                      onTap: () => _onCollectionSelected(collection.id),
+                      onRename: () => _renameCollection(collection),
+                      onDelete: () => _deleteCollection(collection),
+                    );
+                  },
+                ),
+              ),
+
               const SizedBox(height: AppSpacing.lg),
 
               SearchFilterBar(
@@ -606,7 +798,7 @@ class HomeScreenState extends State<HomeScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          _searchQuery.isNotEmpty || _typeFilter.isNotEmpty
+                          _hasActiveFilters
                               ? Icons.search_off
                               : Icons.quiz_outlined,
                           size: 64,
@@ -614,7 +806,7 @@ class HomeScreenState extends State<HomeScreen> {
                         ),
                         const SizedBox(height: AppSpacing.lg),
                         Text(
-                          _searchQuery.isNotEmpty || _typeFilter.isNotEmpty
+                          _hasActiveFilters
                               ? 'No matches found'
                               : 'No quizzes yet',
                           style: const TextStyle(
@@ -626,7 +818,7 @@ class HomeScreenState extends State<HomeScreen> {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 32),
                           child: Text(
-                            _searchQuery.isNotEmpty || _typeFilter.isNotEmpty
+                            _hasActiveFilters
                                 ? 'Try a different search or filter'
                                 : 'Create quizzes from your study notes using ChatGPT or Claude',
                             style: const TextStyle(
@@ -635,18 +827,10 @@ class HomeScreenState extends State<HomeScreen> {
                             textAlign: TextAlign.center,
                           ),
                         ),
-                        if (_searchQuery.isNotEmpty ||
-                            _typeFilter.isNotEmpty) ...[
+                        if (_hasActiveFilters) ...[
                           const SizedBox(height: AppSpacing.lg),
                           TextButton(
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {
-                                _searchQuery = '';
-                                _typeFilter = '';
-                              });
-                              _loadQuizzes(refresh: true);
-                            },
+                            onPressed: _clearAllFilters,
                             child: const Text('Clear filters'),
                           ),
                         ] else ...[
@@ -654,7 +838,7 @@ class HomeScreenState extends State<HomeScreen> {
                           ElevatedButton.icon(
                             onPressed: widget.onNavigateToAdd,
                             icon: const Icon(Icons.add),
-                            label: const Text('Add Quiz'),
+                            label: const Text('Create Quiz'),
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 24,
@@ -682,232 +866,18 @@ class HomeScreenState extends State<HomeScreen> {
                         );
                       }
                       final quiz = _quizzes[index];
-                      return _QuizListItem(
+                      return QuizListItem(
                         quiz: quiz,
                         onTap: () => _startQuiz(quiz),
                         onEdit: () => _editQuiz(quiz),
                         onDelete: () => _deleteQuiz(quiz),
+                        onMoveToCollection: () => _moveQuizToCollection(quiz),
                       );
                     },
                   ),
                 ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _QuizListItem extends StatelessWidget {
-  final QuizSummary quiz;
-  final VoidCallback onTap;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
-
-  const _QuizListItem({
-    required this.quiz,
-    required this.onTap,
-    required this.onEdit,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      shape: const RoundedRectangleBorder(borderRadius: AppRadius.lgAll),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: AppRadius.lgAll,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final isNarrowScreen = constraints.maxWidth < 360;
-
-            return Padding(
-              padding: EdgeInsets.all(isNarrowScreen ? 12 : 20),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                quiz.title,
-                                style: TextStyle(
-                                  fontSize: isNarrowScreen ? 16 : 18,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textPrimary,
-                                ),
-                                maxLines: isNarrowScreen ? 1 : 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: isNarrowScreen ? 6 : 8,
-                                vertical: 3,
-                              ),
-                              decoration: const BoxDecoration(
-                                color: AppColors.surfaceContainerHigh,
-                                borderRadius: AppRadius.xsAll,
-                              ),
-                              child: Text(
-                                quiz.type.toUpperCase(),
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textTertiary,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        if (!isNarrowScreen)
-                          const SizedBox(height: AppSpacing.xs),
-
-                        if (!isNarrowScreen && quiz.description.isNotEmpty) ...[
-                          Text(
-                            quiz.description,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: AppColors.textTertiary,
-                              height: 1.4,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                        ],
-
-                        if (isNarrowScreen) ...[
-                          const SizedBox(height: AppSpacing.xs),
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.quiz_outlined,
-                                size: AppIconSizes.xs,
-                                color: AppColors.textDisabled,
-                              ),
-                              const SizedBox(width: AppSpacing.xs),
-                              Text(
-                                '${quiz.questionCount} questions',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textTertiary,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(width: AppSpacing.md),
-                              const Icon(
-                                Icons.schedule,
-                                size: AppIconSizes.xs,
-                                color: AppColors.textDisabled,
-                              ),
-                              const SizedBox(width: AppSpacing.xs),
-                              Text(
-                                formatRelativeDate(quiz.createdAt),
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textTertiary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ] else ...[
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.quiz_outlined,
-                                size: AppIconSizes.sm,
-                                color: AppColors.textDisabled,
-                              ),
-                              const SizedBox(width: AppSpacing.xs),
-                              Text(
-                                '${quiz.questionCount} questions',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.textTertiary,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(width: AppSpacing.lg),
-                              const Icon(
-                                Icons.schedule,
-                                size: AppIconSizes.sm,
-                                color: AppColors.textDisabled,
-                              ),
-                              const SizedBox(width: AppSpacing.xs),
-                              Text(
-                                formatRelativeDate(quiz.createdAt),
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.textTertiary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-
-                  SizedBox(
-                    width: isNarrowScreen ? AppSpacing.sm : AppSpacing.md,
-                  ),
-
-                  PopupMenuButton<String>(
-                    icon: Icon(
-                      Icons.more_vert,
-                      size: isNarrowScreen ? 20 : 24,
-                      color: AppColors.textTertiary,
-                    ),
-                    onSelected: (value) {
-                      if (value == 'edit') {
-                        onEdit();
-                      } else if (value == 'delete') {
-                        onDelete();
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit_outlined, size: AppIconSizes.lg),
-                            SizedBox(width: AppSpacing.md),
-                            Text('Edit'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.delete_outline,
-                              size: AppIconSizes.lg,
-                              color: AppColors.error,
-                            ),
-                            SizedBox(width: AppSpacing.md),
-                            Text(
-                              'Delete',
-                              style: TextStyle(color: AppColors.error),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          },
         ),
       ),
     );

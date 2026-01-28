@@ -29,11 +29,12 @@ var validAttemptSorts = map[string]string{
 
 // PaginationParams holds common pagination and filter parameters
 type PaginationParams struct {
-	Limit  int    `form:"limit"`
-	Offset int    `form:"offset"`
-	Search string `form:"search"`
-	Type   string `form:"type"`
-	Sort   string `form:"sort"`
+	Limit        int    `form:"limit"`
+	Offset       int    `form:"offset"`
+	Search       string `form:"search"`
+	Type         string `form:"type"`
+	Sort         string `form:"sort"`
+	CollectionID *uint  `form:"collection_id"`
 }
 
 // Validate ensures pagination params are within acceptable bounds

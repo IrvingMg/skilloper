@@ -355,6 +355,61 @@ var (
 		Code:    "UNAUTHORIZED",
 		Message: "missing token",
 	}
+
+	// Collection errors
+	ErrCollectionNotFound = &AppError{
+		Type:    ErrTypeNotFound,
+		Code:    "COLLECTION_NOT_FOUND",
+		Message: "collection not found",
+	}
+
+	ErrNotCollectionOwner = &AppError{
+		Type:    ErrTypeAuthorization,
+		Code:    "NOT_COLLECTION_OWNER",
+		Message: "you don't have permission to modify this collection",
+	}
+
+	ErrCollectionNameRequired = &AppError{
+		Type:    ErrTypeValidation,
+		Code:    "COLLECTION_NAME_REQUIRED",
+		Message: "collection name is required",
+	}
+
+	ErrInvalidCollectionID = &AppError{
+		Type:    ErrTypeValidation,
+		Code:    "INVALID_COLLECTION_ID",
+		Message: "invalid collection ID",
+	}
+
+	ErrCreateCollectionFailed = &AppError{
+		Type:    ErrTypeDatabase,
+		Code:    "CREATE_COLLECTION_FAILED",
+		Message: "failed to create collection",
+	}
+
+	ErrFetchCollectionsFailed = &AppError{
+		Type:    ErrTypeDatabase,
+		Code:    "FETCH_COLLECTIONS_FAILED",
+		Message: "failed to fetch collections",
+	}
+
+	ErrUpdateCollectionFailed = &AppError{
+		Type:    ErrTypeDatabase,
+		Code:    "UPDATE_COLLECTION_FAILED",
+		Message: "failed to update collection",
+	}
+
+	ErrDeleteCollectionFailed = &AppError{
+		Type:    ErrTypeDatabase,
+		Code:    "DELETE_COLLECTION_FAILED",
+		Message: "failed to delete collection",
+	}
+
+	ErrUpdateQuizCollectionFailed = &AppError{
+		Type:    ErrTypeDatabase,
+		Code:    "UPDATE_QUIZ_COLLECTION_FAILED",
+		Message: "failed to update quiz collection",
+	}
 )
 
 // NewValidationError creates a new validation error

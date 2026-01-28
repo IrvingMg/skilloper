@@ -107,6 +107,22 @@ class AppColors {
   static const Color selectionHover = Color(0xFFE0DEFF); // Slightly darker
   static const Color hoverOverlay = Color(0x08000000); // 3% black
   static const Color pressedOverlay = Color(0x10000000); // 6% black
+
+  // MARK: - Collection Colors (Auto-Assigned by ID)
+  static const List<Color> collectionPalette = [
+    Color(0xFF6366F1), // Indigo
+    Color(0xFF8B5CF6), // Violet
+    Color(0xFFEC4899), // Pink
+    Color(0xFFF97316), // Orange
+    Color(0xFF14B8A6), // Teal
+    Color(0xFF22C55E), // Green
+    Color(0xFF3B82F6), // Blue
+    Color(0xFFEAB308), // Yellow
+  ];
+
+  static Color getCollectionColor(int collectionId) {
+    return collectionPalette[collectionId % collectionPalette.length];
+  }
 }
 
 /// Gradient definitions for the Soft Gradient Violet theme

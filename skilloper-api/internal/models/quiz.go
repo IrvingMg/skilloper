@@ -15,15 +15,16 @@ const (
 )
 
 type Quiz struct {
-	ID          uint       `json:"id" gorm:"primaryKey"`
-	UserID      uint       `json:"user_id" gorm:"not null;index;constraint:OnDelete:CASCADE"`
-	Title       string     `json:"title" gorm:"not null"`
-	Description string     `json:"description"`
-	Type        string     `json:"type" gorm:"not null;default:'practice'"` // "practice" or "exam"
-	MaxOptions  int        `json:"max_options" gorm:"not null;default:4"`   // Maximum options per question
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
-	Questions   []Question `json:"questions" gorm:"foreignKey:QuizID"`
+	ID           uint       `json:"id" gorm:"primaryKey"`
+	UserID       uint       `json:"user_id" gorm:"not null;index;constraint:OnDelete:CASCADE"`
+	CollectionID *uint      `json:"collection_id,omitempty" gorm:"index;constraint:OnDelete:SET NULL"`
+	Title        string     `json:"title" gorm:"not null"`
+	Description  string     `json:"description"`
+	Type         string     `json:"type" gorm:"not null;default:'practice'"` // "practice" or "exam"
+	MaxOptions   int        `json:"max_options" gorm:"not null;default:4"`   // Maximum options per question
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+	Questions    []Question `json:"questions" gorm:"foreignKey:QuizID"`
 }
 
 type Question struct {
@@ -91,14 +92,16 @@ type QuestionRequest struct {
 }
 
 type QuizSummary struct {
-	ID            uint      `json:"id"`
-	Title         string    `json:"title"`
-	Description   string    `json:"description"`
-	Type          string    `json:"type"`
-	MaxOptions    int       `json:"max_options"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
-	QuestionCount int       `json:"question_count"`
+	ID             uint      `json:"id"`
+	Title          string    `json:"title"`
+	Description    string    `json:"description"`
+	Type           string    `json:"type"`
+	MaxOptions     int       `json:"max_options"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+	QuestionCount  int       `json:"question_count"`
+	CollectionID   *uint     `json:"collection_id,omitempty"`
+	CollectionName *string   `json:"collection_name,omitempty"`
 }
 
 // questionResponseBase contains shared fields for question responses (unexported, for embedding only)

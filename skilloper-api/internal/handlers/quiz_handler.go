@@ -205,6 +205,34 @@ func (h *QuizHandler) DeleteQuiz(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// UpdateQuizCollection handles PATCH /quizzes/:id/collection
+func (h *QuizHandler) UpdateQuizCollection(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	isAdmin := middleware.IsAdmin(c)
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		h.errH.Handle(c, apperrors.ErrInvalidQuizID, "parse_quiz_id")
+		return
+	}
+
+	h.log.Debug("Updating quiz collection", zap.Int("id", id))
+
+	var req models.UpdateQuizCollectionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.errH.Handle(c, apperrors.ErrInvalidJSONFormat, "parse_update_collection_request")
+		return
+	}
+
+	err = h.service.SetCollection(uint(id), req.CollectionID, userID, isAdmin)
+	if err != nil {
+		h.errH.Handle(c, err, "update_quiz_collection")
+		return
+	}
+
+	h.log.Debug("Successfully updated quiz collection", zap.Int("id", id))
+	c.Status(http.StatusNoContent)
+}
+
 func (h *QuizHandler) handleImport(c *gin.Context, userID uint) {
 	h.log.Debug("Importing quiz from file")
 

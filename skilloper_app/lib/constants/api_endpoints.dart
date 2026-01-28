@@ -6,6 +6,11 @@ class ApiEndpoints {
   static const String quizzes = '/quizzes';
   static const String quizSummaries = '/quizzes/summaries';
   static String quiz(int id) => '/quizzes/$id';
+  static String quizCollection(int id) => '/quizzes/$id/collection';
+
+  // Collection endpoints
+  static const String collections = '/collections';
+  static String collection(int id) => '/collections/$id';
 
   // Attempt endpoints
   static const String attempts = '/attempts';

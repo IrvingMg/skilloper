@@ -79,6 +79,8 @@ class QuizSummary {
   final DateTime createdAt;
   final DateTime updatedAt;
   final int questionCount;
+  final int? collectionId;
+  final String? collectionName;
 
   const QuizSummary({
     required this.id,
@@ -89,6 +91,8 @@ class QuizSummary {
     required this.createdAt,
     required this.updatedAt,
     required this.questionCount,
+    this.collectionId,
+    this.collectionName,
   });
 
   factory QuizSummary.fromJson(Map<String, dynamic> json) {
@@ -120,6 +124,8 @@ class QuizSummary {
           ? DateTime.parse(updatedAt.toString())
           : DateTime.parse(createdAt.toString()),
       questionCount: (json['question_count'] as int?) ?? 0,
+      collectionId: json['collection_id'] as int?,
+      collectionName: json['collection_name'] as String?,
     );
   }
 

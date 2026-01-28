@@ -35,7 +35,8 @@ func NewQuizService(db *gorm.DB, log *zap.Logger) *QuizService {
 
 type QuizSummaryRow struct {
 	models.Quiz
-	QuestionCount int64 `gorm:"column:question_count"`
+	QuestionCount  int64   `gorm:"column:question_count"`
+	CollectionName *string `gorm:"column:collection_name"`
 }
 
 func (s *QuizService) GetPaginatedSummaries(params models.PaginationParams, userID uint, isAdmin bool) (models.PaginatedQuizSummaries, error) {
@@ -53,6 +54,10 @@ func (s *QuizService) GetPaginatedSummaries(params models.PaginationParams, user
 		baseQuery = baseQuery.Where("type = ?", params.Type)
 	}
 
+	if params.CollectionID != nil {
+		baseQuery = baseQuery.Where("collection_id = ?", *params.CollectionID)
+	}
+
 	var totalCount int64
 	if err := baseQuery.Count(&totalCount).Error; err != nil {
 		return models.PaginatedQuizSummaries{}, apperrors.ErrFetchQuizzesFailed
@@ -64,8 +69,9 @@ func (s *QuizService) GetPaginatedSummaries(params models.PaginationParams, user
 		Group("quiz_id")
 
 	result := s.db.Table("quizzes").
-		Select("quizzes.*, COALESCE(q.cnt, 0) as question_count").
-		Joins("LEFT JOIN (?) as q ON quizzes.id = q.quiz_id", subquery)
+		Select("quizzes.*, COALESCE(q.cnt, 0) as question_count, collections.name as collection_name").
+		Joins("LEFT JOIN (?) as q ON quizzes.id = q.quiz_id", subquery).
+		Joins("LEFT JOIN collections ON quizzes.collection_id = collections.id")
 	if !isAdmin {
 		result = result.Where("quizzes.user_id = ?", userID)
 	}
@@ -76,6 +82,9 @@ func (s *QuizService) GetPaginatedSummaries(params models.PaginationParams, user
 	}
 	if params.Type != "" {
 		result = result.Where("quizzes.type = ?", params.Type)
+	}
+	if params.CollectionID != nil {
+		result = result.Where("quizzes.collection_id = ?", *params.CollectionID)
 	}
 
 	result = result.Order(params.GetQuizOrderBy()).
@@ -90,14 +99,16 @@ func (s *QuizService) GetPaginatedSummaries(params models.PaginationParams, user
 	summaries := make([]models.QuizSummary, 0, len(rows))
 	for _, row := range rows {
 		summaries = append(summaries, models.QuizSummary{
-			ID:            row.ID,
-			Title:         row.Title,
-			Description:   row.Description,
-			Type:          row.Type,
-			MaxOptions:    row.MaxOptions,
-			CreatedAt:     row.CreatedAt,
-			UpdatedAt:     row.UpdatedAt,
-			QuestionCount: int(row.QuestionCount),
+			ID:             row.ID,
+			Title:          row.Title,
+			Description:    row.Description,
+			Type:           row.Type,
+			MaxOptions:     row.MaxOptions,
+			CreatedAt:      row.CreatedAt,
+			UpdatedAt:      row.UpdatedAt,
+			QuestionCount:  int(row.QuestionCount),
+			CollectionID:   row.CollectionID,
+			CollectionName: row.CollectionName,
 		})
 	}
 
@@ -319,6 +330,41 @@ func (s *QuizService) Delete(id uint, userID uint, isAdmin bool) error {
 	}
 
 	return nil
+}
+
+func (s *QuizService) SetCollection(quizID uint, collectionID *uint, userID uint, isAdmin bool) error {
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		var quiz models.Quiz
+		if err := tx.First(&quiz, quizID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return apperrors.ErrQuizNotFound
+			}
+			return apperrors.ErrFetchQuizFailed
+		}
+
+		if !isAdmin && quiz.UserID != userID {
+			return apperrors.ErrNotQuizOwner
+		}
+
+		if collectionID != nil {
+			var collection models.Collection
+			if err := tx.First(&collection, *collectionID).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return apperrors.ErrCollectionNotFound
+				}
+				return apperrors.ErrFetchCollectionsFailed
+			}
+			if !isAdmin && collection.UserID != userID {
+				return apperrors.ErrNotCollectionOwner
+			}
+		}
+
+		if err := tx.Model(&quiz).Update("collection_id", collectionID).Error; err != nil {
+			return apperrors.ErrUpdateQuizCollectionFailed
+		}
+
+		return nil
+	})
 }
 
 func (s *QuizService) ImportFromFile(file *multipart.FileHeader, csvMeta CSVMetadata, userID uint) (*models.QuizSummary, error) {

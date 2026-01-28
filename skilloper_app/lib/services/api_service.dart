@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import '../constants/api_endpoints.dart';
 import '../models/attempt.dart';
+import '../models/collection.dart';
 import '../models/pagination.dart';
 import '../models/quiz.dart';
 import 'api_config.dart';
@@ -186,6 +187,7 @@ class ApiService {
     String search = '',
     String type = '',
     String sort = '',
+    int? collectionId,
   }) async {
     try {
       final queryParams = <String, String>{
@@ -200,6 +202,9 @@ class ApiService {
       }
       if (sort.isNotEmpty) {
         queryParams['sort'] = sort;
+      }
+      if (collectionId != null) {
+        queryParams['collection_id'] = collectionId.toString();
       }
 
       final uri = Uri.parse(
@@ -574,6 +579,161 @@ class ApiService {
       rethrow;
     } on Exception catch (e) {
       throw _handleException(e, 'delete quiz');
+    }
+  }
+
+  /// Update quiz collection assignment
+  Future<void> setQuizCollection(int quizId, int? collectionId) async {
+    if (quizId <= 0) {
+      throw ApiException('Invalid quiz ID: $quizId');
+    }
+
+    try {
+      final response = await _authenticatedPatch(
+        Uri.parse('$baseUrl${ApiEndpoints.quizCollection(quizId)}'),
+        body: json.encode({'collection_id': collectionId}),
+      );
+
+      _handleHttpResponse(response, 'update quiz collection');
+    } on ApiException {
+      rethrow;
+    } on Exception catch (e) {
+      throw _handleException(e, 'update quiz collection');
+    }
+  }
+
+  /// Get paginated collections
+  Future<PaginatedResponse<Collection>> getCollections({
+    int limit = 20,
+    int offset = 0,
+    String search = '',
+    String sort = '',
+  }) async {
+    try {
+      final queryParams = <String, String>{
+        'limit': limit.toString(),
+        'offset': offset.toString(),
+      };
+      if (search.isNotEmpty) {
+        queryParams['search'] = search;
+      }
+      if (sort.isNotEmpty) {
+        queryParams['sort'] = sort;
+      }
+
+      final uri = Uri.parse(
+        '$baseUrl${ApiEndpoints.collections}',
+      ).replace(queryParameters: queryParams);
+
+      final response = await _authenticatedGet(uri);
+
+      _handleHttpResponse(response, 'load collections');
+
+      final Map<String, dynamic> body =
+          json.decode(response.body) as Map<String, dynamic>;
+      final dynamic rawData = body['data'];
+      if (rawData != null && rawData is! List) {
+        throw const ApiException(
+          'Invalid response format: expected data array',
+        );
+      }
+      final List<dynamic> dataList = (rawData as List?) ?? [];
+      final paginationJson = body['pagination'] as Map<String, dynamic>;
+
+      return PaginatedResponse(
+        data: dataList
+            .map((json) => Collection.fromJson(json as Map<String, dynamic>))
+            .toList(),
+        pagination: PaginationMeta.fromJson(paginationJson),
+      );
+    } on ApiException {
+      rethrow;
+    } on Exception catch (e) {
+      throw _handleException(e, 'load collections');
+    }
+  }
+
+  /// Get a single collection by ID
+  Future<Collection> getCollection(int id) async {
+    if (id <= 0) {
+      throw ApiException('Invalid collection ID: $id');
+    }
+
+    try {
+      final response = await _authenticatedGet(
+        Uri.parse('$baseUrl${ApiEndpoints.collection(id)}'),
+      );
+
+      _handleHttpResponse(response, 'load collection');
+
+      final Map<String, dynamic> data =
+          json.decode(response.body) as Map<String, dynamic>;
+      return Collection.fromJson(data);
+    } on ApiException {
+      rethrow;
+    } on Exception catch (e) {
+      throw _handleException(e, 'load collection');
+    }
+  }
+
+  /// Create a new collection
+  Future<Collection> createCollection(Map<String, dynamic> data) async {
+    try {
+      final response = await _authenticatedPost(
+        Uri.parse('$baseUrl${ApiEndpoints.collections}'),
+        body: json.encode(data),
+      );
+
+      _handleHttpResponse(response, 'create collection');
+
+      final responseData = json.decode(response.body) as Map<String, dynamic>;
+      return Collection.fromJson(responseData);
+    } on ApiException {
+      rethrow;
+    } on Exception catch (e) {
+      throw _handleException(e, 'create collection');
+    }
+  }
+
+  /// Update an existing collection
+  Future<Collection> updateCollection(int id, Map<String, dynamic> data) async {
+    if (id <= 0) {
+      throw ApiException('Invalid collection ID: $id');
+    }
+
+    try {
+      final response = await _authenticatedPut(
+        Uri.parse('$baseUrl${ApiEndpoints.collection(id)}'),
+        body: json.encode(data),
+      );
+
+      _handleHttpResponse(response, 'update collection');
+
+      final responseData = json.decode(response.body) as Map<String, dynamic>;
+      return Collection.fromJson(responseData);
+    } on ApiException {
+      rethrow;
+    } on Exception catch (e) {
+      throw _handleException(e, 'update collection');
+    }
+  }
+
+  /// Delete a collection
+  Future<void> deleteCollection(int id) async {
+    if (id <= 0) {
+      throw ApiException('Invalid collection ID: $id');
+    }
+
+    try {
+      final response = await _authenticatedDelete(
+        Uri.parse('$baseUrl${ApiEndpoints.collection(id)}'),
+      );
+
+      _handleHttpResponse(response, 'delete collection');
+    } on ApiException {
+      rethrow;
+    } on Exception catch (e) {
+      throw _handleException(e, 'delete collection');
     }
   }
 

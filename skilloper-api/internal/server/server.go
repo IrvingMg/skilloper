@@ -40,13 +40,14 @@ type Server struct {
 	httpServer *http.Server
 	embeddedFS embed.FS
 
-	rateLimiters   *middleware.RateLimiters
-	authService    *services.AuthService
-	authHandler    *handlers.AuthHandler
-	quizHandler    *handlers.QuizHandler
-	attemptHandler *handlers.AttemptHandler
-	answerHandler  *handlers.AnswerHandler
-	healthHandler  *handlers.HealthHandler
+	rateLimiters      *middleware.RateLimiters
+	authService       *services.AuthService
+	authHandler       *handlers.AuthHandler
+	quizHandler       *handlers.QuizHandler
+	collectionHandler *handlers.CollectionHandler
+	attemptHandler    *handlers.AttemptHandler
+	answerHandler     *handlers.AnswerHandler
+	healthHandler     *handlers.HealthHandler
 }
 
 func (s *Server) SetStaticFS(fs embed.FS) {
@@ -121,6 +122,7 @@ func (s *Server) setupServices() {
 
 	s.authService = services.NewAuthService(s.db, s.config.JWTSecret, s.config.JWTExpiry, s.config.RefreshTokenExpiry, s.log)
 	quizService := services.NewQuizService(s.db, s.log)
+	collectionService := services.NewCollectionService(s.db, s.log)
 	attemptService := services.NewAttemptService(s.db, s.log)
 	answerService := services.NewAnswerService(s.db, s.log)
 	healthService := services.NewHealthService()
@@ -128,6 +130,7 @@ func (s *Server) setupServices() {
 	errHandler := handlers.NewErrorHandler(s.log)
 	s.authHandler = handlers.NewAuthHandler(s.authService, errHandler, s.log)
 	s.quizHandler = handlers.NewQuizHandler(quizService, errHandler, s.log)
+	s.collectionHandler = handlers.NewCollectionHandler(collectionService, errHandler, s.log)
 	s.attemptHandler = handlers.NewAttemptHandler(attemptService, errHandler, s.log)
 	s.answerHandler = handlers.NewAnswerHandler(answerService, errHandler, s.log)
 	s.healthHandler = handlers.NewHealthHandler(healthService, s.log)
@@ -161,6 +164,14 @@ func (s *Server) setupRoutes() {
 		protected.POST("/quizzes", s.quizHandler.CreateQuiz)
 		protected.PUT("/quizzes/:id", s.quizHandler.UpdateQuiz)
 		protected.DELETE("/quizzes/:id", s.quizHandler.DeleteQuiz)
+		protected.PATCH("/quizzes/:id/collection", s.quizHandler.UpdateQuizCollection)
+
+		// Collection routes
+		protected.GET("/collections", s.collectionHandler.GetCollections)
+		protected.GET("/collections/:id", s.collectionHandler.GetCollection)
+		protected.POST("/collections", s.collectionHandler.CreateCollection)
+		protected.PUT("/collections/:id", s.collectionHandler.UpdateCollection)
+		protected.DELETE("/collections/:id", s.collectionHandler.DeleteCollection)
 
 		// Attempt routes
 		protected.POST("/attempts", s.attemptHandler.CreateAttempt)

@@ -198,7 +198,7 @@ class _MainScreenState extends State<MainScreen> {
             NavigationDestination(
               icon: Icon(AppIcons.add),
               selectedIcon: Icon(AppIcons.addSelected),
-              label: 'Add',
+              label: 'Create',
             ),
             NavigationDestination(
               icon: Icon(AppIcons.history),

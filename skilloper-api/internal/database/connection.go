@@ -73,6 +73,7 @@ func New(cfg *config.Config, log *zap.Logger) (*gorm.DB, error) {
 		&models.User{},
 		&models.TokenBlacklist{},
 		&models.RefreshToken{},
+		&models.Collection{},
 		&models.Quiz{},
 		&models.Question{},
 		&models.QuizAttempt{},
