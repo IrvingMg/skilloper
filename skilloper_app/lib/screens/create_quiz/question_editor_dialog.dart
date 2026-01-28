@@ -29,6 +29,7 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
   late TextEditingController _languageController;
   late List<TextEditingController> _altQuestionControllers;
   late List<TextEditingController> _altOptionControllers;
+  late List<TextEditingController> _altAnswerControllers;
   bool _isMultipleChoice = false;
   bool _showAdvanced = false;
   String? _errorMessage;
@@ -50,13 +51,17 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
     _altOptionControllers = _question.alternativeOptions
         .map((o) => TextEditingController(text: o))
         .toList();
+    _altAnswerControllers = _question.alternativeAnswers
+        .map((a) => TextEditingController(text: a))
+        .toList();
     _isMultipleChoice = _question.isMultipleChoice;
 
     // Show advanced section if any advanced fields have content
     _showAdvanced =
         _question.code.isNotEmpty ||
         _question.alternativeQuestions.isNotEmpty ||
-        _question.alternativeOptions.isNotEmpty;
+        _question.alternativeOptions.isNotEmpty ||
+        _question.alternativeAnswers.isNotEmpty;
   }
 
   @override
@@ -74,6 +79,9 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
     for (final c in _altOptionControllers) {
       c.dispose();
     }
+    for (final c in _altAnswerControllers) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -87,6 +95,9 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
         .map((c) => c.text)
         .toList();
     _question.alternativeOptions = _altOptionControllers
+        .map((c) => c.text)
+        .toList();
+    _question.alternativeAnswers = _altAnswerControllers
         .map((c) => c.text)
         .toList();
   }
@@ -133,6 +144,19 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
     setState(() {
       _altOptionControllers[index].dispose();
       _altOptionControllers.removeAt(index);
+    });
+  }
+
+  void _addAltAnswer() {
+    setState(() {
+      _altAnswerControllers.add(TextEditingController());
+    });
+  }
+
+  void _removeAltAnswer(int index) {
+    setState(() {
+      _altAnswerControllers[index].dispose();
+      _altAnswerControllers.removeAt(index);
     });
   }
 
@@ -612,6 +636,60 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                                   color: AppColors.error,
                                 ),
                                 onPressed: () => _removeAltOption(index),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 16),
+
+                      // Alternative answers
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Alternative Answers',
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                          TextButton.icon(
+                            onPressed: _addAltAnswer,
+                            icon: const Icon(Icons.add, size: AppIconSizes.md),
+                            label: const Text('Add'),
+                          ),
+                        ],
+                      ),
+                      const Text(
+                        'Different ways to phrase the correct answer',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      ...List.generate(_altAnswerControllers.length, (index) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _altAnswerControllers[index],
+                                  decoration: InputDecoration(
+                                    hintText: 'Alternative answer ${index + 1}',
+                                    border: const OutlineInputBorder(),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 10,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.remove_circle_outline,
+                                  color: AppColors.error,
+                                ),
+                                onPressed: () => _removeAltAnswer(index),
                               ),
                             ],
                           ),
