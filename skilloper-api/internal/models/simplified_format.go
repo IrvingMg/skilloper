@@ -29,16 +29,16 @@ func (sq *SimplifiedQuiz) IsInternalFormat() bool {
 // Accepts: ["4"] for single choice, ["1", "2", "4"] for multiple choice
 // All values are 1-based indices
 type SimplifiedQuestion struct {
-	Question             string   `json:"question"`
-	QuestionType         string   `json:"question_type,omitempty"`         // Optional: "single_choice" or "multiple_choice"
-	AlternativeQuestions []string `json:"alternative_questions,omitempty"` // Alternative question phrasings
-	Options              []string `json:"options"`
-	AlternativeOptions   []string `json:"alternative_options,omitempty"` // Additional options for variety
-	Answer               []string `json:"answer"`                        // Array of 1-based indices as strings
-	AlternativeAnswers   []string `json:"alternative_answers,omitempty"` // Alternative correct answer texts
-	Explanation          string   `json:"explanation,omitempty"`
-	Code                 string   `json:"code,omitempty"`
-	Language             string   `json:"language,omitempty"`
+	Question             string     `json:"question"`
+	QuestionType         string     `json:"question_type,omitempty"`         // Optional: "single_choice" or "multiple_choice"
+	AlternativeQuestions []string   `json:"alternative_questions,omitempty"` // Alternative question phrasings
+	Options              []string   `json:"options"`
+	ExtraOptions         []string   `json:"extra_options,omitempty"`   // Additional distractor options
+	Answer               []string   `json:"answer"`                    // Array of 1-based indices as strings
+	OptionVariants       [][]string `json:"option_variants,omitempty"` // Text variants per option: option_variants[i] = variants for options[i]
+	Explanation          string     `json:"explanation,omitempty"`
+	Code                 string     `json:"code,omitempty"`
+	Language             string     `json:"language,omitempty"`
 }
 
 // ParsedAnswer holds the normalized answer data after parsing

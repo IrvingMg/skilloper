@@ -28,8 +28,8 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
   late TextEditingController _codeController;
   late TextEditingController _languageController;
   late List<TextEditingController> _altQuestionControllers;
-  late List<TextEditingController> _altOptionControllers;
-  late List<TextEditingController> _altAnswerControllers;
+  late List<TextEditingController> _extraOptionControllers;
+  late List<List<TextEditingController>> _optionVariantControllers;
   bool _isMultipleChoice = false;
   bool _showAdvanced = false;
   String? _errorMessage;
@@ -48,20 +48,24 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
     _altQuestionControllers = _question.alternativeQuestions
         .map((q) => TextEditingController(text: q))
         .toList();
-    _altOptionControllers = _question.alternativeOptions
+    _extraOptionControllers = _question.extraOptions
         .map((o) => TextEditingController(text: o))
         .toList();
-    _altAnswerControllers = _question.alternativeAnswers
-        .map((a) => TextEditingController(text: a))
-        .toList();
+    _optionVariantControllers = [];
+    for (int i = 0; i < _question.options.length; i++) {
+      final variants = (i < _question.optionVariants.length)
+          ? _question.optionVariants[i]
+          : <String>[];
+      _optionVariantControllers.add(
+        variants.map((v) => TextEditingController(text: v)).toList(),
+      );
+    }
     _isMultipleChoice = _question.isMultipleChoice;
-
-    // Show advanced section if any advanced fields have content
     _showAdvanced =
         _question.code.isNotEmpty ||
         _question.alternativeQuestions.isNotEmpty ||
-        _question.alternativeOptions.isNotEmpty ||
-        _question.alternativeAnswers.isNotEmpty;
+        _question.extraOptions.isNotEmpty ||
+        _optionVariantControllers.any((v) => v.isNotEmpty);
   }
 
   @override
@@ -76,11 +80,13 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
     for (final c in _altQuestionControllers) {
       c.dispose();
     }
-    for (final c in _altOptionControllers) {
+    for (final c in _extraOptionControllers) {
       c.dispose();
     }
-    for (final c in _altAnswerControllers) {
-      c.dispose();
+    for (final optionVariants in _optionVariantControllers) {
+      for (final c in optionVariants) {
+        c.dispose();
+      }
     }
     super.dispose();
   }
@@ -94,11 +100,11 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
     _question.alternativeQuestions = _altQuestionControllers
         .map((c) => c.text)
         .toList();
-    _question.alternativeOptions = _altOptionControllers
+    _question.extraOptions = _extraOptionControllers
         .map((c) => c.text)
         .toList();
-    _question.alternativeAnswers = _altAnswerControllers
-        .map((c) => c.text)
+    _question.optionVariants = _optionVariantControllers
+        .map((controllers) => controllers.map((c) => c.text).toList())
         .toList();
   }
 
@@ -106,6 +112,7 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
     if (_optionControllers.length < widget.maxOptions) {
       setState(() {
         _optionControllers.add(TextEditingController());
+        _optionVariantControllers.add([]);
         _question.addOption();
       });
     }
@@ -116,6 +123,12 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
       setState(() {
         _optionControllers[index].dispose();
         _optionControllers.removeAt(index);
+        if (index < _optionVariantControllers.length) {
+          for (final c in _optionVariantControllers[index]) {
+            c.dispose();
+          }
+          _optionVariantControllers.removeAt(index);
+        }
         _question.removeOption(index);
       });
     }
@@ -134,29 +147,34 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
     });
   }
 
-  void _addAltOption() {
+  void _addExtraOption() {
     setState(() {
-      _altOptionControllers.add(TextEditingController());
+      _extraOptionControllers.add(TextEditingController());
     });
   }
 
-  void _removeAltOption(int index) {
+  void _removeExtraOption(int index) {
     setState(() {
-      _altOptionControllers[index].dispose();
-      _altOptionControllers.removeAt(index);
+      _extraOptionControllers[index].dispose();
+      _extraOptionControllers.removeAt(index);
     });
   }
 
-  void _addAltAnswer() {
+  void _addOptionVariant(int optionIndex) {
     setState(() {
-      _altAnswerControllers.add(TextEditingController());
+      if (optionIndex < _optionVariantControllers.length) {
+        _optionVariantControllers[optionIndex].add(TextEditingController());
+      }
     });
   }
 
-  void _removeAltAnswer(int index) {
+  void _removeOptionVariant(int optionIndex, int variantIndex) {
     setState(() {
-      _altAnswerControllers[index].dispose();
-      _altAnswerControllers.removeAt(index);
+      if (optionIndex < _optionVariantControllers.length &&
+          variantIndex < _optionVariantControllers[optionIndex].length) {
+        _optionVariantControllers[optionIndex][variantIndex].dispose();
+        _optionVariantControllers[optionIndex].removeAt(variantIndex);
+      }
     });
   }
 
@@ -179,10 +197,8 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
           ? QuestionTypes.multipleChoice
           : QuestionTypes.singleChoice;
       if (!value && _question.correctAnswers.length > 1) {
-        // Keep only first answer when switching to single choice
         _question.correctAnswers = [_question.correctAnswers.first];
       }
-      // Note: empty correctAnswers is valid - user hasn't selected yet
     });
   }
 
@@ -370,7 +386,6 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                         padding: const EdgeInsets.only(bottom: 8),
                         child: Row(
                           children: [
-                            // Selection indicator
                             GestureDetector(
                               onTap: () => _toggleAnswer(index),
                               child: Container(
@@ -403,8 +418,6 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                               ),
                             ),
                             const SizedBox(width: 12),
-
-                            // Option text field
                             Expanded(
                               child: TextField(
                                 controller: _optionControllers[index],
@@ -419,8 +432,6 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                                 onChanged: (_) => _clearError(),
                               ),
                             ),
-
-                            // Remove button
                             if (_optionControllers.length > 2)
                               IconButton(
                                 icon: const Icon(
@@ -434,8 +445,6 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                       );
                     }),
                     const SizedBox(height: 16),
-
-                    // Explanation (optional)
                     TextField(
                       controller: _explanationController,
                       decoration: const InputDecoration(
@@ -446,8 +455,6 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                       maxLines: 2,
                     ),
                     const SizedBox(height: 16),
-
-                    // Advanced options toggle
                     InkWell(
                       onTap: () =>
                           setState(() => _showAdvanced = !_showAdvanced),
@@ -486,12 +493,8 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                         ),
                       ),
                     ),
-
-                    // Advanced options content
                     if (_showAdvanced) ...[
                       const SizedBox(height: 16),
-
-                      // Code snippet
                       const Text(
                         'Code Snippet',
                         style: TextStyle(fontWeight: FontWeight.w500),
@@ -533,8 +536,6 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                         ),
                       ),
                       const SizedBox(height: 20),
-
-                      // Alternative questions
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -588,17 +589,15 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                         );
                       }),
                       const SizedBox(height: 16),
-
-                      // Alternative options
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           const Text(
-                            'Alternative Options',
+                            'Extra Options',
                             style: TextStyle(fontWeight: FontWeight.w500),
                           ),
                           TextButton.icon(
-                            onPressed: _addAltOption,
+                            onPressed: _addExtraOption,
                             icon: const Icon(Icons.add, size: AppIconSizes.md),
                             label: const Text('Add'),
                           ),
@@ -612,16 +611,16 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      ...List.generate(_altOptionControllers.length, (index) {
+                      ...List.generate(_extraOptionControllers.length, (index) {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 8),
                           child: Row(
                             children: [
                               Expanded(
                                 child: TextField(
-                                  controller: _altOptionControllers[index],
+                                  controller: _extraOptionControllers[index],
                                   decoration: InputDecoration(
-                                    hintText: 'Alternative option ${index + 1}',
+                                    hintText: 'Extra option ${index + 1}',
                                     border: const OutlineInputBorder(),
                                     contentPadding: const EdgeInsets.symmetric(
                                       horizontal: 12,
@@ -635,62 +634,103 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                                   Icons.remove_circle_outline,
                                   color: AppColors.error,
                                 ),
-                                onPressed: () => _removeAltOption(index),
+                                onPressed: () => _removeExtraOption(index),
                               ),
                             ],
                           ),
                         );
                       }),
                       const SizedBox(height: 16),
-
-                      // Alternative answers
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Alternative Answers',
-                            style: TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                          TextButton.icon(
-                            onPressed: _addAltAnswer,
-                            icon: const Icon(Icons.add, size: AppIconSizes.md),
-                            label: const Text('Add'),
-                          ),
-                        ],
+                      const Text(
+                        'Option Variants',
+                        style: TextStyle(fontWeight: FontWeight.w500),
                       ),
                       const Text(
-                        'Different ways to phrase the correct answer',
+                        'Alternative text for each option (picked randomly)',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 8),
-                      ...List.generate(_altAnswerControllers.length, (index) {
+                      ...List.generate(_optionControllers.length, (
+                        optionIndex,
+                      ) {
+                        final optionText = _optionControllers[optionIndex].text;
+                        if (optionText.trim().isEmpty) {
+                          return const SizedBox.shrink();
+                        }
+
+                        final variants =
+                            optionIndex < _optionVariantControllers.length
+                            ? _optionVariantControllers[optionIndex]
+                            : <TextEditingController>[];
+
                         return Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
-                          child: Row(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _altAnswerControllers[index],
-                                  decoration: InputDecoration(
-                                    hintText: 'Alternative answer ${index + 1}',
-                                    border: const OutlineInputBorder(),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 10,
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      'Option ${optionIndex + 1}: "${optionText.length > 20 ? '${optionText.substring(0, 20)}...' : optionText}"',
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ),
-                                ),
+                                  TextButton.icon(
+                                    onPressed: () =>
+                                        _addOptionVariant(optionIndex),
+                                    icon: const Icon(
+                                      Icons.add,
+                                      size: AppIconSizes.sm,
+                                    ),
+                                    label: const Text('Add Variant'),
+                                  ),
+                                ],
                               ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.remove_circle_outline,
-                                  color: AppColors.error,
-                                ),
-                                onPressed: () => _removeAltAnswer(index),
-                              ),
+                              ...List.generate(variants.length, (variantIndex) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(
+                                    left: 16,
+                                    top: 4,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: TextField(
+                                          controller: variants[variantIndex],
+                                          decoration: InputDecoration(
+                                            hintText:
+                                                'Variant ${variantIndex + 1}',
+                                            border: const OutlineInputBorder(),
+                                            contentPadding:
+                                                const EdgeInsets.symmetric(
+                                                  horizontal: 12,
+                                                  vertical: 8,
+                                                ),
+                                          ),
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.remove_circle_outline,
+                                          color: AppColors.error,
+                                          size: AppIconSizes.md,
+                                        ),
+                                        onPressed: () => _removeOptionVariant(
+                                          optionIndex,
+                                          variantIndex,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }),
                             ],
                           ),
                         );

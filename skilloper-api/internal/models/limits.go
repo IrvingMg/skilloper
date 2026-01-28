@@ -11,7 +11,7 @@ const (
 	MaxDescriptionLength = 1000
 
 	MaxAlternativeQuestions = 10
-	MaxAlternativeOptions   = 20
+	MaxExtraOptions         = 20
 
 	StaleAttemptHours = 24
 

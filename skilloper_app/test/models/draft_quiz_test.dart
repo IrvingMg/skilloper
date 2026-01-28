@@ -204,16 +204,22 @@ void main() {
           code: 'print("hello")',
           language: 'python',
           alternativeQuestions: ['Alt question'],
-          alternativeOptions: ['Alt option'],
-          alternativeAnswers: ['Alt answer'],
+          extraOptions: ['Extra option'],
+          optionVariants: [
+            ['Alt A'],
+            ['Alt B'],
+          ],
         );
         final json = q.toJson();
         expect(json['explanation'], 'Because...');
         expect(json['code'], 'print("hello")');
         expect(json['language'], 'python');
         expect(json['alternative_questions'], ['Alt question']);
-        expect(json['alternative_options'], ['Alt option']);
-        expect(json['alternative_answers'], ['Alt answer']);
+        expect(json['extra_options'], ['Extra option']);
+        expect(json['option_variants'], [
+          ['Alt A'],
+          ['Alt B'],
+        ]);
       });
 
       test('excludes optional fields when empty', () {

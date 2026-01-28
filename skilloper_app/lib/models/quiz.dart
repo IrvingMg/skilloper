@@ -5,14 +5,12 @@ class Question {
   final String? code;
   final String? language;
   final List<String> options;
-  final int?
-  correctAnswer; // For single_choice (null during play, present in results/edit)
-  final List<int>?
-  correctAnswers; // For multiple_choice (null during play, present in results/edit)
+  final int? correctAnswer;
+  final List<int>? correctAnswers;
   final String? explanation;
-  final List<String>? alternativeQuestions; // For edit mode
-  final List<String>? alternativeOptions; // For edit mode
-  final List<String>? alternativeAnswers; // For edit mode
+  final List<String>? alternativeQuestions;
+  final List<String>? extraOptions;
+  final List<List<String>>? optionVariants;
 
   const Question({
     required this.id,
@@ -25,8 +23,8 @@ class Question {
     this.correctAnswers,
     this.explanation,
     this.alternativeQuestions,
-    this.alternativeOptions,
-    this.alternativeAnswers,
+    this.extraOptions,
+    this.optionVariants,
   });
 
   factory Question.fromJson(Map<String, dynamic> json) {
@@ -57,11 +55,13 @@ class Question {
       alternativeQuestions: json['alternative_questions'] != null
           ? List<String>.from(json['alternative_questions'] as List)
           : null,
-      alternativeOptions: json['alternative_options'] != null
-          ? List<String>.from(json['alternative_options'] as List)
+      extraOptions: json['extra_options'] != null
+          ? List<String>.from(json['extra_options'] as List)
           : null,
-      alternativeAnswers: json['alternative_answers'] != null
-          ? List<String>.from(json['alternative_answers'] as List)
+      optionVariants: json['option_variants'] != null
+          ? (json['option_variants'] as List)
+                .map((v) => List<String>.from(v as List))
+                .toList()
           : null,
     );
   }

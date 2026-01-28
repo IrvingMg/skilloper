@@ -484,18 +484,7 @@ func (s *AttemptService) generateDisplayedOptions(questions []models.Question) m
 			continue
 		}
 
-		// Parse correct answers for multiple choice
-		var correctAnswers []int
-		if question.QuestionType == models.QuestionTypeMultipleChoice {
-			if err := json.Unmarshal([]byte(question.CorrectAnswers), &correctAnswers); err != nil {
-				s.log.Debug("Failed to unmarshal correct answers",
-					zap.Uint("question_id", question.ID),
-					zap.Error(err))
-			}
-		}
-
-		// Apply alternative text to correct answer option
-		options = question.ApplyAlternativeAnswers(options, correctAnswers)
+		options = question.ApplyOptionVariants(options)
 
 		result[question.ID] = options
 	}

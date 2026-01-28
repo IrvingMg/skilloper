@@ -156,7 +156,7 @@ type columnIndices struct {
 	code                 int
 	language             int
 	alternativeQuestions []int
-	alternativeOptions   []int
+	extraOptions         []int
 }
 
 func (p *CSVParser) parseHeader(header []string) (*columnIndices, error) {
@@ -168,7 +168,7 @@ func (p *CSVParser) parseHeader(header []string) (*columnIndices, error) {
 		language:             -1,
 		options:              []int{},
 		alternativeQuestions: []int{},
-		alternativeOptions:   []int{},
+		extraOptions:         []int{},
 	}
 
 	for i, col := range header {
@@ -178,8 +178,8 @@ func (p *CSVParser) parseHeader(header []string) (*columnIndices, error) {
 			cols.question = i
 		case strings.HasPrefix(col, "alt_question") || strings.HasPrefix(col, "alternative_question"):
 			cols.alternativeQuestions = append(cols.alternativeQuestions, i)
-		case strings.HasPrefix(col, "alt_option") || strings.HasPrefix(col, "alternative_option"):
-			cols.alternativeOptions = append(cols.alternativeOptions, i)
+		case strings.HasPrefix(col, "extra_option") || strings.HasPrefix(col, "alt_option") || strings.HasPrefix(col, "alternative_option"):
+			cols.extraOptions = append(cols.extraOptions, i)
 		case strings.HasPrefix(col, "option"):
 			cols.options = append(cols.options, i)
 		case col == "answer":
@@ -287,14 +287,14 @@ func (p *CSVParser) parseRow(record []string, cols *columnIndices) (*models.Ques
 		}
 	}
 
-	for i, idx := range cols.alternativeOptions {
-		if i >= models.MaxAlternativeOptions {
+	for i, idx := range cols.extraOptions {
+		if i >= models.MaxExtraOptions {
 			break
 		}
 		if idx < len(record) {
-			altOpt := sanitizeCSVValue(record[idx])
-			if altOpt != "" {
-				question.AlternativeOptions = append(question.AlternativeOptions, altOpt)
+			extraOpt := sanitizeCSVValue(record[idx])
+			if extraOpt != "" {
+				question.ExtraOptions = append(question.ExtraOptions, extraOpt)
 			}
 		}
 	}

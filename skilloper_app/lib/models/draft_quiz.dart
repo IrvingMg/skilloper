@@ -3,32 +3,32 @@ import 'quiz.dart';
 
 class DraftQuestion {
   String question;
-  List<String> alternativeQuestions; // Alternative phrasings
+  List<String> alternativeQuestions;
   List<String> options;
-  List<String> alternativeOptions; // Additional options for variety
-  List<int> correctAnswers; // 1-based indices
-  List<String> alternativeAnswers; // Alternative correct answer texts
+  List<String> extraOptions;
+  List<int> correctAnswers;
+  List<List<String>> optionVariants;
   String explanation;
   String code;
   String language;
-  String questionType; // 'single_choice' or 'multiple_choice'
+  String questionType;
 
   DraftQuestion({
     this.question = '',
     List<String>? alternativeQuestions,
     List<String>? options,
-    List<String>? alternativeOptions,
+    List<String>? extraOptions,
     List<int>? correctAnswers,
-    List<String>? alternativeAnswers,
+    List<List<String>>? optionVariants,
     this.explanation = '',
     this.code = '',
     this.language = '',
     this.questionType = 'single_choice',
   }) : alternativeQuestions = alternativeQuestions ?? [],
        options = options ?? ['', ''],
-       alternativeOptions = alternativeOptions ?? [],
+       extraOptions = extraOptions ?? [],
        correctAnswers = correctAnswers ?? [],
-       alternativeAnswers = alternativeAnswers ?? [];
+       optionVariants = optionVariants ?? [];
 
   bool get isMultipleChoice => questionType == QuestionTypes.multipleChoice;
 
@@ -77,13 +77,16 @@ class DraftQuestion {
   void addOption() {
     if (options.length < QuizLimits.maxOptions) {
       options.add('');
+      optionVariants.add([]);
     }
   }
 
   void removeOption(int index) {
     if (options.length > QuizLimits.minOptions) {
       options.removeAt(index);
-      // Adjust correct answers (1-based)
+      if (index < optionVariants.length) {
+        optionVariants.removeAt(index);
+      }
       final removed = index + 1;
       correctAnswers = correctAnswers
           .where((a) => a != removed)
@@ -93,24 +96,21 @@ class DraftQuestion {
   }
 
   Map<String, dynamic> toJson() {
-    // Filter out empty options and build mapping
     final nonEmptyOptions = <String>[];
-    final indexMapping = <int, int>{}; // old 1-based -> new 0-based
+    final indexMapping = <int, int>{};
 
     for (var i = 0; i < options.length; i++) {
       if (options[i].trim().isNotEmpty) {
         nonEmptyOptions.add(options[i]);
-        indexMapping[i + 1] = nonEmptyOptions.length - 1; // 0-based index
+        indexMapping[i + 1] = nonEmptyOptions.length - 1;
       }
     }
 
-    // Remap correct answers to new 0-based indices
     final remappedAnswers = correctAnswers
         .where(indexMapping.containsKey)
         .map((a) => indexMapping[a]!)
         .toList();
 
-    // Safety check - should not happen if isValid was checked first
     if (remappedAnswers.isEmpty) {
       throw StateError(
         'No valid answers after remapping - call isValid before toJson',
@@ -123,14 +123,12 @@ class DraftQuestion {
       'question_type': questionType,
     };
 
-    // Use correctAnswer for single choice, correct_answers for multiple choice
     if (questionType == QuestionTypes.multipleChoice) {
       json['correct_answers'] = remappedAnswers;
     } else {
       json['correctAnswer'] = remappedAnswers.first;
     }
 
-    // Alternative texts
     final nonEmptyAltQuestions = alternativeQuestions
         .where((q) => q.trim().isNotEmpty)
         .toList();
@@ -138,18 +136,18 @@ class DraftQuestion {
       json['alternative_questions'] = nonEmptyAltQuestions;
     }
 
-    final nonEmptyAltOptions = alternativeOptions
+    final nonEmptyExtraOptions = extraOptions
         .where((o) => o.trim().isNotEmpty)
         .toList();
-    if (nonEmptyAltOptions.isNotEmpty) {
-      json['alternative_options'] = nonEmptyAltOptions;
+    if (nonEmptyExtraOptions.isNotEmpty) {
+      json['extra_options'] = nonEmptyExtraOptions;
     }
 
-    final nonEmptyAltAnswers = alternativeAnswers
-        .where((a) => a.trim().isNotEmpty)
+    final filteredVariants = optionVariants
+        .map((v) => v.where((s) => s.trim().isNotEmpty).toList())
         .toList();
-    if (nonEmptyAltAnswers.isNotEmpty) {
-      json['alternative_answers'] = nonEmptyAltAnswers;
+    if (filteredVariants.any((v) => v.isNotEmpty)) {
+      json['option_variants'] = filteredVariants;
     }
 
     if (explanation.trim().isNotEmpty) {
@@ -170,9 +168,9 @@ class DraftQuestion {
       question: question,
       alternativeQuestions: List.from(alternativeQuestions),
       options: List.from(options),
-      alternativeOptions: List.from(alternativeOptions),
+      extraOptions: List.from(extraOptions),
       correctAnswers: List.from(correctAnswers),
-      alternativeAnswers: List.from(alternativeAnswers),
+      optionVariants: optionVariants.map(List<String>.from).toList(),
       explanation: explanation,
       code: code,
       language: language,
@@ -181,13 +179,10 @@ class DraftQuestion {
   }
 
   factory DraftQuestion.fromQuestion(Question q) {
-    // Convert correct answers from 0-based to 1-based indexing
     List<int> answers;
     if (q.isMultipleChoice && q.correctAnswers != null) {
-      // Multiple choice: convert each answer from 0-based to 1-based
       answers = q.correctAnswers!.map((a) => a + 1).toList();
     } else if (q.correctAnswer != null) {
-      // Single choice: convert from 0-based to 1-based
       answers = [q.correctAnswer! + 1];
     } else {
       answers = [];
@@ -197,23 +192,23 @@ class DraftQuestion {
       question: q.question,
       alternativeQuestions: q.alternativeQuestions,
       options: List<String>.from(q.options),
-      alternativeOptions: q.alternativeOptions,
+      extraOptions: q.extraOptions,
       correctAnswers: answers,
-      alternativeAnswers: q.alternativeAnswers,
+      optionVariants: q.optionVariants ?? [],
       explanation: q.explanation ?? '',
       code: q.code ?? '',
       language: q.language ?? '',
-      questionType: q.questionType, // Preserve question type from API
+      questionType: q.questionType,
     );
   }
 }
 
 class DraftQuiz {
-  int? id; // Set when editing an existing quiz
+  int? id;
   String title;
   String description;
-  String type; // 'practice' or 'exam'
-  int maxOptions; // Maximum options per question (2-8)
+  String type;
+  int maxOptions;
   List<DraftQuestion> questions;
 
   DraftQuiz({
@@ -221,7 +216,7 @@ class DraftQuiz {
     this.title = '',
     this.description = '',
     this.type = 'practice',
-    this.maxOptions = 4, // Default to 4, range is 2-8
+    this.maxOptions = 4,
     List<DraftQuestion>? questions,
   }) : questions = questions ?? [];
 

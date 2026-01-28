@@ -1,4 +1,3 @@
-import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 
 import '../models/attempt.dart';
@@ -295,8 +294,9 @@ class _ResultsScreenState extends State<ResultsScreen> {
 
                 ...List.generate(attempt.answers.length, (index) {
                   final answer = attempt.answers[index];
-                  final questionIndex = widget.quiz.questions
-                      .indexWhere((q) => q.id == answer.questionId);
+                  final questionIndex = widget.quiz.questions.indexWhere(
+                    (q) => q.id == answer.questionId,
+                  );
                   final question = questionIndex >= 0
                       ? widget.quiz.questions[questionIndex]
                       : null;

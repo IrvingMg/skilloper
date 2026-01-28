@@ -31,7 +31,8 @@ The user-friendly format with 1-based indexing and simplified `answer` field.
       "code": "console.log(2+2);",
       "language": "javascript",
       "alternative_questions": ["Calculate 2+2"],
-      "alternative_options": ["5", "6"]
+      "extra_options": ["5", "6"],
+      "option_variants": [[], [], [], ["four", "IV"]]
     }
   ]
 }
@@ -53,7 +54,8 @@ The user-friendly format with 1-based indexing and simplified `answer` field.
 | `code` | No | Code snippet |
 | `language` | No | Syntax highlighting (e.g., "javascript") |
 | `alternative_questions` | No | Alternative phrasings |
-| `alternative_options` | No | Additional distractor options |
+| `extra_options` | No | Additional distractor options |
+| `option_variants` | No | Text variants per option: `option_variants[i]` = variants for `options[i]` |
 
 ---
 
@@ -123,10 +125,10 @@ The internal API format with 0-based indexing. Used by the UI wizard and API con
       "code": "string (optional)",
       "language": "string (optional)",
       "options": ["string", "string", "string"] (required),
-      "alternative_options": ["string", "string"] (optional),
+      "extra_options": ["string", "string"] (optional),
       "correctAnswer": "integer (required for single_choice, 0-based)",
       "correct_answers": [0, 1, 2] (required for multiple_choice, 0-based),
-      "alternative_answers": ["string", "string"] (optional),
+      "option_variants": [["variant1"], [], ["variant1", "variant2"]] (optional),
       "explanation": "string (optional)"
     }
   ]
@@ -154,10 +156,10 @@ The internal API format with 0-based indexing. Used by the UI wizard and API con
 | `code` | string | No | Code snippet to display with the question |
 | `language` | string | No | Programming language for syntax highlighting (e.g., "javascript", "python", "go") |
 | `options` | array | Yes | Answer choices (must not exceed `max_options`) |
-| `alternative_options` | array | No | Additional answer options for shuffling variety |
+| `extra_options` | array | No | Additional distractor options for shuffling variety |
 | `correctAnswer` | integer | Yes* | **Required for single_choice.** 0-based index of correct option (0 = first option, 1 = second option, etc.) |
 | `correct_answers` | array | Yes* | **Required for multiple_choice.** Array of 0-based indices of all correct options |
-| `alternative_answers` | array | No | Alternative texts for correct answers to provide variety |
+| `option_variants` | 2D array | No | Text variants per option: `option_variants[i]` contains alternative texts for `options[i]` |
 | `explanation` | string | No | Explanation shown after answering, describing why the answer is correct |
 
 *Either `correctAnswer` or `correct_answers` is required depending on `question_type`
@@ -173,7 +175,7 @@ The internal API format with 0-based indexing. Used by the UI wizard and API con
 | Max title length | 255 | Maximum characters for title |
 | Max description length | 1000 | Maximum characters for description |
 | Max alternative questions | 10 | Maximum alternative phrasings per question |
-| Max alternative options | 20 | Maximum additional distractor options per question |
+| Max extra options | 20 | Maximum additional distractor options per question |
 
 ---
 
@@ -181,7 +183,7 @@ The internal API format with 0-based indexing. Used by the UI wizard and API con
 
 - **Answer Indexing**: Simple JSON and CSV use 1-based indices (user-friendly). Internal JSON uses 0-based indices (programmatic). The server converts automatically on import
 - **Hybrid Shuffling for Variety**:
-  - **Backend**: Randomly selects from `alternative_questions` and `alternative_answers` for text variety
+  - **Backend**: Randomly selects from `alternative_questions` and `option_variants` for text variety
   - **Frontend**: Shuffles option display order while mapping selections back to original indices
   - **Result**: Each quiz attempt feels different while maintaining correct server-side validation
 - **Question Order**: Questions maintain their original order
@@ -215,9 +217,9 @@ See [api-endpoints.md](api-endpoints.md) for details on the secure answer valida
       "code": "console.log(typeof null);",
       "language": "javascript",
       "options": ["null", "undefined", "object", "boolean"],
-      "alternative_options": ["string", "number"],
+      "extra_options": ["string", "number"],
       "correctAnswer": 2,
-      "alternative_answers": ["object type", "the object string"],
+      "option_variants": [[], [], ["object type", "the object string"], []],
       "explanation": "typeof null returns \"object\" due to a JavaScript quirk"
     }
   ]
@@ -230,8 +232,9 @@ See [api-endpoints.md](api-endpoints.md) for details on the secure answer valida
   "question_type": "multiple_choice",
   "question": "Which are valid JavaScript data types?",
   "options": ["string", "number", "boolean", "object"],
-  "alternative_options": ["undefined", "symbol", "bigint"],
+  "extra_options": ["undefined", "symbol", "bigint"],
   "correct_answers": [0, 1, 2, 3],
+  "option_variants": [["text"], ["numeric", "integer"], ["bool"], ["Object"]],
   "explanation": "All listed options are valid JavaScript primitive and non-primitive types"
 }
 ```

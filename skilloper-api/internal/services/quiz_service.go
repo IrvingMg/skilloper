@@ -412,6 +412,20 @@ func (s *QuizService) parseCorrectAnswersJSON(answersJSON string) []int {
 	return answers
 }
 
+func (s *QuizService) parse2DStringArrayJSON(jsonStr string) [][]string {
+	if jsonStr == "" {
+		return [][]string{}
+	}
+	var result [][]string
+	if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
+		s.log.Warn("Failed to parse 2D string array JSON",
+			zap.String("json", jsonStr),
+			zap.Error(err))
+		return [][]string{}
+	}
+	return result
+}
+
 type validatedQuestion struct {
 	questionType             string
 	questionText             string
@@ -420,8 +434,8 @@ type validatedQuestion struct {
 	explanation              string
 	optionsJSON              string
 	alternativeQuestionsJSON string
-	alternativeOptionsJSON   string
-	alternativeAnswersJSON   string
+	extraOptionsJSON         string
+	optionVariantsJSON       string
 	correctAnswersJSON       string
 	correctAnswer            int
 }
@@ -474,20 +488,24 @@ func validateAndPrepareQuestion(qReq models.QuestionRequest, index int, maxOptio
 		vq.alternativeQuestionsJSON = string(b)
 	}
 
-	if len(qReq.AlternativeOptions) > 0 {
-		b, err := json.Marshal(qReq.AlternativeOptions)
+	if len(qReq.ExtraOptions) > 0 {
+		b, err := json.Marshal(qReq.ExtraOptions)
 		if err != nil {
 			return nil, apperrors.ErrInvalidOptionsFormat
 		}
-		vq.alternativeOptionsJSON = string(b)
+		vq.extraOptionsJSON = string(b)
 	}
 
-	if len(qReq.AlternativeAnswers) > 0 {
-		b, err := json.Marshal(qReq.AlternativeAnswers)
+	if len(qReq.OptionVariants) > 0 {
+		if len(qReq.OptionVariants) > len(qReq.Options) {
+			return nil, apperrors.NewValidationError("OPTION_VARIANTS_LENGTH",
+				fmt.Sprintf("option_variants has %d entries but only %d options exist", len(qReq.OptionVariants), len(qReq.Options)))
+		}
+		b, err := json.Marshal(qReq.OptionVariants)
 		if err != nil {
 			return nil, apperrors.ErrInvalidOptionsFormat
 		}
-		vq.alternativeAnswersJSON = string(b)
+		vq.optionVariantsJSON = string(b)
 	}
 
 	if questionType == models.QuestionTypeMultipleChoice {
@@ -536,10 +554,10 @@ func (vq *validatedQuestion) toQuestion(quizID uint) models.Question {
 		Code:                 vq.code,
 		Language:             vq.language,
 		Options:              vq.optionsJSON,
-		AlternativeOptions:   vq.alternativeOptionsJSON,
+		ExtraOptions:         vq.extraOptionsJSON,
 		CorrectAnswer:        vq.correctAnswer,
 		CorrectAnswers:       vq.correctAnswersJSON,
-		AlternativeAnswers:   vq.alternativeAnswersJSON,
+		OptionVariants:       vq.optionVariantsJSON,
 		Explanation:          vq.explanation,
 	}
 }
@@ -556,13 +574,7 @@ func (s *QuizService) convertToResponse(q models.Quiz) models.QuizResponse {
 			questionText = allTexts[rand.IntN(len(allTexts))]
 		}
 
-		correctAnswers := []int{}
-		if question.QuestionType == models.QuestionTypeMultipleChoice {
-			correctAnswers = s.parseCorrectAnswersJSON(question.CorrectAnswers)
-		}
-
-		// Apply alternative answers for correct answer options
-		options = question.ApplyAlternativeAnswers(options, correctAnswers)
+		options = question.ApplyOptionVariants(options)
 
 		qr := models.QuestionResponse{}
 		qr.ID = question.ID
@@ -572,8 +584,6 @@ func (s *QuizService) convertToResponse(q models.Quiz) models.QuizResponse {
 		qr.Language = question.Language
 		qr.Options = options
 		qr.Explanation = question.Explanation
-		qr.CorrectAnswer = question.CorrectAnswer
-		qr.CorrectAnswers = correctAnswers
 		questions = append(questions, qr)
 	}
 
@@ -611,8 +621,8 @@ func (s *QuizService) convertToResponseWithAnswers(q models.Quiz) models.QuizRes
 		qr.CorrectAnswer = question.CorrectAnswer
 		qr.CorrectAnswers = correctAnswers
 		qr.AlternativeQuestions = s.parseStringArrayJSON(question.AlternativeQuestions)
-		qr.AlternativeOptions = s.parseStringArrayJSON(question.AlternativeOptions)
-		qr.AlternativeAnswers = s.parseStringArrayJSON(question.AlternativeAnswers)
+		qr.ExtraOptions = s.parseStringArrayJSON(question.ExtraOptions)
+		qr.OptionVariants = s.parse2DStringArrayJSON(question.OptionVariants)
 		questions = append(questions, qr)
 	}
 

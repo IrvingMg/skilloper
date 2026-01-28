@@ -4,101 +4,82 @@ import (
 	"testing"
 )
 
-func TestQuestion_ApplyAlternativeAnswers(t *testing.T) {
+func TestQuestion_ApplyOptionVariants(t *testing.T) {
 	tests := []struct {
-		name           string
-		question       Question
-		options        []string
-		correctAnswers []int
-		wantModified   bool // whether the correct answer option should potentially change
+		name         string
+		question     Question
+		options      []string
+		wantModified bool // whether any option should potentially change
 	}{
 		{
-			name: "single choice with alternatives",
+			name: "single option with variants",
 			question: Question{
-				QuestionType:       QuestionTypeSingleChoice,
-				CorrectAnswer:      1,
-				AlternativeAnswers: `["Alt Answer 1", "Alt Answer 2"]`,
+				QuestionType:   QuestionTypeSingleChoice,
+				CorrectAnswer:  1,
+				OptionVariants: `[[], ["Alt B1", "Alt B2"], []]`,
 			},
-			options:        []string{"Option A", "Option B", "Option C"},
-			correctAnswers: nil,
-			wantModified:   true,
+			options:      []string{"Option A", "Option B", "Option C"},
+			wantModified: true,
 		},
 		{
-			name: "multiple choice with alternatives",
+			name: "multiple options with variants",
 			question: Question{
-				QuestionType:       QuestionTypeMultipleChoice,
-				CorrectAnswers:     `[0, 2]`,
-				AlternativeAnswers: `["Alt Answer"]`,
+				QuestionType:   QuestionTypeMultipleChoice,
+				CorrectAnswers: `[0, 2]`,
+				OptionVariants: `[["Alt A"], [], ["Alt C1", "Alt C2"]]`,
 			},
-			options:        []string{"Option A", "Option B", "Option C"},
-			correctAnswers: []int{0, 2},
-			wantModified:   true,
+			options:      []string{"Option A", "Option B", "Option C"},
+			wantModified: true,
 		},
 		{
-			name: "no alternatives - returns unchanged",
+			name: "no variants - returns unchanged",
 			question: Question{
-				QuestionType:       QuestionTypeSingleChoice,
-				CorrectAnswer:      0,
-				AlternativeAnswers: "",
+				QuestionType:   QuestionTypeSingleChoice,
+				CorrectAnswer:  0,
+				OptionVariants: "",
 			},
-			options:        []string{"Option A", "Option B"},
-			correctAnswers: nil,
-			wantModified:   false,
+			options:      []string{"Option A", "Option B"},
+			wantModified: false,
 		},
 		{
 			name: "empty options - returns empty",
 			question: Question{
-				QuestionType:       QuestionTypeSingleChoice,
-				CorrectAnswer:      0,
-				AlternativeAnswers: `["Alt"]`,
+				QuestionType:   QuestionTypeSingleChoice,
+				CorrectAnswer:  0,
+				OptionVariants: `[["Alt"]]`,
 			},
-			options:        []string{},
-			correctAnswers: nil,
-			wantModified:   false,
+			options:      []string{},
+			wantModified: false,
 		},
 		{
-			name: "invalid alternatives JSON - returns unchanged",
+			name: "invalid variants JSON - returns unchanged",
 			question: Question{
-				QuestionType:       QuestionTypeSingleChoice,
-				CorrectAnswer:      0,
-				AlternativeAnswers: `invalid json`,
+				QuestionType:   QuestionTypeSingleChoice,
+				CorrectAnswer:  0,
+				OptionVariants: `invalid json`,
 			},
-			options:        []string{"Option A", "Option B"},
-			correctAnswers: nil,
-			wantModified:   false,
+			options:      []string{"Option A", "Option B"},
+			wantModified: false,
 		},
 		{
-			name: "correct answer out of bounds - returns unchanged",
+			name: "empty variants array - returns unchanged",
 			question: Question{
-				QuestionType:       QuestionTypeSingleChoice,
-				CorrectAnswer:      10,
-				AlternativeAnswers: `["Alt"]`,
+				QuestionType:   QuestionTypeSingleChoice,
+				CorrectAnswer:  0,
+				OptionVariants: `[]`,
 			},
-			options:        []string{"Option A", "Option B"},
-			correctAnswers: nil,
-			wantModified:   false,
+			options:      []string{"Option A", "Option B"},
+			wantModified: false,
 		},
 		{
-			name: "multiple choice with empty correct answers - returns unchanged",
+			name: "all empty variant arrays - returns unchanged",
 			question: Question{
-				QuestionType:       QuestionTypeMultipleChoice,
-				CorrectAnswers:     `[]`,
-				AlternativeAnswers: `["Alt"]`,
+				QuestionType:   QuestionTypeSingleChoice,
+				CorrectAnswer:  0,
+				OptionVariants: `[[], []]`,
 			},
-			options:        []string{"Option A", "Option B"},
-			correctAnswers: []int{},
-			wantModified:   false,
-		},
-		{
-			name: "negative correct answer - returns unchanged",
-			question: Question{
-				QuestionType:       QuestionTypeSingleChoice,
-				CorrectAnswer:      -1,
-				AlternativeAnswers: `["Alt"]`,
-			},
-			options:        []string{"Option A", "Option B"},
-			correctAnswers: nil,
-			wantModified:   false,
+			options:      []string{"Option A", "Option B"},
+			wantModified: false,
 		},
 	}
 
@@ -108,11 +89,11 @@ func TestQuestion_ApplyAlternativeAnswers(t *testing.T) {
 			originalOptions := make([]string, len(tt.options))
 			copy(originalOptions, tt.options)
 
-			result := tt.question.ApplyAlternativeAnswers(tt.options, tt.correctAnswers)
+			result := tt.question.ApplyOptionVariants(tt.options)
 
 			// Check that result is returned
 			if result == nil && len(tt.options) > 0 {
-				t.Error("ApplyAlternativeAnswers returned nil for non-nil input")
+				t.Error("ApplyOptionVariants returned nil for non-nil input")
 			}
 
 			// Check length is preserved
@@ -132,11 +113,11 @@ func TestQuestion_ApplyAlternativeAnswers(t *testing.T) {
 	}
 }
 
-func TestQuestion_ApplyAlternativeAnswers_ValidAlternativeSelected(t *testing.T) {
+func TestQuestion_ApplyOptionVariants_ValidVariantSelected(t *testing.T) {
 	question := Question{
-		QuestionType:       QuestionTypeSingleChoice,
-		CorrectAnswer:      1,
-		AlternativeAnswers: `["Alt B1", "Alt B2"]`,
+		QuestionType:   QuestionTypeSingleChoice,
+		CorrectAnswer:  1,
+		OptionVariants: `[[], ["Alt B1", "Alt B2"], []]`,
 	}
 	options := []string{"Option A", "Option B", "Option C"}
 	validValues := map[string]bool{
@@ -150,7 +131,7 @@ func TestQuestion_ApplyAlternativeAnswers_ValidAlternativeSelected(t *testing.T)
 		optionsCopy := make([]string, len(options))
 		copy(optionsCopy, options)
 
-		result := question.ApplyAlternativeAnswers(optionsCopy, nil)
+		result := question.ApplyOptionVariants(optionsCopy)
 
 		// Check that the modified option is one of the valid values
 		if !validValues[result[1]] {
@@ -163,6 +144,38 @@ func TestQuestion_ApplyAlternativeAnswers_ValidAlternativeSelected(t *testing.T)
 		}
 		if result[2] != "Option C" {
 			t.Errorf("Option 2 should not change: got %q", result[2])
+		}
+	}
+}
+
+func TestQuestion_ApplyOptionVariants_MultipleOptions(t *testing.T) {
+	question := Question{
+		QuestionType:   QuestionTypeMultipleChoice,
+		CorrectAnswers: `[0, 2]`,
+		OptionVariants: `[["Alt A"], [], ["Alt C"]]`,
+	}
+	options := []string{"Option A", "Option B", "Option C"}
+	validA := map[string]bool{"Option A": true, "Alt A": true}
+	validC := map[string]bool{"Option C": true, "Alt C": true}
+
+	// Run multiple times to verify random selection works
+	for i := 0; i < 20; i++ {
+		optionsCopy := make([]string, len(options))
+		copy(optionsCopy, options)
+
+		result := question.ApplyOptionVariants(optionsCopy)
+
+		// Check that options 0 and 2 have valid values
+		if !validA[result[0]] {
+			t.Errorf("Invalid value selected for option 0: got %q", result[0])
+		}
+		if !validC[result[2]] {
+			t.Errorf("Invalid value selected for option 2: got %q", result[2])
+		}
+
+		// Check that option 1 is unchanged
+		if result[1] != "Option B" {
+			t.Errorf("Option 1 should not change: got %q", result[1])
 		}
 	}
 }

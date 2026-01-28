@@ -41,9 +41,9 @@ My rules [edit or delete these]:
       "question": "Question text",
       "alternative_questions": ["Rephrased question", "Another phrasing"],
       "options": ["Option A", "Option B", "Option C", "Option D"],
-      "alternative_options": ["Extra wrong option", "Another distractor"],
+      "extra_options": ["Extra wrong option", "Another distractor"],
       "answer": ["2"],
-      "alternative_answers": ["Correct answer rephrased", "Another way to say it"],
+      "option_variants": [[], ["Option B rephrased"], [], []],
       "explanation": "Why this is correct"
     }
   ]
@@ -56,8 +56,8 @@ Format notes:
 - Multiple correct: ["1", "3"] means options 1 and 3
 - Code questions: add "code": "...", "language": "python"
 - "alternative_questions": different phrasings of the same question
-- "alternative_options": extra wrong answers for shuffling variety
-- "alternative_answers": different phrasings of the correct answer(s)
+- "extra_options": additional wrong answers for shuffling variety
+- "option_variants": text variants per option (option_variants[i] = variants for options[i])
 
 ## My notes [paste below]
 
@@ -108,7 +108,6 @@ Format notes:
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Step 1: Prepare
             const NumberedStep(
               number: '1',
               text: 'Prepare your notes',
@@ -117,8 +116,6 @@ Format notes:
                   'This can be notes, textbook excerpts, or any text content.',
             ),
             const SizedBox(height: 24),
-
-            // Step 2: Generate with AI
             const NumberedStep(
               number: '2',
               text: 'Generate with AI',
@@ -133,8 +130,6 @@ Format notes:
               prompt: _universalPrompt,
             ),
             const SizedBox(height: 24),
-
-            // Step 3: Import
             const NumberedStep(
               number: '3',
               text: 'Import the quiz',
