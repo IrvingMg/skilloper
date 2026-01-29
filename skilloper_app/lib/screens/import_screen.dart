@@ -361,6 +361,7 @@ class _ImportScreenState extends State<ImportScreen> {
       });
 
       if (importResponse != null) {
+        _jsonController.clear();
         _showSuccessDialog(importResponse);
         _showSnackBar('Quiz imported successfully!', true);
       }
