@@ -11,6 +11,10 @@ class QuizListItem extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onMoveToCollection;
+  final bool isSelectionMode;
+  final bool isSelected;
+  final VoidCallback? onToggleSelection;
+  final VoidCallback? onLongPress;
 
   const QuizListItem({
     required this.quiz,
@@ -18,6 +22,10 @@ class QuizListItem extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onMoveToCollection,
+    this.isSelectionMode = false,
+    this.isSelected = false,
+    this.onToggleSelection,
+    this.onLongPress,
     super.key,
   });
 
@@ -56,9 +64,15 @@ class QuizListItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       elevation: 2,
-      shape: const RoundedRectangleBorder(borderRadius: AppRadius.lgAll),
+      shape: RoundedRectangleBorder(
+        borderRadius: AppRadius.lgAll,
+        side: isSelected
+            ? const BorderSide(color: AppColors.primary, width: 2)
+            : BorderSide.none,
+      ),
       child: InkWell(
-        onTap: onTap,
+        onTap: isSelectionMode ? onToggleSelection : onTap,
+        onLongPress: onLongPress,
         borderRadius: AppRadius.lgAll,
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -68,6 +82,14 @@ class QuizListItem extends StatelessWidget {
               padding: EdgeInsets.all(isNarrowScreen ? 12 : 20),
               child: Row(
                 children: [
+                  if (isSelectionMode) ...[
+                    Checkbox(
+                      value: isSelected,
+                      onChanged: (_) => onToggleSelection?.call(),
+                      activeColor: AppColors.primary,
+                    ),
+                    SizedBox(width: isNarrowScreen ? 4 : 8),
+                  ],
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -201,64 +223,65 @@ class QuizListItem extends StatelessWidget {
                   SizedBox(
                     width: isNarrowScreen ? AppSpacing.sm : AppSpacing.md,
                   ),
-                  PopupMenuButton<String>(
-                    icon: Icon(
-                      Icons.more_vert,
-                      size: isNarrowScreen ? 20 : 24,
-                      color: AppColors.textTertiary,
+                  if (!isSelectionMode)
+                    PopupMenuButton<String>(
+                      icon: Icon(
+                        Icons.more_vert,
+                        size: isNarrowScreen ? 20 : 24,
+                        color: AppColors.textTertiary,
+                      ),
+                      onSelected: (value) {
+                        if (value == 'edit') {
+                          onEdit();
+                        } else if (value == 'delete') {
+                          onDelete();
+                        } else if (value == 'move') {
+                          onMoveToCollection();
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(Icons.edit_outlined, size: AppIconSizes.lg),
+                              SizedBox(width: AppSpacing.md),
+                              Text('Edit'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'move',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.drive_file_move_outline,
+                                size: AppIconSizes.lg,
+                              ),
+                              SizedBox(width: AppSpacing.md),
+                              Text('Move to Collection'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.delete_outline,
+                                size: AppIconSizes.lg,
+                                color: AppColors.error,
+                              ),
+                              SizedBox(width: AppSpacing.md),
+                              Text(
+                                'Delete',
+                                style: TextStyle(color: AppColors.error),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    onSelected: (value) {
-                      if (value == 'edit') {
-                        onEdit();
-                      } else if (value == 'delete') {
-                        onDelete();
-                      } else if (value == 'move') {
-                        onMoveToCollection();
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit_outlined, size: AppIconSizes.lg),
-                            SizedBox(width: AppSpacing.md),
-                            Text('Edit'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'move',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.drive_file_move_outline,
-                              size: AppIconSizes.lg,
-                            ),
-                            SizedBox(width: AppSpacing.md),
-                            Text('Move to Collection'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.delete_outline,
-                              size: AppIconSizes.lg,
-                              color: AppColors.error,
-                            ),
-                            SizedBox(width: AppSpacing.md),
-                            Text(
-                              'Delete',
-                              style: TextStyle(color: AppColors.error),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
                 ],
               ),
             );

@@ -10,7 +10,12 @@ class ApiEndpoints {
 
   // Collection endpoints
   static const String collections = '/collections';
+  static const String collectionsFlat = '/collections/flat';
   static String collection(int id) => '/collections/$id';
+
+  // Bulk operations
+  static const String quizzesBulkCollection = '/quizzes/bulk-collection';
+  static const String quizzesBulkDelete = '/quizzes/bulk-delete';
 
   // Attempt endpoints
   static const String attempts = '/attempts';

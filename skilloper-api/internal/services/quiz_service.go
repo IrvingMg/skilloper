@@ -21,6 +21,20 @@ func escapeLikePattern(s string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(s, "%", "\\%"), "_", "\\_")
 }
 
+const maxBulkQuizIDs = 100
+
+func deduplicateUints(ids []uint) []uint {
+	seen := make(map[uint]bool)
+	unique := make([]uint, 0, len(ids))
+	for _, id := range ids {
+		if !seen[id] {
+			seen[id] = true
+			unique = append(unique, id)
+		}
+	}
+	return unique
+}
+
 type QuizService struct {
 	db                *gorm.DB
 	log               *zap.Logger
@@ -349,21 +363,33 @@ func (s *QuizService) Delete(id uint, userID uint, isAdmin bool) error {
 		return apperrors.ErrNotQuizOwner
 	}
 
-	err := s.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("quiz_id = ?", id).Delete(&models.Question{}).Error; err != nil {
-			return err
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		// Delete attempt answers for attempts on this quiz
+		if err := tx.Exec(`
+			DELETE FROM attempt_answers
+			WHERE attempt_id IN (
+				SELECT id FROM quiz_attempts WHERE quiz_id = ?
+			)
+		`, id).Error; err != nil {
+			return apperrors.ErrDeleteQuizFailed
 		}
+
+		// Delete quiz attempts for this quiz
+		if err := tx.Where("quiz_id = ?", id).Delete(&models.QuizAttempt{}).Error; err != nil {
+			return apperrors.ErrDeleteQuizFailed
+		}
+
+		// Delete questions
+		if err := tx.Where("quiz_id = ?", id).Delete(&models.Question{}).Error; err != nil {
+			return apperrors.ErrDeleteQuizFailed
+		}
+
+		// Delete the quiz
 		if err := tx.Delete(&quiz).Error; err != nil {
-			return err
+			return apperrors.ErrDeleteQuizFailed
 		}
 		return nil
 	})
-
-	if err != nil {
-		return apperrors.ErrDeleteQuizFailed
-	}
-
-	return nil
 }
 
 func (s *QuizService) SetCollection(quizID uint, collectionID *uint, userID uint, isAdmin bool) error {
@@ -395,6 +421,116 @@ func (s *QuizService) SetCollection(quizID uint, collectionID *uint, userID uint
 
 		if err := tx.Model(&quiz).Update("collection_id", collectionID).Error; err != nil {
 			return apperrors.ErrUpdateQuizCollectionFailed
+		}
+
+		return nil
+	})
+}
+
+func (s *QuizService) BulkSetCollection(quizIDs []uint, collectionID *uint, userID uint, isAdmin bool) error {
+	if len(quizIDs) == 0 {
+		return apperrors.NewValidationError("NO_QUIZ_IDS", "at least one quiz ID is required")
+	}
+
+	quizIDs = deduplicateUints(quizIDs)
+
+	if len(quizIDs) > maxBulkQuizIDs {
+		return apperrors.NewValidationError("TOO_MANY_QUIZ_IDS",
+			fmt.Sprintf("maximum %d quizzes per request", maxBulkQuizIDs))
+	}
+
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		// Verify collection exists and user owns it (if not nil)
+		if collectionID != nil {
+			var collection models.Collection
+			if err := tx.First(&collection, *collectionID).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return apperrors.ErrCollectionNotFound
+				}
+				return apperrors.ErrFetchCollectionsFailed
+			}
+			if !isAdmin && collection.UserID != userID {
+				return apperrors.ErrNotCollectionOwner
+			}
+		}
+
+		// Verify all quizzes exist and user owns them
+		var quizzes []models.Quiz
+		if err := tx.Where("id IN ?", quizIDs).Find(&quizzes).Error; err != nil {
+			return apperrors.ErrFetchQuizzesFailed
+		}
+
+		if len(quizzes) != len(quizIDs) {
+			return apperrors.ErrQuizNotFound
+		}
+
+		for _, quiz := range quizzes {
+			if !isAdmin && quiz.UserID != userID {
+				return apperrors.ErrNotQuizOwner
+			}
+		}
+
+		// Update all quizzes in a single query
+		if err := tx.Model(&models.Quiz{}).Where("id IN ?", quizIDs).Update("collection_id", collectionID).Error; err != nil {
+			return apperrors.ErrUpdateQuizCollectionFailed
+		}
+
+		return nil
+	})
+}
+
+func (s *QuizService) BulkDelete(quizIDs []uint, userID uint, isAdmin bool) error {
+	if len(quizIDs) == 0 {
+		return apperrors.NewValidationError("NO_QUIZ_IDS", "at least one quiz ID is required")
+	}
+
+	quizIDs = deduplicateUints(quizIDs)
+
+	if len(quizIDs) > maxBulkQuizIDs {
+		return apperrors.NewValidationError("TOO_MANY_QUIZ_IDS",
+			fmt.Sprintf("maximum %d quizzes per request", maxBulkQuizIDs))
+	}
+
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		// Verify all quizzes exist and user owns them
+		var quizzes []models.Quiz
+		if err := tx.Where("id IN ?", quizIDs).Find(&quizzes).Error; err != nil {
+			return apperrors.ErrFetchQuizzesFailed
+		}
+
+		if len(quizzes) != len(quizIDs) {
+			return apperrors.ErrQuizNotFound
+		}
+
+		for _, quiz := range quizzes {
+			if !isAdmin && quiz.UserID != userID {
+				return apperrors.ErrNotQuizOwner
+			}
+		}
+
+		// Delete attempt answers for attempts on these quizzes
+		if err := tx.Exec(`
+			DELETE FROM attempt_answers
+			WHERE attempt_id IN (
+				SELECT id FROM quiz_attempts WHERE quiz_id IN ?
+			)
+		`, quizIDs).Error; err != nil {
+			return apperrors.ErrDeleteQuizFailed
+		}
+
+		// Delete quiz attempts for these quizzes
+		if err := tx.Where("quiz_id IN ?", quizIDs).Delete(&models.QuizAttempt{}).Error; err != nil {
+			return apperrors.ErrDeleteQuizFailed
+		}
+
+		// Delete all questions for these quizzes
+		if err := tx.Where("quiz_id IN ?", quizIDs).Delete(&models.Question{}).Error; err != nil {
+			return apperrors.ErrDeleteQuizFailed
+		}
+
+		// Delete all quizzes
+		if err := tx.Where("id IN ?", quizIDs).Delete(&models.Quiz{}).Error; err != nil {
+			return apperrors.ErrDeleteQuizFailed
 		}
 
 		return nil

@@ -132,8 +132,11 @@ class QuizSummary {
       questionCount: (json['question_count'] as int?) ?? 0,
       collectionId: json['collection_id'] as int?,
       collectionName: json['collection_name'] as String?,
-      collectionAncestors: ancestorsJson
-              ?.map((a) => CollectionBreadcrumb.fromJson(a as Map<String, dynamic>))
+      collectionAncestors:
+          ancestorsJson
+              ?.map(
+                (a) => CollectionBreadcrumb.fromJson(a as Map<String, dynamic>),
+              )
               .toList() ??
           const [],
     );

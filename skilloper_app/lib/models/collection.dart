@@ -9,12 +9,42 @@ class CollectionBreadcrumb {
     final name = json['name'];
 
     if (id == null || name == null) {
-      throw const FormatException('CollectionBreadcrumb missing required field');
+      throw const FormatException(
+        'CollectionBreadcrumb missing required field',
+      );
     }
 
     return CollectionBreadcrumb(
       id: id is int ? id : int.parse(id.toString()),
       name: name.toString(),
+    );
+  }
+}
+
+class FlatCollectionItem {
+  final int id;
+  final String name;
+  final String fullPath;
+
+  const FlatCollectionItem({
+    required this.id,
+    required this.name,
+    required this.fullPath,
+  });
+
+  factory FlatCollectionItem.fromJson(Map<String, dynamic> json) {
+    final id = json['id'];
+    final name = json['name'];
+    final fullPath = json['full_path'];
+
+    if (id == null || name == null || fullPath == null) {
+      throw const FormatException('FlatCollectionItem missing required field');
+    }
+
+    return FlatCollectionItem(
+      id: id is int ? id : int.parse(id.toString()),
+      name: name.toString(),
+      fullPath: fullPath.toString(),
     );
   }
 }
@@ -68,14 +98,15 @@ class Collection {
       id: id is int ? id : int.parse(id.toString()),
       parentId: json['parent_id'] != null
           ? (json['parent_id'] is int
-              ? json['parent_id'] as int
-              : int.parse(json['parent_id'].toString()))
+                ? json['parent_id'] as int
+                : int.parse(json['parent_id'].toString()))
           : null,
       name: name.toString(),
       quizCount: (json['quiz_count'] as int?) ?? 0,
       totalQuizCount: (json['total_quiz_count'] as int?) ?? 0,
       childCount: (json['child_count'] as int?) ?? 0,
-      ancestors: ancestorsJson
+      ancestors:
+          ancestorsJson
               ?.map(
                 (a) => CollectionBreadcrumb.fromJson(a as Map<String, dynamic>),
               )
@@ -89,9 +120,6 @@ class Collection {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'name': name,
-      if (parentId != null) 'parent_id': parentId,
-    };
+    return {'name': name, if (parentId != null) 'parent_id': parentId};
   }
 }

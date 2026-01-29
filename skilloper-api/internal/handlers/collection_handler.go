@@ -162,3 +162,20 @@ func (h *CollectionHandler) DeleteCollection(c *gin.Context) {
 	h.log.Debug("Successfully deleted collection", zap.Int("id", id))
 	c.Status(http.StatusNoContent)
 }
+
+// GetCollectionsFlat handles GET /collections/flat
+func (h *CollectionHandler) GetCollectionsFlat(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	isAdmin := middleware.IsAdmin(c)
+
+	h.log.Debug("Fetching flat collections list")
+
+	collections, err := h.service.GetAllFlat(userID, isAdmin)
+	if err != nil {
+		h.errH.Handle(c, err, "fetch_collections_flat")
+		return
+	}
+
+	h.log.Debug("Successfully fetched flat collections", zap.Int("count", len(collections)))
+	c.JSON(http.StatusOK, collections)
+}

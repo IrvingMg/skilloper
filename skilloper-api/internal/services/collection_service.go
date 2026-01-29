@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"go.uber.org/zap"
@@ -463,4 +464,64 @@ func (s *CollectionService) Delete(id uint, userID uint, isAdmin bool) error {
 	}
 
 	return nil
+}
+
+// GetAllFlat returns all collections as a flat list with full paths
+func (s *CollectionService) GetAllFlat(userID uint, isAdmin bool) ([]models.FlatCollectionItem, error) {
+	var collections []models.Collection
+	query := s.db.Order("name ASC")
+	if !isAdmin {
+		query = query.Where("user_id = ?", userID)
+	}
+	if err := query.Find(&collections).Error; err != nil {
+		return nil, apperrors.ErrFetchCollectionsFailed
+	}
+
+	if len(collections) == 0 {
+		return []models.FlatCollectionItem{}, nil
+	}
+
+	// Build lookup maps
+	byID := make(map[uint]*models.Collection, len(collections))
+	for i := range collections {
+		byID[collections[i].ID] = &collections[i]
+	}
+
+	// Build full paths
+	items := make([]models.FlatCollectionItem, 0, len(collections))
+	for _, c := range collections {
+		path := s.buildFullPath(c.ID, byID)
+		items = append(items, models.FlatCollectionItem{
+			ID:       c.ID,
+			Name:     c.Name,
+			FullPath: path,
+		})
+	}
+
+	return items, nil
+}
+
+func (s *CollectionService) buildFullPath(id uint, byID map[uint]*models.Collection) string {
+	var parts []string
+	visited := make(map[uint]bool)
+
+	for currentID := id; currentID != 0; {
+		if visited[currentID] {
+			break // Prevent infinite loops
+		}
+		visited[currentID] = true
+
+		c, ok := byID[currentID]
+		if !ok {
+			break
+		}
+		parts = append(parts, c.Name)
+		if c.ParentID == nil {
+			break
+		}
+		currentID = *c.ParentID
+	}
+
+	slices.Reverse(parts)
+	return strings.Join(parts, " > ")
 }

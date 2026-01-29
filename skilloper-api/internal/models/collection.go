@@ -29,6 +29,12 @@ type CollectionBreadcrumb struct {
 	Name string `json:"name"`
 }
 
+type FlatCollectionItem struct {
+	ID       uint   `json:"id"`
+	Name     string `json:"name"`
+	FullPath string `json:"full_path"`
+}
+
 type CollectionSummary struct {
 	ID             uint                   `json:"id"`
 	ParentID       *uint                  `json:"parent_id,omitempty"`
@@ -48,6 +54,15 @@ type CreateCollectionRequest struct {
 
 type UpdateQuizCollectionRequest struct {
 	CollectionID *uint `json:"collection_id"`
+}
+
+type BulkUpdateQuizCollectionRequest struct {
+	QuizIDs      []uint `json:"quiz_ids" binding:"required,min=1"`
+	CollectionID *uint  `json:"collection_id"`
+}
+
+type BulkDeleteQuizzesRequest struct {
+	QuizIDs []uint `json:"quiz_ids" binding:"required,min=1"`
 }
 
 // CollectionPaginationParams holds pagination and filter parameters for collections

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../constants/limits.dart';
 import '../models/attempt.dart';
 import '../models/collection.dart';
 import '../models/pagination.dart';
@@ -63,6 +64,10 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
   String _sortBy = 'date_desc';
   int? _selectedCollectionId; // null means "All Quizzes"
 
+  // Selection mode state
+  bool _isSelectionMode = false;
+  Set<int> _selectedQuizIds = {};
+
   @override
   void initState() {
     super.initState();
@@ -75,12 +80,15 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
   void _updateScrollArrows() {
     if (!_collectionsScrollController.hasClients) return;
     final position = _collectionsScrollController.position;
-    final canLeft = position.pixels > 0;
-    final canRight = position.pixels < position.maxScrollExtent;
+    // Use small tolerance for floating point comparison
+    const tolerance = 1.0;
+    final canLeft = position.pixels > tolerance;
+    final canRight = position.pixels < position.maxScrollExtent - tolerance;
+    final canScroll = position.maxScrollExtent > tolerance;
     if (canLeft != _canScrollLeft || canRight != _canScrollRight) {
       setState(() {
-        _canScrollLeft = canLeft;
-        _canScrollRight = canRight;
+        _canScrollLeft = canScroll && canLeft;
+        _canScrollRight = canScroll && canRight;
       });
     }
   }
@@ -102,18 +110,39 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
     BuildContext context, {
     required IconData icon,
     required VoidCallback onTap,
+    required bool isLeft,
   }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Icon(
-            icon,
-            size: 24,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+    final backgroundColor = Theme.of(context).scaffoldBackgroundColor;
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: isLeft ? Alignment.centerLeft : Alignment.centerRight,
+          end: isLeft ? Alignment.centerRight : Alignment.centerLeft,
+          colors: [
+            backgroundColor,
+            backgroundColor.withValues(alpha: 0.8),
+            backgroundColor.withValues(alpha: 0),
+          ],
+          stops: const [0.0, 0.5, 1.0],
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: isLeft ? 4 : 16,
+              right: isLeft ? 16 : 4,
+              top: 6,
+              bottom: 6,
+            ),
+            child: Icon(
+              icon,
+              size: 24,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ),
       ),
@@ -172,6 +201,7 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
       if (refresh) {
         _quizzes = [];
         _pagination = PaginationMeta.initial();
+        // Keep selection mode active but IDs will be filtered after load
       }
     });
 
@@ -210,6 +240,15 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
         _quizzes = result.data;
         _pagination = result.pagination;
         _isInitialLoading = false;
+        // Filter selected IDs to only keep those visible in current results
+        if (_isSelectionMode && _selectedQuizIds.isNotEmpty) {
+          final visibleIds = result.data.map((q) => q.id).toSet();
+          _selectedQuizIds = _selectedQuizIds.intersection(visibleIds);
+          // Exit selection mode if no selections remain
+          if (_selectedQuizIds.isEmpty) {
+            _isSelectionMode = false;
+          }
+        }
       });
     } on Exception catch (e) {
       if (!mounted) return;
@@ -337,10 +376,133 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
       _typeFilter = '';
       _selectedCollectionId = null;
     });
-    resetNavigation(onNavigate: () {
-      _loadCollections();
-      _loadQuizzes(refresh: true);
+    resetNavigation(
+      onNavigate: () {
+        _loadCollections();
+        _loadQuizzes(refresh: true);
+      },
+    );
+  }
+
+  // Selection mode methods
+  void _enterSelectionMode(int initialQuizId) {
+    setState(() {
+      _isSelectionMode = true;
+      _selectedQuizIds = {initialQuizId};
     });
+  }
+
+  void _exitSelectionMode() {
+    setState(() {
+      _isSelectionMode = false;
+      _selectedQuizIds = {};
+    });
+  }
+
+  void _toggleQuizSelection(int quizId) {
+    setState(() {
+      if (_selectedQuizIds.contains(quizId)) {
+        _selectedQuizIds.remove(quizId);
+        if (_selectedQuizIds.isEmpty) {
+          _isSelectionMode = false;
+        }
+      } else {
+        _selectedQuizIds.add(quizId);
+      }
+    });
+  }
+
+  void _selectAllQuizzes() {
+    setState(() {
+      _selectedQuizIds = _quizzes.map((q) => q.id).toSet();
+    });
+  }
+
+  void _deselectAllQuizzes() {
+    setState(() {
+      _selectedQuizIds = {};
+      _isSelectionMode = false;
+    });
+  }
+
+  Future<void> _bulkMoveToCollection() async {
+    final selectedCollectionId = await showModalBottomSheet<int?>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => MoveToCollectionSheet(
+        selectedCount: _selectedQuizIds.length,
+      ),
+    );
+
+    if (selectedCollectionId == null || !mounted) return;
+
+    final targetCollectionId = selectedCollectionId == UISentinels.removeFromCollection
+        ? null
+        : selectedCollectionId;
+
+    try {
+      await _apiService.bulkSetQuizCollection(
+        _selectedQuizIds.toList(),
+        targetCollectionId,
+      );
+
+      if (!mounted) return;
+
+      showSuccessSnackBar(
+        context,
+        targetCollectionId == null
+            ? 'Removed ${_selectedQuizIds.length} quizzes from collection'
+            : 'Moved ${_selectedQuizIds.length} quizzes to collection',
+      );
+
+      _exitSelectionMode();
+      unawaited(_loadQuizzes(refresh: true));
+      unawaited(_loadCollections());
+    } on Exception catch (e) {
+      if (!mounted) return;
+      showErrorSnackBar(context, 'Error moving quizzes: $e');
+    }
+  }
+
+  Future<void> _bulkDeleteQuizzes() async {
+    final count = _selectedQuizIds.length;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Quizzes'),
+        content: Text(
+          'Are you sure you want to delete $count ${count == 1 ? 'quiz' : 'quizzes'}? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await _apiService.bulkDeleteQuizzes(_selectedQuizIds.toList());
+
+      if (!mounted) return;
+
+      showSuccessSnackBar(context, 'Deleted $count quizzes');
+
+      _exitSelectionMode();
+      unawaited(_loadQuizzes(refresh: true));
+      unawaited(_loadCollections());
+    } on Exception catch (e) {
+      if (!mounted) return;
+      showErrorSnackBar(context, 'Error deleting quizzes: $e');
+    }
   }
 
   Future<void> _createCollection() async {
@@ -708,16 +870,16 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
   Future<void> _moveQuizToCollection(QuizSummary quiz) async {
     final selectedCollectionId = await showModalBottomSheet<int?>(
       context: context,
-      builder: (context) => MoveToCollectionSheet(
-        currentCollectionId: quiz.collectionId,
-      ),
+      isScrollControlled: true,
+      builder: (context) =>
+          MoveToCollectionSheet(currentCollectionId: quiz.collectionId),
     );
 
-    // -1 signals "remove from collection"
-    if (selectedCollectionId == -1 && quiz.collectionId != null) {
+    if (selectedCollectionId == UISentinels.removeFromCollection &&
+        quiz.collectionId != null) {
       await _setQuizCollection(quiz.id, null);
     } else if (selectedCollectionId != null &&
-        selectedCollectionId != -1 &&
+        selectedCollectionId != UISentinels.removeFromCollection &&
         selectedCollectionId != quiz.collectionId) {
       await _setQuizCollection(quiz.id, selectedCollectionId);
     }
@@ -730,7 +892,9 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
 
       showSuccessSnackBar(
         context,
-        collectionId == null ? 'Removed from collection' : 'Moved to collection',
+        collectionId == null
+            ? 'Removed from collection'
+            : 'Moved to collection',
       );
 
       unawaited(_loadQuizzes(refresh: true));
@@ -739,6 +903,64 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
       if (!mounted) return;
       showErrorSnackBar(context, 'Error updating quiz: $e');
     }
+  }
+
+  Widget _buildSelectionHeader() {
+    return Row(
+      children: [
+        IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: _exitSelectionMode,
+          tooltip: 'Cancel selection',
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Text(
+          '${_selectedQuizIds.length} selected',
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const Spacer(),
+        TextButton(
+          onPressed: _selectedQuizIds.length == _quizzes.length
+              ? _deselectAllQuizzes
+              : _selectAllQuizzes,
+          child: Text(
+            _selectedQuizIds.length == _quizzes.length
+                ? 'Deselect All'
+                : 'Select All',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNormalHeader() {
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Available Quizzes',
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+            letterSpacing: -0.5,
+          ),
+        ),
+        SizedBox(height: AppSpacing.sm),
+        Text(
+          'Choose a quiz to test your skills',
+          style: TextStyle(
+            fontSize: 16,
+            color: AppColors.textTertiary,
+            fontWeight: FontWeight.w400,
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -751,24 +973,11 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Available Quizzes',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              const Text(
-                'Choose a quiz to test your skills',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: AppColors.textTertiary,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
+              // Header section - changes based on selection mode
+              if (_isSelectionMode)
+                _buildSelectionHeader()
+              else
+                _buildNormalHeader(),
 
               // Collections section with breadcrumb navigation
               const SizedBox(height: AppSpacing.lg),
@@ -783,25 +992,12 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
                 const SizedBox(height: AppSpacing.sm),
               ],
 
-              // Collection chips row with scroll arrows
+              // Collection chips row with overlapping scroll arrows
               SizedBox(
-                height: 36,
-                child: Row(
-                  children: [
-                    Visibility(
-                      visible: _canScrollLeft,
-                      maintainSize: true,
-                      maintainAnimation: true,
-                      maintainState: true,
-                      child: _buildScrollArrow(
-                        context,
-                        icon: Icons.chevron_left,
-                        onTap: () =>
-                            _scrollCollections(-_collectionsScrollDelta),
-                      ),
-                    ),
-                    Expanded(
-                      child: ListView.separated(
+                  height: 36,
+                  child: Stack(
+                    children: [
+                      ListView.separated(
                         controller: _collectionsScrollController,
                         scrollDirection: Axis.horizontal,
                         // At root level: "All" chip + collections + "Add" chip
@@ -821,19 +1017,24 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
                             );
                           }
                           // Adjust index for collections when "All" chip is shown
-                          final collectionIndex =
-                              breadcrumbs.isEmpty ? index - 1 : index;
+                          final collectionIndex = breadcrumbs.isEmpty
+                              ? index - 1
+                              : index;
                           // Last: "Add" chip
                           if (collectionIndex == _collections.length) {
-                            return AddCollectionChip(onTap: _createCollection);
+                            return AddCollectionChip(
+                              onTap: _createCollection,
+                            );
                           }
                           // Collection chips with actions
                           final collection = _collections[collectionIndex];
                           return CollectionChip(
                             label: collection.name,
-                            isSelected: _selectedCollectionId == collection.id,
-                            color: AppColors.getCollectionColor(collection.id),
-                            hasChildren: collection.hasChildren,
+                            isSelected:
+                                _selectedCollectionId == collection.id,
+                            color: AppColors.getCollectionColor(
+                              collection.id,
+                            ),
                             onTap: () =>
                                 _handleNavigateIntoCollection(collection),
                             onRename: () => _renameCollection(collection),
@@ -841,35 +1042,73 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
                           );
                         },
                       ),
-                    ),
-                    Visibility(
-                      visible: _canScrollRight,
-                      maintainSize: true,
-                      maintainAnimation: true,
-                      maintainState: true,
-                      child: _buildScrollArrow(
-                        context,
-                        icon: Icons.chevron_right,
-                        onTap: () =>
-                            _scrollCollections(_collectionsScrollDelta),
-                      ),
-                    ),
-                  ],
+                      // Left arrow overlay
+                      if (_canScrollLeft)
+                        Positioned(
+                          left: 0,
+                          top: 0,
+                          bottom: 0,
+                          child: _buildScrollArrow(
+                            context,
+                            icon: Icons.chevron_left,
+                            isLeft: true,
+                            onTap: () =>
+                                _scrollCollections(-_collectionsScrollDelta),
+                          ),
+                        ),
+                      // Right arrow overlay
+                      if (_canScrollRight)
+                        Positioned(
+                          right: 0,
+                          top: 0,
+                          bottom: 0,
+                          child: _buildScrollArrow(
+                            context,
+                            icon: Icons.chevron_right,
+                            isLeft: false,
+                            onTap: () =>
+                                _scrollCollections(_collectionsScrollDelta),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
 
               const SizedBox(height: AppSpacing.lg),
 
-              SearchFilterBar(
-                searchHint: 'Search quizzes...',
-                searchController: _searchController,
-                onSearchChanged: _onSearchChanged,
-                filterOptions: kQuizTypeFilterOptions,
-                selectedFilter: _typeFilter,
-                onFilterChanged: _onFilterChanged,
-                sortOptions: kQuizSortOptions,
-                selectedSort: _sortBy,
-                onSortChanged: _onSortChanged,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: SearchFilterBar(
+                      searchHint: 'Search quizzes...',
+                      searchController: _searchController,
+                      onSearchChanged: _onSearchChanged,
+                      filterOptions: kQuizTypeFilterOptions,
+                      selectedFilter: _typeFilter,
+                      onFilterChanged: _onFilterChanged,
+                      sortOptions: kQuizSortOptions,
+                      selectedSort: _sortBy,
+                      onSortChanged: _onSortChanged,
+                    ),
+                  ),
+                  // Only show selection mode button when not already in selection mode
+                  if (_quizzes.isNotEmpty && !_isSelectionMode) ...[
+                    const SizedBox(width: AppSpacing.sm),
+                    IconButton(
+                      icon: const Icon(Icons.checklist),
+                      onPressed: () {
+                        setState(() {
+                          _isSelectionMode = true;
+                        });
+                      },
+                      tooltip: 'Select multiple quizzes',
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppColors.surfaceVariant,
+                      ),
+                    ),
+                  ],
+                ],
               ),
 
               const SizedBox(height: AppSpacing.lg),
@@ -1005,6 +1244,14 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
                         onEdit: () => _editQuiz(quiz),
                         onDelete: () => _deleteQuiz(quiz),
                         onMoveToCollection: () => _moveQuizToCollection(quiz),
+                        isSelectionMode: _isSelectionMode,
+                        isSelected: _selectedQuizIds.contains(quiz.id),
+                        onToggleSelection: () => _toggleQuizSelection(quiz.id),
+                        onLongPress: () {
+                          if (!_isSelectionMode) {
+                            _enterSelectionMode(quiz.id);
+                          }
+                        },
                       );
                     },
                   ),
@@ -1013,6 +1260,53 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
           ),
         ),
       ),
+      bottomNavigationBar: _isSelectionMode && _selectedQuizIds.isNotEmpty
+          ? SafeArea(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg,
+                  vertical: AppSpacing.md,
+                ),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).scaffoldBackgroundColor,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, -2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _bulkMoveToCollection,
+                        icon: const Icon(Icons.drive_file_move_outline),
+                        label: const Text('Move'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _bulkDeleteQuizzes,
+                        icon: const Icon(Icons.delete_outline),
+                        label: const Text('Delete'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.error,
+                          side: const BorderSide(color: AppColors.error),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : null,
     );
   }
 }

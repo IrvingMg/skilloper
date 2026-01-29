@@ -165,9 +165,12 @@ func (s *Server) setupRoutes() {
 		protected.PUT("/quizzes/:id", s.quizHandler.UpdateQuiz)
 		protected.DELETE("/quizzes/:id", s.quizHandler.DeleteQuiz)
 		protected.PATCH("/quizzes/:id/collection", s.quizHandler.UpdateQuizCollection)
+		protected.POST("/quizzes/bulk-collection", s.quizHandler.BulkUpdateQuizCollection)
+		protected.POST("/quizzes/bulk-delete", s.quizHandler.BulkDeleteQuizzes)
 
 		// Collection routes
 		protected.GET("/collections", s.collectionHandler.GetCollections)
+		protected.GET("/collections/flat", s.collectionHandler.GetCollectionsFlat)
 		protected.GET("/collections/:id", s.collectionHandler.GetCollection)
 		protected.POST("/collections", s.collectionHandler.CreateCollection)
 		protected.PUT("/collections/:id", s.collectionHandler.UpdateCollection)

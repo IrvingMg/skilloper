@@ -233,6 +233,52 @@ func (h *QuizHandler) UpdateQuizCollection(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// BulkUpdateQuizCollection handles POST /quizzes/bulk-collection
+func (h *QuizHandler) BulkUpdateQuizCollection(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	isAdmin := middleware.IsAdmin(c)
+
+	h.log.Debug("Bulk updating quiz collections")
+
+	var req models.BulkUpdateQuizCollectionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.errH.Handle(c, apperrors.ErrInvalidJSONFormat, "parse_bulk_collection_request")
+		return
+	}
+
+	err := h.service.BulkSetCollection(req.QuizIDs, req.CollectionID, userID, isAdmin)
+	if err != nil {
+		h.errH.Handle(c, err, "bulk_update_quiz_collection")
+		return
+	}
+
+	h.log.Debug("Successfully bulk updated quiz collections", zap.Int("requested_count", len(req.QuizIDs)))
+	c.Status(http.StatusNoContent)
+}
+
+// BulkDeleteQuizzes handles POST /quizzes/bulk-delete
+func (h *QuizHandler) BulkDeleteQuizzes(c *gin.Context) {
+	userID := middleware.GetUserID(c)
+	isAdmin := middleware.IsAdmin(c)
+
+	h.log.Debug("Bulk deleting quizzes")
+
+	var req models.BulkDeleteQuizzesRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.errH.Handle(c, apperrors.ErrInvalidJSONFormat, "parse_bulk_delete_request")
+		return
+	}
+
+	err := h.service.BulkDelete(req.QuizIDs, userID, isAdmin)
+	if err != nil {
+		h.errH.Handle(c, err, "bulk_delete_quizzes")
+		return
+	}
+
+	h.log.Debug("Successfully bulk deleted quizzes", zap.Int("requested_count", len(req.QuizIDs)))
+	c.Status(http.StatusNoContent)
+}
+
 func (h *QuizHandler) handleImport(c *gin.Context, userID uint) {
 	h.log.Debug("Importing quiz from file")
 

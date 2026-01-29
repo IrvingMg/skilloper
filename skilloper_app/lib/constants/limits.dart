@@ -29,3 +29,12 @@ class QuestionTypes {
   static const String singleChoice = 'single_choice';
   static const String multipleChoice = 'multiple_choice';
 }
+
+// UI sentinel values
+class UISentinels {
+  UISentinels._(); // Prevent instantiation
+
+  /// Sentinel value returned when user selects "Remove from Collection"
+  /// in MoveToCollectionSheet
+  static const int removeFromCollection = -1;
+}

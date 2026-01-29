@@ -6,7 +6,6 @@ class CollectionChip extends StatelessWidget {
   final String label;
   final bool isSelected;
   final Color? color;
-  final bool hasChildren;
   final VoidCallback onTap;
   final VoidCallback? onRename;
   final VoidCallback? onDelete;
@@ -16,7 +15,6 @@ class CollectionChip extends StatelessWidget {
     required this.isSelected,
     required this.onTap,
     this.color,
-    this.hasChildren = false,
     this.onRename,
     this.onDelete,
     super.key,
@@ -40,8 +38,12 @@ class CollectionChip extends StatelessWidget {
             bottom: 6,
           ),
           decoration: BoxDecoration(
-            color: isSelected ? chipColor.withValues(alpha: 0.15) : AppColors.surfaceVariant,
-            border: isSelected ? Border.all(color: chipColor, width: 1.5) : null,
+            color: isSelected
+                ? chipColor.withValues(alpha: 0.15)
+                : AppColors.surfaceVariant,
+            border: isSelected
+                ? Border.all(color: chipColor, width: 1.5)
+                : null,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Row(
@@ -55,14 +57,6 @@ class CollectionChip extends StatelessWidget {
                   fontSize: 13,
                 ),
               ),
-              if (hasChildren) ...[
-                const SizedBox(width: 2),
-                Icon(
-                  Icons.chevron_right,
-                  size: 16,
-                  color: isSelected ? chipColor : AppColors.textTertiary,
-                ),
-              ],
               if (hasMenu) ...[
                 const SizedBox(width: 2),
                 SizedBox(
@@ -99,9 +93,16 @@ class CollectionChip extends StatelessWidget {
                           value: 'delete',
                           child: Row(
                             children: [
-                              Icon(Icons.delete_outline, size: 20, color: AppColors.error),
+                              Icon(
+                                Icons.delete_outline,
+                                size: 20,
+                                color: AppColors.error,
+                              ),
                               SizedBox(width: 12),
-                              Text('Delete', style: TextStyle(color: AppColors.error)),
+                              Text(
+                                'Delete',
+                                style: TextStyle(color: AppColors.error),
+                              ),
                             ],
                           ),
                         ),

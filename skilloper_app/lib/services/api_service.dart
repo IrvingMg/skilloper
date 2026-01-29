@@ -741,6 +741,63 @@ class ApiService {
     }
   }
 
+  /// Get all collections as a flat list with full paths
+  Future<List<FlatCollectionItem>> getCollectionsFlat() async {
+    try {
+      final response = await _authenticatedGet(
+        Uri.parse('$baseUrl${ApiEndpoints.collectionsFlat}'),
+      );
+
+      _handleHttpResponse(response, 'load flat collections');
+
+      final List<dynamic> data = json.decode(response.body) as List<dynamic>;
+      return data
+          .map(
+            (json) => FlatCollectionItem.fromJson(json as Map<String, dynamic>),
+          )
+          .toList();
+    } on ApiException {
+      rethrow;
+    } on Exception catch (e) {
+      throw _handleException(e, 'load flat collections');
+    }
+  }
+
+  /// Bulk update quiz collection assignment
+  Future<void> bulkSetQuizCollection(
+    List<int> quizIds,
+    int? collectionId,
+  ) async {
+    try {
+      final response = await _authenticatedPost(
+        Uri.parse('$baseUrl${ApiEndpoints.quizzesBulkCollection}'),
+        body: json.encode({'quiz_ids': quizIds, 'collection_id': collectionId}),
+      );
+
+      _handleHttpResponse(response, 'bulk update quiz collection');
+    } on ApiException {
+      rethrow;
+    } on Exception catch (e) {
+      throw _handleException(e, 'bulk update quiz collection');
+    }
+  }
+
+  /// Bulk delete quizzes
+  Future<void> bulkDeleteQuizzes(List<int> quizIds) async {
+    try {
+      final response = await _authenticatedPost(
+        Uri.parse('$baseUrl${ApiEndpoints.quizzesBulkDelete}'),
+        body: json.encode({'quiz_ids': quizIds}),
+      );
+
+      _handleHttpResponse(response, 'bulk delete quizzes');
+    } on ApiException {
+      rethrow;
+    } on Exception catch (e) {
+      throw _handleException(e, 'bulk delete quizzes');
+    }
+  }
+
   Future<ValidateAnswerResponse> validateAnswer(
     int questionId,
     ValidateAnswerRequest request,

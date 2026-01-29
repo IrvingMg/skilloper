@@ -72,7 +72,10 @@ class BreadcrumbNavigation extends StatelessWidget {
                           : null,
                       borderRadius: BorderRadius.circular(4),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 4,
+                        ),
                         child: Text(
                           breadcrumbs[i].name,
                           style: TextStyle(
@@ -102,7 +105,10 @@ mixin CollectionNavigationMixin<T extends StatefulWidget> on State<T> {
   List<CollectionBreadcrumb> breadcrumbs = [];
   int? currentParentId;
 
-  void navigateIntoCollection(Collection collection, {VoidCallback? onNavigate}) {
+  void navigateIntoCollection(
+    Collection collection, {
+    VoidCallback? onNavigate,
+  }) {
     setState(() {
       breadcrumbs = [
         ...breadcrumbs,

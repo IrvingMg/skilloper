@@ -64,6 +64,7 @@ All other endpoints require a valid JWT token:
 | `GET` | `/quizzes/{id}` | Get specific quiz with alternative text selection |
 | `PUT` | `/quizzes/{id}` | Update quiz |
 | `DELETE` | `/quizzes/{id}` | Delete quiz |
+| `POST` | `/quizzes/bulk-delete` | Bulk delete multiple quizzes |
 
 **Ownership:** Quizzes are private to the user who created them. Users can only list, view, update, and delete their own quizzes. Admins can access all quizzes. Attempting to access another user's quiz returns `403 Forbidden` with code `NOT_QUIZ_OWNER`.
 
@@ -72,11 +73,13 @@ All other endpoints require a valid JWT token:
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/collections` | Get paginated collection summaries |
+| `GET` | `/collections/flat` | Get all collections as flat list with full paths |
 | `GET` | `/collections/{id}` | Get specific collection |
 | `POST` | `/collections` | Create collection |
 | `PUT` | `/collections/{id}` | Update collection |
 | `DELETE` | `/collections/{id}` | Delete collection (quizzes become uncategorized) |
 | `PATCH` | `/quizzes/{id}/collection` | Set or remove quiz's collection |
+| `POST` | `/quizzes/bulk-collection` | Bulk update collection for multiple quizzes |
 
 **Ownership:** Collections are private to the user who created them. Admins can access all collections.
 
@@ -474,6 +477,58 @@ curl -X PATCH http://localhost:8080/api/v1/quizzes/1/collection \
   -H "Authorization: Bearer <token>" \
   -d '{"collection_id": null}'
 ```
+
+### Bulk Update Quiz Collection
+```bash
+# Move multiple quizzes to a collection
+curl -X POST http://localhost:8080/api/v1/quizzes/bulk-collection \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"quiz_ids": [1, 2, 3], "collection_id": 1}'
+
+# Remove multiple quizzes from collection
+curl -X POST http://localhost:8080/api/v1/quizzes/bulk-collection \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"quiz_ids": [1, 2, 3], "collection_id": null}'
+```
+
+### Bulk Delete Quizzes
+```bash
+curl -X POST http://localhost:8080/api/v1/quizzes/bulk-delete \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <token>" \
+  -d '{"quiz_ids": [1, 2, 3]}'
+```
+
+### Get Flat Collections
+```bash
+curl http://localhost:8080/api/v1/collections/flat \
+  -H "Authorization: Bearer <token>"
+```
+
+Response:
+```json
+[
+  {
+    "id": 1,
+    "name": "Programming",
+    "full_path": "Programming"
+  },
+  {
+    "id": 2,
+    "name": "Go",
+    "full_path": "Programming > Go"
+  },
+  {
+    "id": 3,
+    "name": "Concurrency",
+    "full_path": "Programming > Go > Concurrency"
+  }
+]
+```
+
+**Note:** The flat list includes all collections with their full hierarchical path, useful for search/selection UIs.
 
 ### Create Quiz Attempt
 ```bash

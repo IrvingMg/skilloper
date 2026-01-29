@@ -281,9 +281,9 @@ class AuthService {
       }
 
       // Check if refresh token has expired before making the request
-      final expiry = _refreshTokenExpiry ??
-          DateTime.tryParse(
-              await _readStorage(_refreshTokenExpiryKey) ?? '');
+      final expiry =
+          _refreshTokenExpiry ??
+          DateTime.tryParse(await _readStorage(_refreshTokenExpiryKey) ?? '');
       if (expiry != null && expiry.isBefore(DateTime.now())) {
         _debugLog('Refresh token has expired, clearing session');
         _refreshToken = null;
@@ -294,11 +294,13 @@ class AuthService {
         return false;
       }
 
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}${ApiEndpoints.sessionsRefresh}'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'refresh_token': refreshToken}),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .post(
+            Uri.parse('${ApiConfig.baseUrl}${ApiEndpoints.sessionsRefresh}'),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({'refresh_token': refreshToken}),
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body) as Map<String, dynamic>;
@@ -314,10 +316,13 @@ class AuthService {
 
         // Store refresh token expiry if provided
         if (refreshTokenExpiresIn != null) {
-          _refreshTokenExpiry =
-              DateTime.now().add(Duration(seconds: refreshTokenExpiresIn));
+          _refreshTokenExpiry = DateTime.now().add(
+            Duration(seconds: refreshTokenExpiresIn),
+          );
           await _writeStorage(
-              _refreshTokenExpiryKey, _refreshTokenExpiry!.toIso8601String());
+            _refreshTokenExpiryKey,
+            _refreshTokenExpiry!.toIso8601String(),
+          );
         }
 
         _debugLog('Access token refreshed successfully');
@@ -357,21 +362,26 @@ class AuthService {
     await _writeStorage(_userKey, json.encode(data['user']));
 
     if (refreshTokenExpiresIn != null) {
-      _refreshTokenExpiry =
-          DateTime.now().add(Duration(seconds: refreshTokenExpiresIn));
+      _refreshTokenExpiry = DateTime.now().add(
+        Duration(seconds: refreshTokenExpiresIn),
+      );
       await _writeStorage(
-          _refreshTokenExpiryKey, _refreshTokenExpiry!.toIso8601String());
+        _refreshTokenExpiryKey,
+        _refreshTokenExpiry!.toIso8601String(),
+      );
     }
   }
 
   Future<void> register(String username, String password) async {
     await _acquireLock();
     try {
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}${ApiEndpoints.users}'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'username': username, 'password': password}),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .post(
+            Uri.parse('${ApiConfig.baseUrl}${ApiEndpoints.users}'),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({'username': username, 'password': password}),
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 201) {
         final data = json.decode(response.body) as Map<String, dynamic>;
@@ -392,11 +402,13 @@ class AuthService {
   Future<void> login(String username, String password) async {
     await _acquireLock();
     try {
-      final response = await http.post(
-        Uri.parse('${ApiConfig.baseUrl}${ApiEndpoints.sessions}'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'username': username, 'password': password}),
-      ).timeout(const Duration(seconds: 30));
+      final response = await http
+          .post(
+            Uri.parse('${ApiConfig.baseUrl}${ApiEndpoints.sessions}'),
+            headers: {'Content-Type': 'application/json'},
+            body: json.encode({'username': username, 'password': password}),
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 201) {
         final data = json.decode(response.body) as Map<String, dynamic>;
