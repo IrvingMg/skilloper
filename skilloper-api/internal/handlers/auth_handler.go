@@ -65,7 +65,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 // RefreshToken handles POST /sessions/refresh
 func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	var req models.RefreshTokenRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	// Use ShouldBindBodyWith because the rate limiter middleware may have already read the body
+	if err := c.ShouldBindBodyWith(&req, binding.JSON); err != nil {
 		h.errH.Handle(c, apperrors.ErrInvalidJSONFormat, "parse_refresh_request")
 		return
 	}

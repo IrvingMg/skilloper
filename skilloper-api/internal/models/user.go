@@ -50,10 +50,11 @@ type UserResponse struct {
 }
 
 type LoginResponse struct {
-	Token        string       `json:"token"`
-	RefreshToken string       `json:"refresh_token"`
-	ExpiresIn    int          `json:"expires_in"` // Seconds until access token expires
-	User         UserResponse `json:"user"`
+	Token                 string       `json:"token"`
+	RefreshToken          string       `json:"refresh_token"`
+	ExpiresIn             int          `json:"expires_in"`               // Seconds until access token expires
+	RefreshTokenExpiresIn int          `json:"refresh_token_expires_in"` // Seconds until refresh token expires
+	User                  UserResponse `json:"user"`
 }
 
 const (

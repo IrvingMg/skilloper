@@ -159,9 +159,17 @@ func Load() *Config {
 	return cfg
 }
 
-// parseJWTExpiry parses the JWT_EXPIRY environment variable (in hours)
+// parseJWTExpiry parses the JWT_EXPIRY environment variable
+// Supports formats: "1" (hours), "1h" (hours), "30m" (minutes), "60s" (seconds)
 func parseJWTExpiry() time.Duration {
 	expiryStr := getEnv("JWT_EXPIRY", "1")
+
+	// Try parsing as duration string first (e.g., "1h", "30m", "60s")
+	if d, err := time.ParseDuration(expiryStr); err == nil && d > 0 {
+		return d
+	}
+
+	// Fall back to integer hours for backwards compatibility
 	hours, err := strconv.Atoi(expiryStr)
 	if err != nil || hours <= 0 {
 		hours = 1
@@ -169,9 +177,17 @@ func parseJWTExpiry() time.Duration {
 	return time.Duration(hours) * time.Hour
 }
 
-// parseRefreshTokenExpiry parses the REFRESH_TOKEN_EXPIRY environment variable (in hours)
+// parseRefreshTokenExpiry parses the REFRESH_TOKEN_EXPIRY environment variable
+// Supports formats: "168" (hours), "168h" (hours), "30m" (minutes)
 func parseRefreshTokenExpiry() time.Duration {
 	expiryStr := getEnv("REFRESH_TOKEN_EXPIRY", "168") // 168 hours = 7 days
+
+	// Try parsing as duration string first (e.g., "168h", "30m")
+	if d, err := time.ParseDuration(expiryStr); err == nil && d > 0 {
+		return d
+	}
+
+	// Fall back to integer hours for backwards compatibility
 	hours, err := strconv.Atoi(expiryStr)
 	if err != nil || hours <= 0 {
 		hours = 168

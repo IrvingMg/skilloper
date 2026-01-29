@@ -23,7 +23,8 @@ type RefreshTokenRequest struct {
 
 // TokenPairResponse is returned when tokens are refreshed
 type TokenPairResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	ExpiresIn    int    `json:"expires_in"` // Seconds until access token expires
+	AccessToken           string `json:"access_token"`
+	RefreshToken          string `json:"refresh_token"`
+	ExpiresIn             int    `json:"expires_in"`               // Seconds until access token expires
+	RefreshTokenExpiresIn int    `json:"refresh_token_expires_in"` // Seconds until refresh token expires
 }

@@ -17,6 +17,11 @@ func TestParseJWTExpiry(t *testing.T) {
 		{"invalid string", "invalid", 1 * time.Hour},
 		{"zero fallback", "0", 1 * time.Hour},
 		{"negative fallback", "-5", 1 * time.Hour},
+		// Duration string formats
+		{"duration hours", "2h", 2 * time.Hour},
+		{"duration minutes", "30m", 30 * time.Minute},
+		{"duration seconds", "60s", 60 * time.Second},
+		{"duration combined", "1h30m", 90 * time.Minute},
 	}
 
 	for _, tt := range tests {
@@ -43,6 +48,10 @@ func TestParseRefreshTokenExpiry(t *testing.T) {
 		{"invalid string", "invalid", 168 * time.Hour},
 		{"zero fallback", "0", 168 * time.Hour},
 		{"negative fallback", "-5", 168 * time.Hour},
+		// Duration string formats
+		{"duration hours", "72h", 72 * time.Hour},
+		{"duration minutes", "30m", 30 * time.Minute},
+		{"duration days as hours", "168h", 168 * time.Hour},
 	}
 
 	for _, tt := range tests {

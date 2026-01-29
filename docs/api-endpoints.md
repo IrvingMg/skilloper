@@ -179,6 +179,7 @@ Response (includes tokens for immediate login):
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "refresh_token": "dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4...",
   "expires_in": 3600,
+  "refresh_token_expires_in": 604800,
   "user": {
     "id": 1,
     "username": "john_doe",
@@ -191,6 +192,7 @@ Response (includes tokens for immediate login):
 - `token` - JWT access token for API authentication
 - `refresh_token` - Opaque token for obtaining new access tokens
 - `expires_in` - Access token validity in seconds (3600 = 1 hour)
+- `refresh_token_expires_in` - Refresh token validity in seconds (604800 = 7 days default)
 
 ### Login
 ```bash
@@ -205,6 +207,7 @@ Response:
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "refresh_token": "dGhpcyBpcyBhIHJlZnJlc2ggdG9rZW4...",
   "expires_in": 3600,
+  "refresh_token_expires_in": 604800,
   "user": {
     "id": 1,
     "username": "john_doe",
@@ -228,7 +231,8 @@ Response:
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "refresh_token": "bmV3IHJlZnJlc2ggdG9rZW4...",
-  "expires_in": 3600
+  "expires_in": 3600,
+  "refresh_token_expires_in": 604800
 }
 ```
 

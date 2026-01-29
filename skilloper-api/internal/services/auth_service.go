@@ -111,9 +111,10 @@ func (s *AuthService) Register(req models.RegisterRequest) (*models.LoginRespons
 	}
 
 	return &models.LoginResponse{
-		Token:        token,
-		RefreshToken: refreshToken,
-		ExpiresIn:    int(s.jwtExpiry.Seconds()),
+		Token:                 token,
+		RefreshToken:          refreshToken,
+		ExpiresIn:             int(s.jwtExpiry.Seconds()),
+		RefreshTokenExpiresIn: int(s.refreshTokenExpiry.Seconds()),
 		User: models.UserResponse{
 			ID:        user.ID,
 			Username:  user.Username,
@@ -177,9 +178,10 @@ func (s *AuthService) Login(req models.LoginRequest) (*models.LoginResponse, err
 		zap.Uint("user_id", user.ID))
 
 	return &models.LoginResponse{
-		Token:        token,
-		RefreshToken: refreshToken,
-		ExpiresIn:    int(s.jwtExpiry.Seconds()),
+		Token:                 token,
+		RefreshToken:          refreshToken,
+		ExpiresIn:             int(s.jwtExpiry.Seconds()),
+		RefreshTokenExpiresIn: int(s.refreshTokenExpiry.Seconds()),
 		User: models.UserResponse{
 			ID:        user.ID,
 			Username:  user.Username,
@@ -593,6 +595,11 @@ func (s *AuthService) deleteUserQuizzes(tx *gorm.DB, userID uint) error {
 
 // generateRefreshToken creates a new refresh token and stores it in the database
 func (s *AuthService) generateRefreshToken(userID uint, familyID string) (string, error) {
+	return s.generateRefreshTokenTx(s.db, userID, familyID)
+}
+
+// generateRefreshTokenTx creates a new refresh token using the provided database handle (supports transactions)
+func (s *AuthService) generateRefreshTokenTx(db *gorm.DB, userID uint, familyID string) (string, error) {
 	tokenBytes := make([]byte, 32)
 	if _, err := cryptorand.Read(tokenBytes); err != nil {
 		return "", apperrors.NewInternalError("REFRESH_TOKEN_GENERATION_FAILED", "Failed to generate refresh token", err)
@@ -608,7 +615,7 @@ func (s *AuthService) generateRefreshToken(userID uint, familyID string) (string
 		ExpiresAt: time.Now().Add(s.refreshTokenExpiry),
 	}
 
-	if err := s.db.Create(&refreshToken).Error; err != nil {
+	if err := db.Create(&refreshToken).Error; err != nil {
 		return "", apperrors.NewDatabaseError("REFRESH_TOKEN_CREATE_FAILED", "Failed to store refresh token", err)
 	}
 
@@ -656,28 +663,39 @@ func (s *AuthService) RefreshTokens(refreshTokenString string) (*models.TokenPai
 		return nil, apperrors.ErrInvalidToken
 	}
 
-	// Revoke the current refresh token (rotation)
-	now := time.Now()
-	if err := s.db.Model(&storedToken).Updates(map[string]any{
-		"revoked":    true,
-		"revoked_at": now,
-	}).Error; err != nil {
-		s.log.Error("Failed to revoke refresh token during rotation",
-			zap.Error(err),
-			zap.Uint("token_id", storedToken.ID))
-		return nil, apperrors.NewDatabaseError("TOKEN_REVOCATION_FAILED", "Failed to revoke token", err)
-	}
+	// Perform token rotation atomically in a transaction
+	var accessToken, newRefreshToken string
+	txErr := s.db.Transaction(func(tx *gorm.DB) error {
+		// Revoke the current refresh token (rotation)
+		now := time.Now()
+		if updateErr := tx.Model(&storedToken).Updates(map[string]any{
+			"revoked":    true,
+			"revoked_at": now,
+		}).Error; updateErr != nil {
+			s.log.Error("Failed to revoke refresh token during rotation",
+				zap.Error(updateErr),
+				zap.Uint("token_id", storedToken.ID))
+			return apperrors.NewDatabaseError("TOKEN_REVOCATION_FAILED", "Failed to revoke token", updateErr)
+		}
 
-	// Generate new access token
-	accessToken, err := s.generateToken(user)
-	if err != nil {
-		return nil, err
-	}
+		// Generate new access token
+		var tokenErr error
+		accessToken, tokenErr = s.generateToken(user)
+		if tokenErr != nil {
+			return tokenErr
+		}
 
-	// Generate new refresh token in same family
-	newRefreshToken, err := s.generateRefreshToken(user.ID, storedToken.FamilyID)
-	if err != nil {
-		return nil, err
+		// Generate new refresh token in same family (using transaction)
+		newRefreshToken, tokenErr = s.generateRefreshTokenTx(tx, user.ID, storedToken.FamilyID)
+		if tokenErr != nil {
+			return tokenErr
+		}
+
+		return nil
+	})
+
+	if txErr != nil {
+		return nil, txErr
 	}
 
 	s.log.Debug("Tokens refreshed successfully",
@@ -687,9 +705,10 @@ func (s *AuthService) RefreshTokens(refreshTokenString string) (*models.TokenPai
 	s.maybeRunCleanup()
 
 	return &models.TokenPairResponse{
-		AccessToken:  accessToken,
-		RefreshToken: newRefreshToken,
-		ExpiresIn:    int(s.jwtExpiry.Seconds()),
+		AccessToken:           accessToken,
+		RefreshToken:          newRefreshToken,
+		ExpiresIn:             int(s.jwtExpiry.Seconds()),
+		RefreshTokenExpiresIn: int(s.refreshTokenExpiry.Seconds()),
 	}, nil
 }
 
