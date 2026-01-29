@@ -410,6 +410,12 @@ var (
 		Code:    "UPDATE_QUIZ_COLLECTION_FAILED",
 		Message: "failed to update quiz collection",
 	}
+
+	ErrInvalidParentCollection = &AppError{
+		Type:    ErrTypeValidation,
+		Code:    "INVALID_PARENT_COLLECTION",
+		Message: "parent collection not found or does not belong to you",
+	}
 )
 
 // NewValidationError creates a new validation error

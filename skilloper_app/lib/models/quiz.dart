@@ -1,3 +1,5 @@
+import 'collection.dart';
+
 class Question {
   final int id;
   final String questionType;
@@ -81,6 +83,7 @@ class QuizSummary {
   final int questionCount;
   final int? collectionId;
   final String? collectionName;
+  final List<CollectionBreadcrumb> collectionAncestors;
 
   const QuizSummary({
     required this.id,
@@ -93,6 +96,7 @@ class QuizSummary {
     required this.questionCount,
     this.collectionId,
     this.collectionName,
+    this.collectionAncestors = const [],
   });
 
   factory QuizSummary.fromJson(Map<String, dynamic> json) {
@@ -113,6 +117,8 @@ class QuizSummary {
       );
     }
 
+    final ancestorsJson = json['collection_ancestors'] as List<dynamic>?;
+
     return QuizSummary(
       id: id is int ? id : int.parse(id.toString()),
       title: title.toString(),
@@ -126,12 +132,25 @@ class QuizSummary {
       questionCount: (json['question_count'] as int?) ?? 0,
       collectionId: json['collection_id'] as int?,
       collectionName: json['collection_name'] as String?,
+      collectionAncestors: ancestorsJson
+              ?.map((a) => CollectionBreadcrumb.fromJson(a as Map<String, dynamic>))
+              .toList() ??
+          const [],
     );
   }
 
   bool get isPracticeMode => type == 'practice';
 
   int get estimatedMinutes => (questionCount * 1.5).ceil();
+
+  /// Returns the full collection path including ancestors and the current collection
+  List<CollectionBreadcrumb> get collectionPath {
+    if (collectionId == null || collectionName == null) return const [];
+    return [
+      ...collectionAncestors,
+      CollectionBreadcrumb(id: collectionId!, name: collectionName!),
+    ];
+  }
 }
 
 class Quiz {

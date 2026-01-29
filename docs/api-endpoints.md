@@ -140,8 +140,7 @@ The endpoints `/quizzes/summaries`, `/attempts`, and `/collections` support pagi
 **Additional collection parameters:**
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `parent_id` | int | Filter by parent collection |
-| `root_only` | bool | Only return root collections (no parent) |
+| `parent_id` | int | Filter by parent collection (omit to get root-level collections) |
 
 #### Attempt Tracking Behavior
 
@@ -318,6 +317,11 @@ Response:
       "type": "practice",
       "max_options": 4,
       "question_count": 10,
+      "collection_id": 2,
+      "collection_name": "Web Development",
+      "collection_ancestors": [
+        {"id": 1, "name": "Programming"}
+      ],
       "created_at": "2025-01-15T10:00:00Z",
       "updated_at": "2025-01-15T10:00:00Z"
     }
@@ -330,6 +334,11 @@ Response:
   }
 }
 ```
+
+**Quiz summary fields:**
+- `collection_id`: ID of the quiz's collection (null if uncategorized)
+- `collection_name`: Name of the quiz's collection
+- `collection_ancestors`: Parent collections from root to parent (for nested collections)
 
 ### Import Quiz from File
 
@@ -378,7 +387,11 @@ curl http://localhost:8080/api/v1/collections \
   -H "Authorization: Bearer <token>"
 
 # With filters
-curl "http://localhost:8080/api/v1/collections?search=go&sort=name_asc&root_only=true" \
+curl "http://localhost:8080/api/v1/collections?search=go&sort=name_asc" \
+  -H "Authorization: Bearer <token>"
+
+# Get subcollections of a specific collection
+curl "http://localhost:8080/api/v1/collections?parent_id=1" \
   -H "Authorization: Bearer <token>"
 ```
 
@@ -390,9 +403,10 @@ Response:
       "id": 1,
       "parent_id": null,
       "name": "Go Fundamentals",
-      "description": "Basic Go programming concepts",
       "quiz_count": 5,
-      "subcollection_count": 2,
+      "total_quiz_count": 12,
+      "child_count": 2,
+      "ancestors": [],
       "created_at": "2025-01-15T10:00:00Z",
       "updated_at": "2025-01-15T10:00:00Z"
     }
@@ -406,18 +420,24 @@ Response:
 }
 ```
 
+**Collection fields:**
+- `quiz_count`: Number of quizzes directly in this collection
+- `total_quiz_count`: Total quizzes including all descendants
+- `child_count`: Number of direct subcollections
+- `ancestors`: Breadcrumb chain from root to parent (for nested collections)
+
 ### Create Collection
 ```bash
 curl -X POST http://localhost:8080/api/v1/collections \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
-  -d '{"name": "Go Fundamentals", "description": "Basic Go concepts"}'
+  -d '{"name": "Go Fundamentals"}'
 
 # With parent (subcollection)
 curl -X POST http://localhost:8080/api/v1/collections \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
-  -d '{"name": "Concurrency", "description": "Goroutines and channels", "parent_id": 1}'
+  -d '{"name": "Concurrency", "parent_id": 1}'
 ```
 
 ### Update Collection
@@ -425,7 +445,7 @@ curl -X POST http://localhost:8080/api/v1/collections \
 curl -X PUT http://localhost:8080/api/v1/collections/1 \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
-  -d '{"name": "Go Basics", "description": "Updated description"}'
+  -d '{"name": "Go Basics"}'
 ```
 
 ### Delete Collection

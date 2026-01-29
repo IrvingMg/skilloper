@@ -92,16 +92,17 @@ type QuestionRequest struct {
 }
 
 type QuizSummary struct {
-	ID             uint      `json:"id"`
-	Title          string    `json:"title"`
-	Description    string    `json:"description"`
-	Type           string    `json:"type"`
-	MaxOptions     int       `json:"max_options"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
-	QuestionCount  int       `json:"question_count"`
-	CollectionID   *uint     `json:"collection_id,omitempty"`
-	CollectionName *string   `json:"collection_name,omitempty"`
+	ID                  uint                   `json:"id"`
+	Title               string                 `json:"title"`
+	Description         string                 `json:"description"`
+	Type                string                 `json:"type"`
+	MaxOptions          int                    `json:"max_options"`
+	CreatedAt           time.Time              `json:"created_at"`
+	UpdatedAt           time.Time              `json:"updated_at"`
+	QuestionCount       int                    `json:"question_count"`
+	CollectionID        *uint                  `json:"collection_id,omitempty"`
+	CollectionName      *string                `json:"collection_name,omitempty"`
+	CollectionAncestors []CollectionBreadcrumb `json:"collection_ancestors,omitempty"`
 }
 
 // questionResponseBase contains shared fields for question responses (unexported, for embedding only)

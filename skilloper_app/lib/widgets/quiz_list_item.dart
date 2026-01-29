@@ -21,32 +21,34 @@ class QuizListItem extends StatelessWidget {
     super.key,
   });
 
-  Widget? _buildCollectionBadge(bool isNarrowScreen) {
-    if (quiz.collectionName == null || quiz.collectionId == null) {
-      return null;
-    }
+  Widget? _buildCollectionBadges(bool isNarrowScreen) {
+    final path = quiz.collectionPath;
+    if (path.isEmpty) return null;
 
-    final color = AppColors.getCollectionColor(quiz.collectionId!);
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: isNarrowScreen ? 6 : 8,
-          vertical: isNarrowScreen ? 2 : 3,
-        ),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          quiz.collectionName!,
-          style: TextStyle(
-            fontSize: isNarrowScreen ? 10 : 11,
-            color: color,
-            fontWeight: FontWeight.w500,
+    return Wrap(
+      spacing: 4,
+      runSpacing: 4,
+      children: path.map((breadcrumb) {
+        final color = AppColors.getCollectionColor(breadcrumb.id);
+        return Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: isNarrowScreen ? 6 : 8,
+            vertical: isNarrowScreen ? 2 : 3,
           ),
-        ),
-      ),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            breadcrumb.name,
+            style: TextStyle(
+              fontSize: isNarrowScreen ? 10 : 11,
+              color: color,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -188,11 +190,10 @@ class QuizListItem extends StatelessWidget {
                             ],
                           ),
                         ],
-                        // Collection badge (only shown when quiz has a collection)
-                        if (quiz.collectionName != null &&
-                            quiz.collectionId != null) ...[
+                        // Collection badges (shows full path: ancestors + current)
+                        if (quiz.collectionPath.isNotEmpty) ...[
                           const SizedBox(height: AppSpacing.sm),
-                          _buildCollectionBadge(isNarrowScreen)!,
+                          _buildCollectionBadges(isNarrowScreen)!,
                         ],
                       ],
                     ),

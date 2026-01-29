@@ -608,6 +608,7 @@ class ApiService {
     int offset = 0,
     String search = '',
     String sort = '',
+    int? parentId,
   }) async {
     try {
       final queryParams = <String, String>{
@@ -619,6 +620,9 @@ class ApiService {
       }
       if (sort.isNotEmpty) {
         queryParams['sort'] = sort;
+      }
+      if (parentId != null) {
+        queryParams['parent_id'] = parentId.toString();
       }
 
       final uri = Uri.parse(

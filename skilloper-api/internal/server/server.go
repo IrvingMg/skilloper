@@ -121,8 +121,8 @@ func (s *Server) setupServices() {
 	s.log.Info("Setting up services and handlers")
 
 	s.authService = services.NewAuthService(s.db, s.config.JWTSecret, s.config.JWTExpiry, s.config.RefreshTokenExpiry, s.log)
-	quizService := services.NewQuizService(s.db, s.log)
 	collectionService := services.NewCollectionService(s.db, s.log)
+	quizService := services.NewQuizService(s.db, s.log, collectionService)
 	attemptService := services.NewAttemptService(s.db, s.log)
 	answerService := services.NewAnswerService(s.db, s.log)
 	healthService := services.NewHealthService()

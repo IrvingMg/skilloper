@@ -22,14 +22,16 @@ func escapeLikePattern(s string) string {
 }
 
 type QuizService struct {
-	db  *gorm.DB
-	log *zap.Logger
+	db                *gorm.DB
+	log               *zap.Logger
+	collectionService *CollectionService
 }
 
-func NewQuizService(db *gorm.DB, log *zap.Logger) *QuizService {
+func NewQuizService(db *gorm.DB, log *zap.Logger, collectionService *CollectionService) *QuizService {
 	return &QuizService{
-		db:  db,
-		log: log,
+		db:                db,
+		log:               log,
+		collectionService: collectionService,
 	}
 }
 
@@ -54,8 +56,19 @@ func (s *QuizService) GetPaginatedSummaries(params models.PaginationParams, user
 		baseQuery = baseQuery.Where("type = ?", params.Type)
 	}
 
+	// When filtering by collection, include quizzes from all descendant collections
+	var collectionIDs []uint
 	if params.CollectionID != nil {
-		baseQuery = baseQuery.Where("collection_id = ?", *params.CollectionID)
+		collectionIDs = append(collectionIDs, *params.CollectionID)
+		if s.collectionService != nil {
+			descendantIDs, err := s.collectionService.GetDescendantIDs(*params.CollectionID, userID)
+			if err != nil {
+				s.log.Warn("Failed to get descendant collection IDs", zap.Uintp("collection_id", params.CollectionID), zap.Error(err))
+			} else {
+				collectionIDs = append(collectionIDs, descendantIDs...)
+			}
+		}
+		baseQuery = baseQuery.Where("collection_id IN ?", collectionIDs)
 	}
 
 	var totalCount int64
@@ -84,7 +97,7 @@ func (s *QuizService) GetPaginatedSummaries(params models.PaginationParams, user
 		result = result.Where("quizzes.type = ?", params.Type)
 	}
 	if params.CollectionID != nil {
-		result = result.Where("quizzes.collection_id = ?", *params.CollectionID)
+		result = result.Where("quizzes.collection_id IN ?", collectionIDs)
 	}
 
 	result = result.Order(params.GetQuizOrderBy()).
@@ -96,19 +109,40 @@ func (s *QuizService) GetPaginatedSummaries(params models.PaginationParams, user
 		return models.PaginatedQuizSummaries{}, apperrors.ErrFetchQuizzesFailed
 	}
 
+	// Batch fetch ancestors for all unique collection IDs
+	var ancestorCache map[uint][]models.CollectionBreadcrumb
+	if s.collectionService != nil {
+		uniqueCollectionIDs := make([]uint, 0)
+		seen := make(map[uint]bool)
+		for _, row := range rows {
+			if row.CollectionID != nil && !seen[*row.CollectionID] {
+				uniqueCollectionIDs = append(uniqueCollectionIDs, *row.CollectionID)
+				seen[*row.CollectionID] = true
+			}
+		}
+		ancestorCache = s.collectionService.GetAncestorsBatch(uniqueCollectionIDs)
+	} else {
+		ancestorCache = make(map[uint][]models.CollectionBreadcrumb)
+	}
+
 	summaries := make([]models.QuizSummary, 0, len(rows))
 	for _, row := range rows {
+		var ancestors []models.CollectionBreadcrumb
+		if row.CollectionID != nil {
+			ancestors = ancestorCache[*row.CollectionID]
+		}
 		summaries = append(summaries, models.QuizSummary{
-			ID:             row.ID,
-			Title:          row.Title,
-			Description:    row.Description,
-			Type:           row.Type,
-			MaxOptions:     row.MaxOptions,
-			CreatedAt:      row.CreatedAt,
-			UpdatedAt:      row.UpdatedAt,
-			QuestionCount:  int(row.QuestionCount),
-			CollectionID:   row.CollectionID,
-			CollectionName: row.CollectionName,
+			ID:                  row.ID,
+			Title:               row.Title,
+			Description:         row.Description,
+			Type:                row.Type,
+			MaxOptions:          row.MaxOptions,
+			CreatedAt:           row.CreatedAt,
+			UpdatedAt:           row.UpdatedAt,
+			QuestionCount:       int(row.QuestionCount),
+			CollectionID:        row.CollectionID,
+			CollectionName:      row.CollectionName,
+			CollectionAncestors: ancestors,
 		})
 	}
 

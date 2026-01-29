@@ -18,21 +18,32 @@ var validCollectionSorts = map[string]string{
 type Collection struct {
 	ID        uint      `json:"id" gorm:"primaryKey"`
 	UserID    uint      `json:"user_id" gorm:"not null;index;constraint:OnDelete:CASCADE"`
+	ParentID  *uint     `json:"parent_id,omitempty" gorm:"index;constraint:OnDelete:CASCADE"`
 	Name      string    `json:"name" gorm:"not null;size:100"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+type CollectionBreadcrumb struct {
+	ID   uint   `json:"id"`
+	Name string `json:"name"`
+}
+
 type CollectionSummary struct {
-	ID        uint      `json:"id"`
-	Name      string    `json:"name"`
-	QuizCount int       `json:"quiz_count"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID             uint                   `json:"id"`
+	ParentID       *uint                  `json:"parent_id,omitempty"`
+	Name           string                 `json:"name"`
+	QuizCount      int                    `json:"quiz_count"`
+	TotalQuizCount int                    `json:"total_quiz_count"`
+	ChildCount     int                    `json:"child_count"`
+	Ancestors      []CollectionBreadcrumb `json:"ancestors,omitempty"`
+	CreatedAt      time.Time              `json:"created_at"`
+	UpdatedAt      time.Time              `json:"updated_at"`
 }
 
 type CreateCollectionRequest struct {
-	Name string `json:"name" binding:"required"`
+	Name     string `json:"name" binding:"required"`
+	ParentID *uint  `json:"parent_id,omitempty"`
 }
 
 type UpdateQuizCollectionRequest struct {
@@ -41,10 +52,11 @@ type UpdateQuizCollectionRequest struct {
 
 // CollectionPaginationParams holds pagination and filter parameters for collections
 type CollectionPaginationParams struct {
-	Limit  int    `form:"limit"`
-	Offset int    `form:"offset"`
-	Search string `form:"search"`
-	Sort   string `form:"sort"`
+	Limit    int    `form:"limit"`
+	Offset   int    `form:"offset"`
+	Search   string `form:"search"`
+	Sort     string `form:"sort"`
+	ParentID *uint  `form:"parent_id"`
 }
 
 // Validate ensures pagination params are within acceptable bounds

@@ -10,6 +10,7 @@ import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/debouncer.dart';
 import '../utils/snackbar_helper.dart';
+import '../widgets/breadcrumb_navigation.dart';
 import '../widgets/collection_chip.dart';
 import '../widgets/collection_dialog.dart';
 import '../widgets/move_to_collection_sheet.dart';
@@ -27,7 +28,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => HomeScreenState();
 }
 
-class HomeScreenState extends State<HomeScreen> {
+class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
   final ApiService _apiService = ApiService();
 
   void refresh() {
@@ -66,7 +67,10 @@ class HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadCollections() async {
     try {
-      final result = await _apiService.getCollections(limit: 100);
+      final result = await _apiService.getCollections(
+        limit: 100,
+        parentId: currentParentId,
+      );
       if (mounted) {
         setState(() {
           _collections = result.data;
@@ -242,18 +246,29 @@ class HomeScreenState extends State<HomeScreen> {
     unawaited(_loadQuizzes(refresh: true));
   }
 
-  void _onCollectionSelected(int? collectionId) {
-    if (_selectedCollectionId == collectionId) return;
-    setState(() {
-      _selectedCollectionId = collectionId;
-    });
+  void _onCollectionNavigate() {
+    _selectedCollectionId = currentParentId;
+    unawaited(_loadCollections());
     unawaited(_loadQuizzes(refresh: true));
+  }
+
+  void _handleNavigateIntoCollection(Collection collection) {
+    navigateIntoCollection(collection, onNavigate: _onCollectionNavigate);
+  }
+
+  void _handleNavigateToBreadcrumb(int index) {
+    navigateToBreadcrumb(index, onNavigate: _onCollectionNavigate);
+  }
+
+  void _handleNavigateUp() {
+    navigateUp(onNavigate: _onCollectionNavigate);
   }
 
   bool get _hasActiveFilters =>
       _searchQuery.isNotEmpty ||
       _typeFilter.isNotEmpty ||
-      _selectedCollectionId != null;
+      _selectedCollectionId != null ||
+      currentParentId != null;
 
   void _clearAllFilters() {
     _searchController.clear();
@@ -262,7 +277,10 @@ class HomeScreenState extends State<HomeScreen> {
       _typeFilter = '';
       _selectedCollectionId = null;
     });
-    _loadQuizzes(refresh: true);
+    resetNavigation(onNavigate: () {
+      _loadCollections();
+      _loadQuizzes(refresh: true);
+    });
   }
 
   Future<void> _createCollection() async {
@@ -274,7 +292,11 @@ class HomeScreenState extends State<HomeScreen> {
     if (result == null || !mounted) return;
 
     try {
-      await _apiService.createCollection(result);
+      final data = <String, dynamic>{...result};
+      if (currentParentId != null) {
+        data['parent_id'] = currentParentId;
+      }
+      await _apiService.createCollection(data);
       if (!mounted) return;
 
       showSuccessSnackBar(context, 'Collection created');
@@ -627,7 +649,6 @@ class HomeScreenState extends State<HomeScreen> {
     final selectedCollectionId = await showModalBottomSheet<int?>(
       context: context,
       builder: (context) => MoveToCollectionSheet(
-        collections: _collections,
         currentCollectionId: quiz.collectionId,
       ),
     );
@@ -689,35 +710,54 @@ class HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
-              // Collections section
+              // Collections section with breadcrumb navigation
               const SizedBox(height: AppSpacing.lg),
+
+              // Breadcrumb row (only show when navigated into subcollections)
+              if (breadcrumbs.isNotEmpty) ...[
+                BreadcrumbNavigation(
+                  breadcrumbs: breadcrumbs,
+                  onNavigateUp: _handleNavigateUp,
+                  onNavigateToBreadcrumb: _handleNavigateToBreadcrumb,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+              ],
+
+              // Collection chips row
               SizedBox(
                 height: 36,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
-                  itemCount: _collections.length + 2, // +1 for "All" chip, +1 for "Add" chip
+                  // At root level: "All" chip + collections + "Add" chip
+                  // Inside subcollection: collections + "Add" chip (breadcrumbs show "All")
+                  itemCount: breadcrumbs.isEmpty
+                      ? _collections.length + 2
+                      : _collections.length + 1,
                   separatorBuilder: (context, index) =>
                       const SizedBox(width: AppSpacing.sm),
                   itemBuilder: (context, index) {
-                    // First: "All" chip
-                    if (index == 0) {
+                    // At root level, show "All" chip first
+                    if (breadcrumbs.isEmpty && index == 0) {
                       return CollectionChip(
                         label: 'All',
                         isSelected: _selectedCollectionId == null,
-                        onTap: () => _onCollectionSelected(null),
+                        onTap: () {}, // Already at root, no-op
                       );
                     }
+                    // Adjust index for collections when "All" chip is shown
+                    final collectionIndex = breadcrumbs.isEmpty ? index - 1 : index;
                     // Last: "Add" chip
-                    if (index == _collections.length + 1) {
+                    if (collectionIndex == _collections.length) {
                       return AddCollectionChip(onTap: _createCollection);
                     }
                     // Collection chips with actions
-                    final collection = _collections[index - 1];
+                    final collection = _collections[collectionIndex];
                     return CollectionChip(
                       label: collection.name,
                       isSelected: _selectedCollectionId == collection.id,
                       color: AppColors.getCollectionColor(collection.id),
-                      onTap: () => _onCollectionSelected(collection.id),
+                      hasChildren: collection.hasChildren,
+                      onTap: () => _handleNavigateIntoCollection(collection),
                       onRename: () => _renameCollection(collection),
                       onDelete: () => _deleteCollection(collection),
                     );

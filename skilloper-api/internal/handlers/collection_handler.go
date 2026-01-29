@@ -45,7 +45,8 @@ func (h *CollectionHandler) GetCollections(c *gin.Context) {
 		zap.Int("limit", params.Limit),
 		zap.Int("offset", params.Offset),
 		zap.String("search", params.Search),
-		zap.String("sort", params.Sort))
+		zap.String("sort", params.Sort),
+		zap.Uintp("parent_id", params.ParentID))
 
 	result, err := h.service.GetPaginatedSummaries(params, userID, isAdmin)
 	if err != nil {
