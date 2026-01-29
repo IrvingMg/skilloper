@@ -29,6 +29,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
+  static const double _collectionsScrollDelta = 200;
+
   final ApiService _apiService = ApiService();
 
   void refresh() {
@@ -37,9 +39,13 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
   }
 
   final ScrollController _scrollController = ScrollController();
+  final ScrollController _collectionsScrollController = ScrollController();
   final Debouncer _searchDebouncer = Debouncer(
     delay: const Duration(milliseconds: 300),
   );
+
+  bool _canScrollLeft = false;
+  bool _canScrollRight = false;
 
   List<QuizSummary> _quizzes = [];
   List<Collection> _collections = [];
@@ -61,8 +67,57 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    _collectionsScrollController.addListener(_updateScrollArrows);
     _loadQuizzes(refresh: true);
     _loadCollections();
+  }
+
+  void _updateScrollArrows() {
+    if (!_collectionsScrollController.hasClients) return;
+    final position = _collectionsScrollController.position;
+    final canLeft = position.pixels > 0;
+    final canRight = position.pixels < position.maxScrollExtent;
+    if (canLeft != _canScrollLeft || canRight != _canScrollRight) {
+      setState(() {
+        _canScrollLeft = canLeft;
+        _canScrollRight = canRight;
+      });
+    }
+  }
+
+  void _scrollCollections(double delta) {
+    final position = _collectionsScrollController.position;
+    final target = (position.pixels + delta).clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    _collectionsScrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  Widget _buildScrollArrow(
+    BuildContext context, {
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Icon(
+            icon,
+            size: 24,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _loadCollections() async {
@@ -75,6 +130,9 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
         setState(() {
           _collections = result.data;
         });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _updateScrollArrows();
+        });
       }
     } on Exception catch (e) {
       // Collections are optional for the move menu - log and continue
@@ -86,6 +144,8 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _collectionsScrollController.removeListener(_updateScrollArrows);
+    _collectionsScrollController.dispose();
     _searchController.dispose();
     _searchDebouncer.dispose();
     super.dispose();
@@ -723,45 +783,78 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
                 const SizedBox(height: AppSpacing.sm),
               ],
 
-              // Collection chips row
+              // Collection chips row with scroll arrows
               SizedBox(
                 height: 36,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  // At root level: "All" chip + collections + "Add" chip
-                  // Inside subcollection: collections + "Add" chip (breadcrumbs show "All")
-                  itemCount: breadcrumbs.isEmpty
-                      ? _collections.length + 2
-                      : _collections.length + 1,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(width: AppSpacing.sm),
-                  itemBuilder: (context, index) {
-                    // At root level, show "All" chip first
-                    if (breadcrumbs.isEmpty && index == 0) {
-                      return CollectionChip(
-                        label: 'All',
-                        isSelected: _selectedCollectionId == null,
-                        onTap: () {}, // Already at root, no-op
-                      );
-                    }
-                    // Adjust index for collections when "All" chip is shown
-                    final collectionIndex = breadcrumbs.isEmpty ? index - 1 : index;
-                    // Last: "Add" chip
-                    if (collectionIndex == _collections.length) {
-                      return AddCollectionChip(onTap: _createCollection);
-                    }
-                    // Collection chips with actions
-                    final collection = _collections[collectionIndex];
-                    return CollectionChip(
-                      label: collection.name,
-                      isSelected: _selectedCollectionId == collection.id,
-                      color: AppColors.getCollectionColor(collection.id),
-                      hasChildren: collection.hasChildren,
-                      onTap: () => _handleNavigateIntoCollection(collection),
-                      onRename: () => _renameCollection(collection),
-                      onDelete: () => _deleteCollection(collection),
-                    );
-                  },
+                child: Row(
+                  children: [
+                    Visibility(
+                      visible: _canScrollLeft,
+                      maintainSize: true,
+                      maintainAnimation: true,
+                      maintainState: true,
+                      child: _buildScrollArrow(
+                        context,
+                        icon: Icons.chevron_left,
+                        onTap: () =>
+                            _scrollCollections(-_collectionsScrollDelta),
+                      ),
+                    ),
+                    Expanded(
+                      child: ListView.separated(
+                        controller: _collectionsScrollController,
+                        scrollDirection: Axis.horizontal,
+                        // At root level: "All" chip + collections + "Add" chip
+                        // Inside subcollection: collections + "Add" chip (breadcrumbs show "All")
+                        itemCount: breadcrumbs.isEmpty
+                            ? _collections.length + 2
+                            : _collections.length + 1,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(width: AppSpacing.sm),
+                        itemBuilder: (context, index) {
+                          // At root level, show "All" chip first
+                          if (breadcrumbs.isEmpty && index == 0) {
+                            return CollectionChip(
+                              label: 'All',
+                              isSelected: _selectedCollectionId == null,
+                              onTap: () {}, // Already at root, no-op
+                            );
+                          }
+                          // Adjust index for collections when "All" chip is shown
+                          final collectionIndex =
+                              breadcrumbs.isEmpty ? index - 1 : index;
+                          // Last: "Add" chip
+                          if (collectionIndex == _collections.length) {
+                            return AddCollectionChip(onTap: _createCollection);
+                          }
+                          // Collection chips with actions
+                          final collection = _collections[collectionIndex];
+                          return CollectionChip(
+                            label: collection.name,
+                            isSelected: _selectedCollectionId == collection.id,
+                            color: AppColors.getCollectionColor(collection.id),
+                            hasChildren: collection.hasChildren,
+                            onTap: () =>
+                                _handleNavigateIntoCollection(collection),
+                            onRename: () => _renameCollection(collection),
+                            onDelete: () => _deleteCollection(collection),
+                          );
+                        },
+                      ),
+                    ),
+                    Visibility(
+                      visible: _canScrollRight,
+                      maintainSize: true,
+                      maintainAnimation: true,
+                      maintainState: true,
+                      child: _buildScrollArrow(
+                        context,
+                        icon: Icons.chevron_right,
+                        onTap: () =>
+                            _scrollCollections(_collectionsScrollDelta),
+                      ),
+                    ),
+                  ],
                 ),
               ),
 
