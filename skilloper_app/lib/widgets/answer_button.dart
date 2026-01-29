@@ -35,8 +35,7 @@ class AnswerButton extends StatelessWidget {
     Color borderColor = AppColors.outline;
     Color backgroundColor = AppColors.surfaceWhite;
     Color textColor = AppColors.textPrimary;
-    Color labelColor = AppColors.textTertiary;
-    Color labelBackgroundColor = AppColors.surfaceContainer;
+    Color checkboxFillColor = AppColors.surfaceContainer;
     Widget? trailingIcon;
 
     if (isCorrect) {
@@ -44,8 +43,7 @@ class AnswerButton extends StatelessWidget {
       borderColor = AppColors.success;
       backgroundColor = AppColors.successContainer;
       textColor = AppColors.onSuccessContainer;
-      labelColor = AppColors.textOnPrimary;
-      labelBackgroundColor = AppColors.success;
+      checkboxFillColor = AppColors.success;
       trailingIcon = const Icon(
         Icons.check_circle,
         color: AppColors.success,
@@ -56,8 +54,7 @@ class AnswerButton extends StatelessWidget {
       borderColor = AppColors.success.withValues(alpha: 0.5);
       backgroundColor = AppColors.surfaceWhite; // No green fill
       textColor = AppColors.textPrimary;
-      labelColor = AppColors.success;
-      labelBackgroundColor = AppColors.surfaceWhite;
+      // checkboxFillColor stays default - checkbox renders transparent for this state
       trailingIcon = Icon(
         Icons.check_circle_outline,
         color: AppColors.success.withValues(alpha: 0.7),
@@ -68,8 +65,7 @@ class AnswerButton extends StatelessWidget {
       borderColor = AppColors.error;
       backgroundColor = AppColors.errorContainer;
       textColor = AppColors.onErrorContainer;
-      labelColor = AppColors.textOnPrimary;
-      labelBackgroundColor = AppColors.error;
+      checkboxFillColor = AppColors.error;
       trailingIcon = const Icon(
         Icons.cancel,
         color: AppColors.error,
@@ -80,8 +76,7 @@ class AnswerButton extends StatelessWidget {
       borderColor = AppColors.primary;
       backgroundColor = AppColors.primaryContainer;
       textColor = AppColors.onPrimaryContainer;
-      labelColor = AppColors.textOnPrimary;
-      labelBackgroundColor = AppColors.primary;
+      checkboxFillColor = AppColors.primary;
     }
 
     final String stateLabel = isCorrect
@@ -94,9 +89,7 @@ class AnswerButton extends StatelessWidget {
         ? 'Selected'
         : '';
 
-    final String optionLabel = isMultipleChoice
-        ? 'Option ${index + 1}'
-        : 'Option ${String.fromCharCode(65 + index)}';
+    final String optionLabel = 'Option ${index + 1}';
 
     return Semantics(
       button: true,
@@ -129,12 +122,13 @@ class AnswerButton extends StatelessWidget {
             ),
             child: Row(
               children: [
+                // Keyboard key hint (shows shortcut number)
+                _buildKeyboardHint(),
+
                 if (isMultipleChoice) ...[
+                  const SizedBox(width: AppSpacing.sm),
                   // Checkbox indicator for multiple choice
-                  _buildCheckbox(labelBackgroundColor, borderColor),
-                ] else ...[
-                  // Letter badge for single choice (A, B, C, D)
-                  _buildLetterBadge(labelBackgroundColor, labelColor),
+                  _buildCheckbox(checkboxFillColor, borderColor),
                 ],
 
                 const SizedBox(width: AppSpacing.md + 2),
@@ -167,18 +161,34 @@ class AnswerButton extends StatelessWidget {
     );
   }
 
-  Widget _buildLetterBadge(Color backgroundColor, Color textColor) {
+  Widget _buildKeyboardHint() {
+    // Styled like a keyboard key - subtle hint for keyboard shortcuts
+    // Uses own background to stay visible on colored answer states
     return Container(
-      width: 28,
-      height: 28,
-      decoration: BoxDecoration(color: backgroundColor, shape: BoxShape.circle),
+      width: 22,
+      height: 22,
+      decoration: BoxDecoration(
+        color: AppColors.surfaceWhite,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: AppColors.outline.withValues(alpha: 0.6),
+          width: 1,
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x1A000000), // ~10% black for consistent shadow
+            offset: Offset(0, 1),
+            blurRadius: 0,
+          ),
+        ],
+      ),
       child: Center(
         child: Text(
-          String.fromCharCode(65 + index), // A, B, C, D
-          style: TextStyle(
-            color: textColor,
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
+          '${index + 1}',
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w500,
+            fontSize: 12,
           ),
         ),
       ),
