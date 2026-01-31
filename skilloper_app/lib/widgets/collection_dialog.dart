@@ -13,6 +13,7 @@ class CollectionDialog extends StatefulWidget {
 
 class _CollectionDialogState extends State<CollectionDialog> {
   late TextEditingController _nameController;
+  final _formKey = GlobalKey<FormState>();
 
   @override
   void initState() {
@@ -34,14 +35,23 @@ class _CollectionDialogState extends State<CollectionDialog> {
       title: Text(_isEditing ? 'Rename Collection' : 'Create Collection'),
       content: SizedBox(
         width: 300,
-        child: TextField(
-          controller: _nameController,
-          decoration: const InputDecoration(
-            labelText: 'Name',
-            hintText: 'e.g., Go Fundamentals',
+        child: Form(
+          key: _formKey,
+          child: TextFormField(
+            controller: _nameController,
+            decoration: const InputDecoration(
+              labelText: 'Name',
+              hintText: 'e.g., Go Fundamentals',
+            ),
+            autofocus: true,
+            maxLength: 100,
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Name is required';
+              }
+              return null;
+            },
           ),
-          autofocus: true,
-          maxLength: 100,
         ),
       ),
       actions: [
@@ -51,14 +61,9 @@ class _CollectionDialogState extends State<CollectionDialog> {
         ),
         ElevatedButton(
           onPressed: () {
-            final name = _nameController.text.trim();
-            if (name.isEmpty) {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(const SnackBar(content: Text('Name is required')));
-              return;
+            if (_formKey.currentState!.validate()) {
+              Navigator.pop(context, {'name': _nameController.text.trim()});
             }
-            Navigator.pop(context, {'name': name});
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,

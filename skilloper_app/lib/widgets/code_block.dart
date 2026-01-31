@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_code_view/flutter_code_view.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
+import '../utils/snackbar_helper.dart';
 import '../utils/web_clipboard.dart';
-import 'copy_feedback.dart';
 
 /// Code block widget for displaying code snippets in quiz questions
 class CodeBlock extends StatelessWidget {

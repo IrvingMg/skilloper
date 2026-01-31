@@ -10,6 +10,7 @@ import 'services/auth_service.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_icons.dart';
 import 'theme/app_theme.dart';
+import 'utils/snackbar_helper.dart';
 
 void main() {
   runApp(const SkiloperApp());
@@ -75,12 +76,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Session expired. Please log in again.'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        showWarningSnackBar(context, 'Session expired. Please log in again.');
       }
       _isHandlingSessionExpiry = false;
     });

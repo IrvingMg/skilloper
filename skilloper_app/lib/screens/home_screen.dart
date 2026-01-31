@@ -315,9 +315,7 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
       if (_pendingRefresh) {
         unawaited(_loadQuizzes(refresh: true));
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to load more: $e')));
+        showErrorSnackBar(context, 'Failed to load more: $e');
       }
     }
   }
@@ -786,9 +784,7 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
     } on Exception catch (e) {
       if (!mounted) return;
       Navigator.pop(context);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error loading quiz: $e')));
+      showErrorSnackBar(context, 'Error loading quiz: $e');
     }
   }
 

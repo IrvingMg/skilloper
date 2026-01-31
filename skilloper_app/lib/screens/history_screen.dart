@@ -8,6 +8,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
 import '../utils/date_formatter.dart';
 import '../utils/debouncer.dart';
+import '../utils/snackbar_helper.dart';
 import '../widgets/search_filter_bar.dart';
 import 'history_detail_screen.dart';
 
@@ -155,9 +156,7 @@ class HistoryScreenState extends State<HistoryScreen> {
       setState(() {
         _isLoadingMore = false;
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to load more: $e')));
+      showErrorSnackBar(context, 'Failed to load more: $e');
     }
   }
 

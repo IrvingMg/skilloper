@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
+import '../utils/snackbar_helper.dart';
 
 class ProfileScreen extends StatefulWidget {
   final VoidCallback onLogout;
@@ -294,19 +295,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
           if (mounted) {
             scaffoldMessenger.showSnackBar(
-              const SnackBar(
-                content: Text('Password updated successfully'),
-                backgroundColor: Colors.green,
+              buildStyledSnackBar(
+                message: 'Password updated successfully',
+                type: SnackBarType.success,
               ),
             );
           }
         } on AuthException catch (e) {
           if (mounted) {
             scaffoldMessenger.showSnackBar(
-              SnackBar(
-                content: Text(e.message),
-                backgroundColor: AppColors.error,
-              ),
+              buildStyledSnackBar(message: e.message, type: SnackBarType.error),
             );
           }
         } finally {
@@ -386,21 +384,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
           if (mounted) {
             scaffoldMessenger.showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Cleared $deletedCount quiz attempt${deletedCount == 1 ? '' : 's'}',
-                ),
-                backgroundColor: Colors.green,
+              buildStyledSnackBar(
+                message:
+                    'Cleared $deletedCount quiz attempt${deletedCount == 1 ? '' : 's'}',
+                type: SnackBarType.success,
               ),
             );
           }
         } on AuthException catch (e) {
           if (mounted) {
             scaffoldMessenger.showSnackBar(
-              SnackBar(
-                content: Text(e.message),
-                backgroundColor: AppColors.error,
-              ),
+              buildStyledSnackBar(message: e.message, type: SnackBarType.error),
             );
           }
         } finally {
@@ -502,18 +496,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         } on AuthException catch (e) {
           if (mounted) {
             scaffoldMessenger.showSnackBar(
-              SnackBar(
-                content: Text(e.message),
-                backgroundColor: AppColors.error,
-              ),
+              buildStyledSnackBar(message: e.message, type: SnackBarType.error),
             );
           }
         } on Exception catch (e) {
           if (mounted) {
             scaffoldMessenger.showSnackBar(
-              SnackBar(
-                content: Text('Failed to delete account: $e'),
-                backgroundColor: AppColors.error,
+              buildStyledSnackBar(
+                message: 'Failed to delete account: $e',
+                type: SnackBarType.error,
               ),
             );
           }

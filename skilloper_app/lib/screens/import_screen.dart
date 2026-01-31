@@ -7,6 +7,7 @@ import '../models/quiz.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
+import '../utils/snackbar_helper.dart';
 import '../widgets/numbered_step.dart';
 import 'import_help_screen.dart';
 
@@ -363,7 +364,6 @@ class _ImportScreenState extends State<ImportScreen> {
       if (importResponse != null) {
         _jsonController.clear();
         _showSuccessDialog(importResponse);
-        _showSnackBar('Quiz imported successfully!', true);
       }
     } on Exception catch (e) {
       if (!mounted) return;
@@ -387,7 +387,7 @@ class _ImportScreenState extends State<ImportScreen> {
         errorInfo['type'] as String,
       );
     } else {
-      _showSnackBar(errorInfo['message'] as String, false);
+      showErrorSnackBar(context, errorInfo['message'] as String);
     }
   }
 
@@ -682,28 +682,6 @@ class _ImportScreenState extends State<ImportScreen> {
           ],
         );
       },
-    );
-  }
-
-  void _showSnackBar(String message, bool isSuccess) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(
-              isSuccess ? Icons.check_circle : Icons.error,
-              color: AppColors.textOnPrimary,
-              size: AppIconSizes.lg,
-            ),
-            const SizedBox(width: 8),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: isSuccess ? AppColors.success : AppColors.error,
-        behavior: SnackBarBehavior.floating,
-        shape: const RoundedRectangleBorder(borderRadius: AppRadius.smAll),
-        duration: const Duration(seconds: 3),
-      ),
     );
   }
 

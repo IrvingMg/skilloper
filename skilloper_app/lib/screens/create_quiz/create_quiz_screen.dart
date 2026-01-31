@@ -5,6 +5,7 @@ import '../../services/api_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_icons.dart';
 import '../../utils/date_formatter.dart';
+import '../../utils/snackbar_helper.dart';
 import 'question_editor_dialog.dart';
 
 class CreateQuizScreen extends StatefulWidget {
@@ -100,7 +101,7 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
       }
     } on Exception catch (e) {
       if (mounted) {
-        _showErrorSnackBar(e.toString());
+        showErrorSnackBar(context, formatErrorMessage(e.toString()));
       }
     } finally {
       if (mounted) {
@@ -237,28 +238,6 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
           ],
         );
       },
-    );
-  }
-
-  void _showErrorSnackBar(String error) {
-    final message = formatErrorMessage(error);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(
-              Icons.error,
-              color: AppColors.textOnPrimary,
-              size: AppIconSizes.lg,
-            ),
-            const SizedBox(width: 8),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-        shape: const RoundedRectangleBorder(borderRadius: AppRadius.smAll),
-      ),
     );
   }
 
