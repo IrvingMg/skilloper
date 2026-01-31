@@ -378,7 +378,7 @@ class ApiService {
     }
   }
 
-  Future<QuizAttempt> startAttempt(StartAttemptRequest request) async {
+  Future<AttemptStartResponse> startAttempt(StartAttemptRequest request) async {
     try {
       final response = await _authenticatedPost(
         Uri.parse('$baseUrl${ApiEndpoints.attempts}'),
@@ -389,7 +389,7 @@ class ApiService {
 
       final Map<String, dynamic> data =
           json.decode(response.body) as Map<String, dynamic>;
-      return QuizAttempt.fromJson(data);
+      return AttemptStartResponse.fromJson(data);
     } on ApiException {
       rethrow;
     } on Exception catch (e) {

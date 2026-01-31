@@ -319,7 +319,10 @@ class _MoveToCollectionSheetState extends State<MoveToCollectionSheet>
                         ListTile(
                           leading: const Icon(Icons.remove_circle_outline),
                           title: const Text('Remove from Collection'),
-                          onTap: () => Navigator.pop(context, UISentinels.removeFromCollection),
+                          onTap: () => Navigator.pop(
+                            context,
+                            UISentinels.removeFromCollection,
+                          ),
                         ),
 
                       // Show flat list when searching, hierarchical otherwise

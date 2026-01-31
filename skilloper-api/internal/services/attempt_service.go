@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/json"
 	"errors"
+	"math/rand/v2"
 	"strings"
 	"time"
 
@@ -26,7 +27,7 @@ func NewAttemptService(db *gorm.DB, log *zap.Logger) *AttemptService {
 	}
 }
 
-func (s *AttemptService) Start(userID uint, req models.StartAttemptRequest) (*models.AttemptResponse, error) {
+func (s *AttemptService) Start(userID uint, req models.StartAttemptRequest) (*models.AttemptStartResponse, error) {
 	if userID == 0 {
 		return nil, apperrors.ErrUnauthorized
 	}
@@ -37,6 +38,9 @@ func (s *AttemptService) Start(userID uint, req models.StartAttemptRequest) (*mo
 	}
 
 	var attempt models.QuizAttempt
+	var displayedOptionsMap map[uint][]string
+	var displayedQuestionsMap map[uint]string
+	var questions []models.Question
 
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		var quiz models.Quiz
@@ -46,6 +50,7 @@ func (s *AttemptService) Start(userID uint, req models.StartAttemptRequest) (*mo
 			}
 			return err
 		}
+		questions = quiz.Questions
 
 		staleThreshold := time.Now().Add(-time.Duration(models.StaleAttemptHours) * time.Hour)
 		if err := tx.Model(&models.QuizAttempt{}).
@@ -66,23 +71,29 @@ func (s *AttemptService) Start(userID uint, req models.StartAttemptRequest) (*mo
 		}
 		attemptNumber := int(existingCount) + 1
 
-		// Generate displayed options for each question (with alternatives applied)
-		displayedOptionsMap := s.generateDisplayedOptions(quiz.Questions)
+		// Generate displayed options and questions for each question (with alternatives applied)
+		displayedOptionsMap, displayedQuestionsMap = s.generateDisplayedData(quiz.Questions)
 		displayedOptionsJSON, err := json.Marshal(displayedOptionsMap)
 		if err != nil {
 			s.log.Warn("Failed to marshal displayed options", zap.Error(err))
 			displayedOptionsJSON = []byte("{}")
 		}
+		displayedQuestionsJSON, err := json.Marshal(displayedQuestionsMap)
+		if err != nil {
+			s.log.Warn("Failed to marshal displayed questions", zap.Error(err))
+			displayedQuestionsJSON = []byte("{}")
+		}
 
 		attempt = models.QuizAttempt{
-			UserID:           userID,
-			QuizID:           req.QuizID,
-			QuizTitle:        quiz.Title,
-			QuizType:         quiz.Type,
-			AttemptNumber:    attemptNumber,
-			Status:           models.AttemptStatusInProgress,
-			TotalCount:       len(quiz.Questions),
-			DisplayedOptions: string(displayedOptionsJSON),
+			UserID:             userID,
+			QuizID:             req.QuizID,
+			QuizTitle:          quiz.Title,
+			QuizType:           quiz.Type,
+			AttemptNumber:      attemptNumber,
+			Status:             models.AttemptStatusInProgress,
+			TotalCount:         len(quiz.Questions),
+			DisplayedOptions:   string(displayedOptionsJSON),
+			DisplayedQuestions: string(displayedQuestionsJSON),
 		}
 
 		if err := tx.Create(&attempt).Error; err != nil {
@@ -100,8 +111,23 @@ func (s *AttemptService) Start(userID uint, req models.StartAttemptRequest) (*mo
 		return nil, apperrors.ErrCreateAttemptFailed
 	}
 
-	response := s.convertToResponse(attempt)
-	return &response, nil
+	// Build displayed questions in the original question order
+	displayedQuestions := make([]models.DisplayedQuestionData, 0, len(questions))
+	for _, q := range questions {
+		displayedQuestions = append(displayedQuestions, models.DisplayedQuestionData{
+			QuestionID:   q.ID,
+			QuestionText: displayedQuestionsMap[q.ID],
+			Options:      displayedOptionsMap[q.ID],
+		})
+	}
+
+	return &models.AttemptStartResponse{
+		ID:                 attempt.ID,
+		QuizID:             attempt.QuizID,
+		Status:             attempt.Status,
+		CreatedAt:          attempt.CreatedAt,
+		DisplayedQuestions: displayedQuestions,
+	}, nil
 }
 
 func (s *AttemptService) Update(userID uint, attemptID uint, req models.UpdateAttemptRequest) (*models.AttemptResponse, error) {
@@ -188,11 +214,19 @@ func (s *AttemptService) complete(userID uint, attemptID uint, answers []models.
 			questionMap[q.ID] = q
 		}
 
-		// Parse stored displayed options from when the attempt was started
+		// Parse stored displayed options and questions from when the attempt was started
 		displayedOptionsMap := make(map[uint][]string)
 		if attempt.DisplayedOptions != "" {
 			if err := json.Unmarshal([]byte(attempt.DisplayedOptions), &displayedOptionsMap); err != nil {
 				s.log.Debug("Failed to unmarshal displayed options",
+					zap.Uint("attempt_id", attemptID),
+					zap.Error(err))
+			}
+		}
+		displayedQuestionsMap := make(map[uint]string)
+		if attempt.DisplayedQuestions != "" {
+			if err := json.Unmarshal([]byte(attempt.DisplayedQuestions), &displayedQuestionsMap); err != nil {
+				s.log.Debug("Failed to unmarshal displayed questions",
 					zap.Uint("attempt_id", attemptID),
 					zap.Error(err))
 			}
@@ -284,10 +318,16 @@ func (s *AttemptService) complete(userID uint, attemptID uint, answers []models.
 				}
 			}
 
+			// Use stored displayed question text, fall back to original if not found
+			questionText := question.QuestionText
+			if displayedText, ok := displayedQuestionsMap[question.ID]; ok && displayedText != "" {
+				questionText = displayedText
+			}
+
 			answer := models.AttemptAnswer{
 				AttemptID:      attemptID,
 				QuestionID:     answerReq.QuestionID,
-				QuestionText:   question.QuestionText,
+				QuestionText:   questionText,
 				QuestionType:   question.QuestionType,
 				UserAnswer:     answerReq.UserAnswer,
 				UserAnswers:    userAnswersJSON,
@@ -469,10 +509,11 @@ func (s *AttemptService) convertToResponse(attempt models.QuizAttempt) models.At
 	}
 }
 
-// generateDisplayedOptions generates the options to display for each question,
-// applying alternative text variants randomly. Returns a map of questionID -> options.
-func (s *AttemptService) generateDisplayedOptions(questions []models.Question) map[uint][]string {
-	result := make(map[uint][]string)
+// generateDisplayedData generates the options and question text to display for each question,
+// applying alternative text variants randomly. Returns maps of questionID -> options and questionID -> question text.
+func (s *AttemptService) generateDisplayedData(questions []models.Question) (map[uint][]string, map[uint]string) {
+	optionsResult := make(map[uint][]string)
+	questionsResult := make(map[uint]string)
 
 	for _, question := range questions {
 		// Parse original options
@@ -485,9 +526,19 @@ func (s *AttemptService) generateDisplayedOptions(questions []models.Question) m
 		}
 
 		options = question.ApplyOptionVariants(options)
+		optionsResult[question.ID] = options
 
-		result[question.ID] = options
+		// Apply alternative question text if available
+		questionText := question.QuestionText
+		if question.AlternativeQuestions != "" {
+			var alternatives []string
+			if err := json.Unmarshal([]byte(question.AlternativeQuestions), &alternatives); err == nil && len(alternatives) > 0 {
+				allTexts := append([]string{questionText}, alternatives...)
+				questionText = allTexts[rand.IntN(len(allTexts))]
+			}
+		}
+		questionsResult[question.ID] = questionText
 	}
 
-	return result
+	return optionsResult, questionsResult
 }

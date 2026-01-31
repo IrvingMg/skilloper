@@ -50,7 +50,7 @@ func (h *AttemptHandler) CreateAttempt(c *gin.Context) {
 
 	h.log.Debug("Successfully created attempt",
 		zap.Uint("id", attempt.ID),
-		zap.Uint("user_id", attempt.UserID))
+		zap.Uint("quiz_id", attempt.QuizID))
 	c.JSON(http.StatusCreated, attempt)
 }
 

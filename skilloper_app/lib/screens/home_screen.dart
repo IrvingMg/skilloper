@@ -429,14 +429,14 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
     final selectedCollectionId = await showModalBottomSheet<int?>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => MoveToCollectionSheet(
-        selectedCount: _selectedQuizIds.length,
-      ),
+      builder: (context) =>
+          MoveToCollectionSheet(selectedCount: _selectedQuizIds.length),
     );
 
     if (selectedCollectionId == null || !mounted) return;
 
-    final targetCollectionId = selectedCollectionId == UISentinels.removeFromCollection
+    final targetCollectionId =
+        selectedCollectionId == UISentinels.removeFromCollection
         ? null
         : selectedCollectionId;
 
@@ -608,8 +608,7 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
       return;
     }
 
-    // Practice mode: load quiz and navigate directly
-    unawaited(_loadAndNavigateToQuiz(summary, attemptId: null));
+    unawaited(_startQuizWithAttempt(summary));
   }
 
   void _showExamConfirmation(QuizSummary summary) {
@@ -656,7 +655,7 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              _startExamWithAttempt(summary);
+              _startQuizWithAttempt(summary);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
@@ -688,7 +687,7 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
     );
   }
 
-  Future<void> _startExamWithAttempt(QuizSummary summary) async {
+  Future<void> _startQuizWithAttempt(QuizSummary summary) async {
     if (_isStartingQuiz) return;
     _isStartingQuiz = true;
 
@@ -708,18 +707,22 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
       if (!mounted) return;
 
       final request = StartAttemptRequest(quizId: summary.id);
-      final attempt = await _apiService.startAttempt(request);
+      final attemptStart = await _apiService.startAttempt(request);
 
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
       _isStartingQuiz = false;
 
-      // Navigate with the pre-created attempt ID
+      // Navigate with the attempt ID and displayed questions
       unawaited(
         Navigator.push(
           context,
           MaterialPageRoute<void>(
-            builder: (context) => QuizScreen(quiz: quiz, attemptId: attempt.id),
+            builder: (context) => QuizScreen(
+              quiz: quiz,
+              attemptId: attemptStart.id,
+              displayedQuestions: attemptStart.displayedQuestions,
+            ),
           ),
         ),
       );
@@ -728,20 +731,20 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
 
-      // Show error dialog instead of snackbar for better visibility
-      _showExamStartError(e.toString());
+      // Show error dialog for better visibility
+      _showQuizStartError(summary.isPracticeMode, e.toString());
     }
   }
 
-  void _showExamStartError(String error) {
+  void _showQuizStartError(bool isPracticeMode, String error) {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.error_outline, color: AppColors.error),
-            SizedBox(width: 8),
-            Text('Cannot Start Exam'),
+            const Icon(Icons.error_outline, color: AppColors.error),
+            const SizedBox(width: 8),
+            Text(isPracticeMode ? 'Cannot Start Quiz' : 'Cannot Start Exam'),
           ],
         ),
         content: Text(error),
@@ -753,46 +756,6 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
         ],
       ),
     );
-  }
-
-  Future<void> _loadAndNavigateToQuiz(
-    QuizSummary summary, {
-    int? attemptId,
-  }) async {
-    if (_isStartingQuiz) return;
-    _isStartingQuiz = true;
-
-    unawaited(
-      showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(child: CircularProgressIndicator()),
-      ),
-    );
-
-    try {
-      final quiz = await _apiService.getQuiz(summary.id);
-
-      if (!mounted) return;
-      Navigator.pop(context);
-      _isStartingQuiz = false;
-
-      unawaited(
-        Navigator.push(
-          context,
-          MaterialPageRoute<void>(
-            builder: (context) => QuizScreen(quiz: quiz, attemptId: attemptId),
-          ),
-        ),
-      );
-    } on Exception catch (e) {
-      _isStartingQuiz = false;
-      if (!mounted) return;
-      Navigator.pop(context);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error loading quiz: $e')));
-    }
   }
 
   Future<void> _editQuiz(QuizSummary summary) async {
@@ -994,85 +957,80 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
 
               // Collection chips row with overlapping scroll arrows
               SizedBox(
-                  height: 36,
-                  child: Stack(
-                    children: [
-                      ListView.separated(
-                        controller: _collectionsScrollController,
-                        scrollDirection: Axis.horizontal,
-                        // At root level: "All" chip + collections + "Add" chip
-                        // Inside subcollection: collections + "Add" chip (breadcrumbs show "All")
-                        itemCount: breadcrumbs.isEmpty
-                            ? _collections.length + 2
-                            : _collections.length + 1,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(width: AppSpacing.sm),
-                        itemBuilder: (context, index) {
-                          // At root level, show "All" chip first
-                          if (breadcrumbs.isEmpty && index == 0) {
-                            return CollectionChip(
-                              label: 'All',
-                              isSelected: _selectedCollectionId == null,
-                              onTap: () {}, // Already at root, no-op
-                            );
-                          }
-                          // Adjust index for collections when "All" chip is shown
-                          final collectionIndex = breadcrumbs.isEmpty
-                              ? index - 1
-                              : index;
-                          // Last: "Add" chip
-                          if (collectionIndex == _collections.length) {
-                            return AddCollectionChip(
-                              onTap: _createCollection,
-                            );
-                          }
-                          // Collection chips with actions
-                          final collection = _collections[collectionIndex];
+                height: 36,
+                child: Stack(
+                  children: [
+                    ListView.separated(
+                      controller: _collectionsScrollController,
+                      scrollDirection: Axis.horizontal,
+                      // At root level: "All" chip + collections + "Add" chip
+                      // Inside subcollection: collections + "Add" chip (breadcrumbs show "All")
+                      itemCount: breadcrumbs.isEmpty
+                          ? _collections.length + 2
+                          : _collections.length + 1,
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(width: AppSpacing.sm),
+                      itemBuilder: (context, index) {
+                        // At root level, show "All" chip first
+                        if (breadcrumbs.isEmpty && index == 0) {
                           return CollectionChip(
-                            label: collection.name,
-                            isSelected:
-                                _selectedCollectionId == collection.id,
-                            color: AppColors.getCollectionColor(
-                              collection.id,
-                            ),
-                            onTap: () =>
-                                _handleNavigateIntoCollection(collection),
-                            onRename: () => _renameCollection(collection),
-                            onDelete: () => _deleteCollection(collection),
+                            label: 'All',
+                            isSelected: _selectedCollectionId == null,
+                            onTap: () {}, // Already at root, no-op
                           );
-                        },
+                        }
+                        // Adjust index for collections when "All" chip is shown
+                        final collectionIndex = breadcrumbs.isEmpty
+                            ? index - 1
+                            : index;
+                        // Last: "Add" chip
+                        if (collectionIndex == _collections.length) {
+                          return AddCollectionChip(onTap: _createCollection);
+                        }
+                        // Collection chips with actions
+                        final collection = _collections[collectionIndex];
+                        return CollectionChip(
+                          label: collection.name,
+                          isSelected: _selectedCollectionId == collection.id,
+                          color: AppColors.getCollectionColor(collection.id),
+                          onTap: () =>
+                              _handleNavigateIntoCollection(collection),
+                          onRename: () => _renameCollection(collection),
+                          onDelete: () => _deleteCollection(collection),
+                        );
+                      },
+                    ),
+                    // Left arrow overlay
+                    if (_canScrollLeft)
+                      Positioned(
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        child: _buildScrollArrow(
+                          context,
+                          icon: Icons.chevron_left,
+                          isLeft: true,
+                          onTap: () =>
+                              _scrollCollections(-_collectionsScrollDelta),
+                        ),
                       ),
-                      // Left arrow overlay
-                      if (_canScrollLeft)
-                        Positioned(
-                          left: 0,
-                          top: 0,
-                          bottom: 0,
-                          child: _buildScrollArrow(
-                            context,
-                            icon: Icons.chevron_left,
-                            isLeft: true,
-                            onTap: () =>
-                                _scrollCollections(-_collectionsScrollDelta),
-                          ),
+                    // Right arrow overlay
+                    if (_canScrollRight)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        child: _buildScrollArrow(
+                          context,
+                          icon: Icons.chevron_right,
+                          isLeft: false,
+                          onTap: () =>
+                              _scrollCollections(_collectionsScrollDelta),
                         ),
-                      // Right arrow overlay
-                      if (_canScrollRight)
-                        Positioned(
-                          right: 0,
-                          top: 0,
-                          bottom: 0,
-                          child: _buildScrollArrow(
-                            context,
-                            icon: Icons.chevron_right,
-                            isLeft: false,
-                            onTap: () =>
-                                _scrollCollections(_collectionsScrollDelta),
-                          ),
-                        ),
-                    ],
-                  ),
+                      ),
+                  ],
                 ),
+              ),
 
               const SizedBox(height: AppSpacing.lg),
 

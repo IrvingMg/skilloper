@@ -30,12 +30,11 @@ class _ResultsScreenState extends State<ResultsScreen> {
   bool _isLoading = true;
   late QuizAttempt _completedAttempt;
   String? _error;
-  // Track locally created attempt to avoid duplicates on retry
-  int? _createdAttemptId;
 
   @override
   void initState() {
     super.initState();
+    assert(widget.attemptId != null, 'ResultsScreen requires an attemptId');
     _completeAttempt();
   }
 
@@ -45,27 +44,9 @@ class _ResultsScreenState extends State<ResultsScreen> {
       _error = null;
     });
 
+    final attemptId = widget.attemptId!;
+
     try {
-      int? attemptId = widget.attemptId ?? _createdAttemptId;
-
-      if (attemptId == null) {
-        final startRequest = StartAttemptRequest(quizId: widget.quiz.id);
-        if (!mounted) return;
-        try {
-          final attempt = await _apiService.startAttempt(startRequest);
-          attemptId = attempt.id;
-          _createdAttemptId = attemptId;
-        } on Exception catch (e) {
-          if (mounted) {
-            setState(() {
-              _isLoading = false;
-              _error = 'Failed to save results: $e';
-            });
-          }
-          return;
-        }
-      }
-
       final completeRequest = CompleteAttemptRequest(
         answers: widget.userAnswers,
       );

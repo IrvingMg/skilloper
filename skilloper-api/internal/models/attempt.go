@@ -13,20 +13,21 @@ const (
 )
 
 type QuizAttempt struct {
-	ID               uint            `json:"id" gorm:"primaryKey"`
-	UserID           uint            `json:"user_id" gorm:"not null;index"`
-	QuizID           uint            `json:"quiz_id" gorm:"not null;index"`
-	QuizTitle        string          `json:"quiz_title" gorm:"not null"`
-	QuizType         string          `json:"quiz_type" gorm:"not null"`
-	AttemptNumber    int             `json:"attempt_number" gorm:"not null"`
-	Status           AttemptStatus   `json:"status" gorm:"not null;default:'in_progress'"`
-	Score            int             `json:"score" gorm:"not null;default:0"`
-	CorrectCount     int             `json:"correct_count" gorm:"not null;default:0"`
-	TotalCount       int             `json:"total_count" gorm:"not null;default:0"`
-	DisplayedOptions string          `json:"-" gorm:"type:text"` // JSON map of questionId -> displayed options
-	CreatedAt        time.Time       `json:"created_at"`
-	CompletedAt      *time.Time      `json:"completed_at"`
-	Answers          []AttemptAnswer `json:"answers" gorm:"foreignKey:AttemptID"`
+	ID                 uint            `json:"id" gorm:"primaryKey"`
+	UserID             uint            `json:"user_id" gorm:"not null;index"`
+	QuizID             uint            `json:"quiz_id" gorm:"not null;index"`
+	QuizTitle          string          `json:"quiz_title" gorm:"not null"`
+	QuizType           string          `json:"quiz_type" gorm:"not null"`
+	AttemptNumber      int             `json:"attempt_number" gorm:"not null"`
+	Status             AttemptStatus   `json:"status" gorm:"not null;default:'in_progress'"`
+	Score              int             `json:"score" gorm:"not null;default:0"`
+	CorrectCount       int             `json:"correct_count" gorm:"not null;default:0"`
+	TotalCount         int             `json:"total_count" gorm:"not null;default:0"`
+	DisplayedOptions   string          `json:"-" gorm:"type:text"` // JSON map of questionId -> displayed options
+	DisplayedQuestions string          `json:"-" gorm:"type:text"` // JSON map of questionId -> displayed question text
+	CreatedAt          time.Time       `json:"created_at"`
+	CompletedAt        *time.Time      `json:"completed_at"`
+	Answers            []AttemptAnswer `json:"answers" gorm:"foreignKey:AttemptID"`
 }
 
 type AttemptAnswer struct {
@@ -100,4 +101,20 @@ type AttemptAnswerResponse struct {
 	CorrectAnswers []int    `json:"correct_answers,omitempty"`
 	Options        []string `json:"options"`
 	IsCorrect      bool     `json:"is_correct"`
+}
+
+// DisplayedQuestionData contains the randomized question text and options shown to the user
+type DisplayedQuestionData struct {
+	QuestionID   uint     `json:"question_id"`
+	QuestionText string   `json:"question_text"`
+	Options      []string `json:"options"`
+}
+
+// AttemptStartResponse is returned when starting a new attempt, includes displayed questions
+type AttemptStartResponse struct {
+	ID                 uint                    `json:"id"`
+	QuizID             uint                    `json:"quiz_id"`
+	Status             AttemptStatus           `json:"status"`
+	CreatedAt          time.Time               `json:"created_at"`
+	DisplayedQuestions []DisplayedQuestionData `json:"displayed_questions"`
 }

@@ -247,6 +247,88 @@ class StartAttemptRequest {
   }
 }
 
+/// Displayed question data with randomized text and options from the server
+class DisplayedQuestionData {
+  final int questionId;
+  final String questionText;
+  final List<String> options;
+
+  const DisplayedQuestionData({
+    required this.questionId,
+    required this.questionText,
+    required this.options,
+  });
+
+  factory DisplayedQuestionData.fromJson(Map<String, dynamic> json) {
+    final questionId = json['question_id'];
+    if (questionId == null) {
+      throw const FormatException(
+        'DisplayedQuestionData missing required field: question_id',
+      );
+    }
+
+    return DisplayedQuestionData(
+      questionId: questionId is int
+          ? questionId
+          : int.parse(questionId.toString()),
+      questionText: (json['question_text'] ?? '').toString(),
+      options: json['options'] != null
+          ? List<String>.from(json['options'] as List)
+          : [],
+    );
+  }
+}
+
+/// Response from starting an attempt, includes displayed questions with randomized variants
+class AttemptStartResponse {
+  final int id;
+  final int quizId;
+  final AttemptStatus status;
+  final DateTime createdAt;
+  final List<DisplayedQuestionData> displayedQuestions;
+
+  const AttemptStartResponse({
+    required this.id,
+    required this.quizId,
+    required this.status,
+    required this.createdAt,
+    required this.displayedQuestions,
+  });
+
+  factory AttemptStartResponse.fromJson(Map<String, dynamic> json) {
+    final id = json['id'];
+    final createdAt = json['created_at'];
+
+    if (id == null) {
+      throw const FormatException(
+        'AttemptStartResponse missing required field: id',
+      );
+    }
+    if (createdAt == null) {
+      throw const FormatException(
+        'AttemptStartResponse missing required field: created_at',
+      );
+    }
+
+    return AttemptStartResponse(
+      id: id is int ? id : int.parse(id.toString()),
+      quizId: (json['quiz_id'] as int?) ?? 0,
+      status: AttemptStatus.fromString(
+        (json['status'] ?? 'in_progress').toString(),
+      ),
+      createdAt: DateTime.parse(createdAt.toString()),
+      displayedQuestions:
+          (json['displayed_questions'] as List?)
+              ?.map(
+                (q) =>
+                    DisplayedQuestionData.fromJson(q as Map<String, dynamic>),
+              )
+              .toList() ??
+          [],
+    );
+  }
+}
+
 class CompleteAttemptRequest {
   final List<UserAnswerRequest> answers;
 

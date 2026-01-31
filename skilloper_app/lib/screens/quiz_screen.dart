@@ -13,9 +13,15 @@ import 'results_screen.dart';
 
 class QuizScreen extends StatefulWidget {
   final Quiz quiz;
-  final int? attemptId; // Pre-created attempt ID for exam mode
+  final int? attemptId;
+  final List<DisplayedQuestionData>? displayedQuestions;
 
-  const QuizScreen({required this.quiz, super.key, this.attemptId});
+  const QuizScreen({
+    required this.quiz,
+    super.key,
+    this.attemptId,
+    this.displayedQuestions,
+  });
 
   @override
   State<QuizScreen> createState() => _QuizScreenState();
@@ -51,15 +57,26 @@ class _QuizScreenState extends State<QuizScreen> {
   // Shuffle mappings: questionId -> list of original indices in display order
   final Map<int, List<int>> _shuffleMappings = {};
 
+  // Map of question ID to displayed data (from server)
+  late final Map<int, DisplayedQuestionData> _displayedQuestionsMap;
+
   @override
   void initState() {
     super.initState();
+    _buildDisplayedQuestionsMap();
     _initializeShuffleMappings();
-    // Use pre-created attemptId if provided, otherwise create one (for practice mode)
+    // Use pre-created attemptId if provided
     if (widget.attemptId != null) {
       _attemptId = widget.attemptId;
-    } else {
-      _startAttempt();
+    }
+  }
+
+  void _buildDisplayedQuestionsMap() {
+    _displayedQuestionsMap = {};
+    if (widget.displayedQuestions != null) {
+      for (final dq in widget.displayedQuestions!) {
+        _displayedQuestionsMap[dq.questionId] = dq;
+      }
     }
   }
 
@@ -72,7 +89,7 @@ class _QuizScreenState extends State<QuizScreen> {
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
-    final optionCount = _currentQuestion.options.length;
+    final optionCount = _getOptionsForQuestion(_currentQuestion).length;
     final alreadyValidated = _validatedAnswers.containsKey(_currentQuestion.id);
 
     // Number keys 1-9 to select answers
@@ -107,18 +124,39 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   /// Initialize shuffle mappings for all questions
+  /// Uses displayed options count from server if available
   void _initializeShuffleMappings() {
     for (final question in widget.quiz.questions) {
-      final indices = List.generate(question.options.length, (i) => i);
+      final optionCount = _getOptionsForQuestion(question).length;
+      final indices = List.generate(optionCount, (i) => i);
       indices.shuffle();
       _shuffleMappings[question.id] = indices;
     }
   }
 
+  /// Get the question text to display (from server-randomized data if available)
+  String _getQuestionText(Question question) {
+    final displayed = _displayedQuestionsMap[question.id];
+    if (displayed != null && displayed.questionText.isNotEmpty) {
+      return displayed.questionText;
+    }
+    return question.question;
+  }
+
+  /// Get the options to display (from server-randomized data if available)
+  List<String> _getOptionsForQuestion(Question question) {
+    final displayed = _displayedQuestionsMap[question.id];
+    if (displayed != null && displayed.options.isNotEmpty) {
+      return displayed.options;
+    }
+    return question.options;
+  }
+
   /// Get shuffled options for display
   List<String> _getShuffledOptions(Question question) {
     final mapping = _shuffleMappings[question.id]!;
-    return mapping.map((i) => question.options[i]).toList();
+    final options = _getOptionsForQuestion(question);
+    return mapping.map((i) => options[i]).toList();
   }
 
   /// Convert display index to original index
@@ -174,57 +212,6 @@ class _QuizScreenState extends State<QuizScreen> {
         ),
       );
     });
-  }
-
-  Future<void> _startAttempt() async {
-    // Only start tracking for exam mode; practice attempts are created on completion
-    if (widget.quiz.isPracticeMode) {
-      return;
-    }
-
-    try {
-      final request = StartAttemptRequest(quizId: widget.quiz.id);
-
-      final attempt = await _apiService.startAttempt(request);
-      if (mounted) {
-        setState(() {
-          _attemptId = attempt.id;
-        });
-      }
-    } on Exception catch (e) {
-      debugPrint('Failed to start attempt: $e');
-      if (mounted) {
-        _showAttemptFailedDialog(e.toString());
-      }
-    }
-  }
-
-  void _showAttemptFailedDialog(String error) {
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text('Cannot Start Exam'),
-        content: Text(
-          'Failed to create exam attempt: $error\n\n'
-          "You can continue in practice mode (results won't be saved to history), "
-          'or go back and try again.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context); // Close dialog
-              Navigator.pop(this.context); // Go back to home
-            },
-            child: const Text('Go Back'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context), // Continue anyway
-            child: const Text('Continue Anyway'),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<bool> _confirmExit() async {
@@ -492,7 +479,7 @@ class _QuizScreenState extends State<QuizScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _currentQuestion.question,
+                        _getQuestionText(_currentQuestion),
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w500,

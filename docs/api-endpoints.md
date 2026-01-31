@@ -147,15 +147,15 @@ The endpoints `/quizzes/summaries`, `/attempts`, and `/collections` support pagi
 
 #### Attempt Tracking Behavior
 
-The app handles attempts differently based on quiz mode:
+Both practice and exam modes create attempts at quiz start to ensure consistent randomization:
 
 | Mode | On Quiz Start | On Quiz Exit | On Quiz Complete |
 |------|---------------|--------------|------------------|
-| **Practice** | No attempt created | Nothing recorded | Start + Complete attempt |
+| **Practice** | Attempt created (in_progress) | Calls `PATCH /attempts/:id` with no answers (marks as abandoned) | Complete attempt |
 | **Exam** | Attempt created (in_progress) | Calls `PATCH /attempts/:id` with no answers (marks as abandoned) | Complete attempt |
 
-- **Practice mode**: Attempts are only recorded when completed. Users can exit freely without affecting their history.
-- **Exam mode**: Attempts are tracked from the start. Abandoning an exam marks it with `abandoned` status.
+- **Both modes**: Attempts are created at start to lock in randomized question/option variants. The `displayed_questions` in the response contains the exact text to show the user.
+- **Abandoning**: Exiting early marks the attempt as `abandoned` in both modes.
 
 ## Usage Examples
 
@@ -542,20 +542,28 @@ Response:
 ```json
 {
   "id": 1,
-  "user_id": 1,
   "quiz_id": 1,
-  "quiz_title": "JavaScript Basics",
-  "quiz_type": "practice",
-  "attempt_number": 1,
   "status": "in_progress",
-  "score": 0,
-  "correct_count": 0,
-  "total_count": 10,
   "created_at": "2025-01-15T10:30:00Z",
-  "completed_at": null,
-  "answers": []
+  "displayed_questions": [
+    {
+      "question_id": 1,
+      "question_text": "What is the output of console.log(typeof null)?",
+      "options": ["undefined", "object", "null", "string"]
+    },
+    {
+      "question_id": 2,
+      "question_text": "Which method adds an element to the end of an array?",
+      "options": ["push()", "pop()", "shift()", "unshift()"]
+    }
+  ]
 }
 ```
+
+**Response Fields:**
+- `displayed_questions` - Array of questions with server-randomized text and options. Use these exact values for display to ensure consistency with results.
+- `question_text` - The randomized question text (may be an alternative variant)
+- `options` - The randomized options (may have alternative text variants applied)
 
 ### Update Quiz Attempt
 

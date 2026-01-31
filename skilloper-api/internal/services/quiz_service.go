@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand/v2"
 	"mime/multipart"
 	"strings"
 
@@ -784,18 +783,10 @@ func (s *QuizService) convertToResponse(q models.Quiz) models.QuizResponse {
 	for _, question := range q.Questions {
 		options := s.parseStringArrayJSON(question.Options)
 
-		questionText := question.QuestionText
-		if alternatives := s.parseStringArrayJSON(question.AlternativeQuestions); len(alternatives) > 0 {
-			allTexts := append([]string{questionText}, alternatives...)
-			questionText = allTexts[rand.IntN(len(allTexts))]
-		}
-
-		options = question.ApplyOptionVariants(options)
-
 		qr := models.QuestionResponse{}
 		qr.ID = question.ID
 		qr.QuestionType = question.QuestionType
-		qr.Question = questionText
+		qr.Question = question.QuestionText
 		qr.Code = question.Code
 		qr.Language = question.Language
 		qr.Options = options
