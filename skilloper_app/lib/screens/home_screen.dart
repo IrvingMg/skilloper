@@ -12,10 +12,9 @@ import '../theme/app_colors.dart';
 import '../utils/debouncer.dart';
 import '../utils/snackbar_helper.dart';
 import '../widgets/breadcrumb_navigation.dart';
-import '../widgets/collection_chip.dart';
+import '../widgets/collapsible_home_toolbar.dart';
 import '../widgets/collection_dialog.dart';
 import '../widgets/move_to_collection_sheet.dart';
-import '../widgets/page_header.dart';
 import '../widgets/quiz_list_item.dart';
 import '../widgets/search_filter_bar.dart';
 import 'create_quiz/create_quiz_screen.dart';
@@ -32,6 +31,11 @@ class HomeScreen extends StatefulWidget {
 
 class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
   static const double _collectionsScrollDelta = 200;
+
+  // Toolbar height components (kCollectionsRowHeight is from collapsible_home_toolbar.dart)
+  static const double _breadcrumbHeight = 32.0;
+  static const double _searchBarHeight = 48.0;
+  static const double _selectionHeaderHeight = 48.0;
 
   final ApiService _apiService = ApiService();
 
@@ -104,49 +108,6 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
       target,
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeInOut,
-    );
-  }
-
-  Widget _buildScrollArrow(
-    BuildContext context, {
-    required IconData icon,
-    required VoidCallback onTap,
-    required bool isLeft,
-  }) {
-    final backgroundColor = Theme.of(context).scaffoldBackgroundColor;
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: isLeft ? Alignment.centerLeft : Alignment.centerRight,
-          end: isLeft ? Alignment.centerRight : Alignment.centerLeft,
-          colors: [
-            backgroundColor,
-            backgroundColor.withValues(alpha: 0.8),
-            backgroundColor.withValues(alpha: 0),
-          ],
-          stops: const [0.0, 0.5, 1.0],
-        ),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: EdgeInsets.only(
-              left: isLeft ? 4 : 16,
-              right: isLeft ? 16 : 4,
-              top: 6,
-              bottom: 6,
-            ),
-            child: Icon(
-              icon,
-              size: 24,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ),
-      ),
     );
   }
 
@@ -865,332 +826,217 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
     }
   }
 
-  Widget _buildSelectionHeader() {
-    return Row(
-      children: [
-        IconButton(
-          icon: const Icon(Icons.close),
-          onPressed: _exitSelectionMode,
-          tooltip: 'Cancel selection',
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Text(
-          '${_selectedQuizIds.length} selected',
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        const Spacer(),
-        TextButton(
-          onPressed: _selectedQuizIds.length == _quizzes.length
-              ? _deselectAllQuizzes
-              : _selectAllQuizzes,
-          child: Text(
-            _selectedQuizIds.length == _quizzes.length
-                ? 'Deselect All'
-                : 'Select All',
-          ),
-        ),
-      ],
-    );
+  double _getToolbarHeight() {
+    if (_isSelectionMode) {
+      return AppSpacing.lg + _selectionHeaderHeight;
+    }
+    final hasBreadcrumbs = breadcrumbs.isNotEmpty;
+    // Base: top padding + page header + lg spacing + collections + md spacing +
+    // search bar + sm spacing + quiz count
+    double height =
+        AppSpacing.lg +
+        kPageHeaderHeight +
+        AppSpacing.lg +
+        kCollectionsRowHeight +
+        AppSpacing.md +
+        _searchBarHeight +
+        AppSpacing.sm +
+        kQuizCountRowHeight;
+    if (hasBreadcrumbs) {
+      // Add breadcrumbs + sm spacing before collections
+      height += _breadcrumbHeight + AppSpacing.sm;
+    }
+    return height;
   }
 
-  Widget _buildNormalHeader() {
-    return const PageHeader(
-      title: 'Available Quizzes',
-      subtitle: 'Choose a quiz to test your skills',
-      icon: Icons.quiz_outlined,
+  CollapsibleHomeToolbar _buildToolbar() {
+    return CollapsibleHomeToolbar(
+      breadcrumbs: breadcrumbs,
+      collections: _collections,
+      selectedCollectionId: _selectedCollectionId,
+      collectionsScrollController: _collectionsScrollController,
+      canScrollLeft: _canScrollLeft,
+      canScrollRight: _canScrollRight,
+      onScrollLeft: () => _scrollCollections(-_collectionsScrollDelta),
+      onScrollRight: () => _scrollCollections(_collectionsScrollDelta),
+      onNavigateIntoCollection: _handleNavigateIntoCollection,
+      onNavigateUp: _handleNavigateUp,
+      onNavigateToBreadcrumb: _handleNavigateToBreadcrumb,
+      onCreateCollection: _createCollection,
+      onRenameCollection: _renameCollection,
+      onDeleteCollection: _deleteCollection,
+      searchController: _searchController,
+      onSearchChanged: _onSearchChanged,
+      filterOptions: kQuizTypeFilterOptions,
+      selectedFilter: _typeFilter,
+      onFilterChanged: _onFilterChanged,
+      sortOptions: kQuizSortOptions,
+      selectedSort: _sortBy,
+      onSortChanged: _onSortChanged,
+      quizCount: _quizzes.length,
+      totalQuizCount: _pagination.totalCount,
+      hasMore: _pagination.hasMore,
+      isSelectionMode: _isSelectionMode,
+      selectedCount: _selectedQuizIds.length,
+      totalSelectableCount: _quizzes.length,
+      onExitSelectionMode: _exitSelectionMode,
+      onSelectAll: _selectAllQuizzes,
+      onDeselectAll: _deselectAllQuizzes,
+      onEnterSelectionMode: () {
+        setState(() {
+          _isSelectionMode = true;
+        });
+      },
+      hasQuizzes: _quizzes.isNotEmpty,
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final toolbarHeight = _getToolbarHeight();
+
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: () => _loadQuizzes(refresh: true),
-        child: Padding(
-          padding: AppSpacing.allLg,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header section - changes based on selection mode
-              if (_isSelectionMode)
-                _buildSelectionHeader()
-              else
-                _buildNormalHeader(),
-
-              // Collections section with breadcrumb navigation
-              const SizedBox(height: AppSpacing.lg),
-
-              // Breadcrumb row (only show when navigated into subcollections)
-              if (breadcrumbs.isNotEmpty) ...[
-                BreadcrumbNavigation(
-                  breadcrumbs: breadcrumbs,
-                  onNavigateUp: _handleNavigateUp,
-                  onNavigateToBreadcrumb: _handleNavigateToBreadcrumb,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-              ],
-
-              // Collection chips row with overlapping scroll arrows
-              SizedBox(
-                height: 36,
-                child: Stack(
-                  children: [
-                    ListView.separated(
-                      controller: _collectionsScrollController,
-                      scrollDirection: Axis.horizontal,
-                      // At root level: "All" chip + collections + "Add" chip
-                      // Inside subcollection: collections + "Add" chip (breadcrumbs show "All")
-                      itemCount: breadcrumbs.isEmpty
-                          ? _collections.length + 2
-                          : _collections.length + 1,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(width: AppSpacing.sm),
-                      itemBuilder: (context, index) {
-                        // At root level, show "All" chip first
-                        if (breadcrumbs.isEmpty && index == 0) {
-                          return CollectionChip(
-                            label: 'All',
-                            isSelected: _selectedCollectionId == null,
-                            onTap: () {}, // Already at root, no-op
-                          );
-                        }
-                        // Adjust index for collections when "All" chip is shown
-                        final collectionIndex = breadcrumbs.isEmpty
-                            ? index - 1
-                            : index;
-                        // Last: "Add" chip
-                        if (collectionIndex == _collections.length) {
-                          return AddCollectionChip(onTap: _createCollection);
-                        }
-                        // Collection chips with actions
-                        final collection = _collections[collectionIndex];
-                        return CollectionChip(
-                          label: collection.name,
-                          isSelected: _selectedCollectionId == collection.id,
-                          color: AppColors.getCollectionColor(collection.id),
-                          onTap: () =>
-                              _handleNavigateIntoCollection(collection),
-                          onRename: () => _renameCollection(collection),
-                          onDelete: () => _deleteCollection(collection),
-                        );
-                      },
-                    ),
-                    // Left arrow overlay
-                    if (_canScrollLeft)
-                      Positioned(
-                        left: 0,
-                        top: 0,
-                        bottom: 0,
-                        child: _buildScrollArrow(
-                          context,
-                          icon: Icons.chevron_left,
-                          isLeft: true,
-                          onTap: () =>
-                              _scrollCollections(-_collectionsScrollDelta),
-                        ),
-                      ),
-                    // Right arrow overlay
-                    if (_canScrollRight)
-                      Positioned(
-                        right: 0,
-                        top: 0,
-                        bottom: 0,
-                        child: _buildScrollArrow(
-                          context,
-                          icon: Icons.chevron_right,
-                          isLeft: false,
-                          onTap: () =>
-                              _scrollCollections(_collectionsScrollDelta),
-                        ),
-                      ),
-                  ],
-                ),
+        child: CustomScrollView(
+          controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverPersistentHeader(
+              floating: true,
+              delegate: CollapsibleHomeToolbarDelegate(
+                toolbar: _buildToolbar(),
+                minHeight: toolbarHeight,
+                maxHeight: toolbarHeight,
               ),
+            ),
 
-              const SizedBox(height: AppSpacing.lg),
-
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: SearchFilterBar(
-                      searchHint: 'Search quizzes...',
-                      searchController: _searchController,
-                      onSearchChanged: _onSearchChanged,
-                      filterOptions: kQuizTypeFilterOptions,
-                      selectedFilter: _typeFilter,
-                      onFilterChanged: _onFilterChanged,
-                      sortOptions: kQuizSortOptions,
-                      selectedSort: _sortBy,
-                      onSortChanged: _onSortChanged,
-                    ),
-                  ),
-                  // Only show selection mode button when not already in selection mode
-                  if (_quizzes.isNotEmpty && !_isSelectionMode) ...[
-                    const SizedBox(width: AppSpacing.sm),
-                    IconButton(
-                      icon: const Icon(Icons.checklist),
-                      onPressed: () {
-                        setState(() {
-                          _isSelectionMode = true;
-                        });
-                      },
-                      tooltip: 'Select multiple quizzes',
-                      style: IconButton.styleFrom(
-                        backgroundColor: AppColors.surfaceVariant,
+            if (_isInitialLoading && _quizzes.isEmpty)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: AppSpacing.lg),
+                      Text(
+                        'Loading quizzes...',
+                        style: TextStyle(color: AppColors.textTertiary),
                       ),
-                    ),
-                  ],
-                ],
-              ),
-
-              const SizedBox(height: AppSpacing.lg),
-
-              // Quiz count indicator
-              if (!_isInitialLoading && _quizzes.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: Text(
-                    _pagination.hasMore
-                        ? 'Showing ${_quizzes.length} of ${_pagination.totalCount} quizzes'
-                        : '${_pagination.totalCount} ${_pagination.totalCount == 1 ? 'quiz' : 'quizzes'}',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textTertiary,
-                    ),
+                    ],
                   ),
                 ),
-
-              if (_isInitialLoading && _quizzes.isEmpty)
-                const Expanded(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: AppSpacing.lg),
-                        Text(
-                          'Loading quizzes...',
-                          style: TextStyle(color: AppColors.textTertiary),
+              )
+            else if (_error != null && _quizzes.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        size: 64,
+                        color: AppColors.textDisabled,
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      const Text(
+                        'Failed to load quizzes',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      const Text(
+                        'Make sure the API is running on localhost:8080',
+                        style: TextStyle(color: AppColors.textTertiary),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      ElevatedButton(
+                        onPressed: () => _loadQuizzes(refresh: true),
+                        child: const Text('Retry'),
+                      ),
+                    ],
                   ),
-                )
-              else if (_error != null && _quizzes.isEmpty)
-                Expanded(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.error_outline,
-                          size: 64,
-                          color: AppColors.textDisabled,
+                ),
+              )
+            else if (_quizzes.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _hasActiveFilters
+                            ? Icons.search_off
+                            : Icons.quiz_outlined,
+                        size: 64,
+                        color: AppColors.textDisabled,
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      Text(
+                        _hasActiveFilters
+                            ? 'No matches found'
+                            : 'No quizzes yet',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
                         ),
-                        const SizedBox(height: AppSpacing.lg),
-                        const Text(
-                          'Failed to load quizzes',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        const Text(
-                          'Make sure the API is running on localhost:8080',
-                          style: TextStyle(color: AppColors.textTertiary),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Text(
+                          _hasActiveFilters
+                              ? 'Try a different search or filter'
+                              : 'Create quizzes from your study notes using ChatGPT or Claude',
+                          style: const TextStyle(color: AppColors.textTertiary),
                           textAlign: TextAlign.center,
                         ),
+                      ),
+                      if (_hasActiveFilters) ...[
                         const SizedBox(height: AppSpacing.lg),
-                        ElevatedButton(
-                          onPressed: () => _loadQuizzes(refresh: true),
-                          child: const Text('Retry'),
+                        TextButton(
+                          onPressed: _clearAllFilters,
+                          child: const Text('Clear filters'),
                         ),
-                      ],
-                    ),
-                  ),
-                )
-              else if (_quizzes.isEmpty)
-                Expanded(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          _hasActiveFilters
-                              ? Icons.search_off
-                              : Icons.quiz_outlined,
-                          size: 64,
-                          color: AppColors.textDisabled,
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
-                        Text(
-                          _hasActiveFilters
-                              ? 'No matches found'
-                              : 'No quizzes yet',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 32),
-                          child: Text(
-                            _hasActiveFilters
-                                ? 'Try a different search or filter'
-                                : 'Create quizzes from your study notes using ChatGPT or Claude',
-                            style: const TextStyle(
-                              color: AppColors.textTertiary,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                        if (_hasActiveFilters) ...[
-                          const SizedBox(height: AppSpacing.lg),
-                          TextButton(
-                            onPressed: _clearAllFilters,
-                            child: const Text('Clear filters'),
-                          ),
-                        ] else ...[
-                          const SizedBox(height: AppSpacing.xl),
-                          ElevatedButton.icon(
-                            onPressed: widget.onNavigateToAdd,
-                            icon: const Icon(Icons.add),
-                            label: const Text('Create Quiz'),
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 12,
-                              ),
+                      ] else ...[
+                        const SizedBox(height: AppSpacing.xl),
+                        ElevatedButton.icon(
+                          onPressed: widget.onNavigateToAdd,
+                          icon: const Icon(Icons.add),
+                          label: const Text('Create Quiz'),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
                             ),
                           ),
-                        ],
+                        ),
                       ],
-                    ),
+                    ],
                   ),
-                )
-              else
-                Expanded(
-                  child: ListView.separated(
-                    controller: _scrollController,
-                    itemCount: _quizzes.length + (_isLoadingMore ? 1 : 0),
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: AppSpacing.md),
-                    itemBuilder: (context, index) {
-                      if (index == _quizzes.length) {
-                        return const Padding(
-                          padding: AppSpacing.verticalLg,
-                          child: Center(child: CircularProgressIndicator()),
-                        );
-                      }
-                      final quiz = _quizzes[index];
-                      return QuizListItem(
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    if (index == _quizzes.length) {
+                      return const Padding(
+                        padding: AppSpacing.verticalLg,
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    final quiz = _quizzes[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                      child: QuizListItem(
                         quiz: quiz,
                         onTap: () => _startQuiz(quiz),
                         onEdit: () => _editQuiz(quiz),
@@ -1204,12 +1050,12 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
                             _enterSelectionMode(quiz.id);
                           }
                         },
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  }, childCount: _quizzes.length + (_isLoadingMore ? 1 : 0)),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
       bottomNavigationBar: _isSelectionMode && _selectedQuizIds.isNotEmpty
