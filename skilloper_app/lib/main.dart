@@ -159,7 +159,7 @@ class _MainScreenState extends State<MainScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             SvgPicture.asset(
-              'assets/images/logo.svg',
+              AppIcons.logoSvg,
               width: AppIconSizes.appBarLogo,
               height: AppIconSizes.appBarLogo,
             ),
@@ -194,7 +194,7 @@ class _MainScreenState extends State<MainScreen> {
             NavigationDestination(
               icon: Icon(AppIcons.add),
               selectedIcon: Icon(AppIcons.addSelected),
-              label: 'Create',
+              label: 'New Quiz',
             ),
             NavigationDestination(
               icon: Icon(AppIcons.history),

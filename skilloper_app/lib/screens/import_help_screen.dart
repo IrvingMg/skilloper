@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
 import '../widgets/code_block.dart';
@@ -102,7 +103,18 @@ Format notes:
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Import Guide')),
+      appBar: AppBar(
+        title: const Text('Import Guide'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.home_outlined),
+            onPressed: () => Navigator.of(
+              context,
+            ).pushNamedAndRemoveUntil('/', (_) => false),
+            tooltip: 'Home',
+          ),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(

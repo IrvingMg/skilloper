@@ -8,6 +8,7 @@ class AppIcons {
   AppIcons._();
 
   // MARK: - SVG Asset Paths
+  static const String logoSvg = 'assets/images/logo.svg';
   static const String practiceModeSvg = 'assets/images/skilloper_practice.svg';
   static const String examModeSvg = 'assets/images/skilloper_exam.svg';
 

@@ -15,6 +15,7 @@ import '../widgets/breadcrumb_navigation.dart';
 import '../widgets/collection_chip.dart';
 import '../widgets/collection_dialog.dart';
 import '../widgets/move_to_collection_sheet.dart';
+import '../widgets/page_header.dart';
 import '../widgets/quiz_list_item.dart';
 import '../widgets/search_filter_bar.dart';
 import 'create_quiz/create_quiz_screen.dart';
@@ -897,28 +898,10 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
   }
 
   Widget _buildNormalHeader() {
-    return const Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Available Quizzes',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
-            letterSpacing: -0.5,
-          ),
-        ),
-        SizedBox(height: AppSpacing.sm),
-        Text(
-          'Choose a quiz to test your skills',
-          style: TextStyle(
-            fontSize: 16,
-            color: AppColors.textTertiary,
-            fontWeight: FontWeight.w400,
-          ),
-        ),
-      ],
+    return const PageHeader(
+      title: 'Available Quizzes',
+      subtitle: 'Choose a quiz to test your skills',
+      icon: Icons.quiz_outlined,
     );
   }
 
@@ -1066,6 +1049,21 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
               ),
 
               const SizedBox(height: AppSpacing.lg),
+
+              // Quiz count indicator
+              if (!_isInitialLoading && _quizzes.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                  child: Text(
+                    _pagination.hasMore
+                        ? 'Showing ${_quizzes.length} of ${_pagination.totalCount} quizzes'
+                        : '${_pagination.totalCount} ${_pagination.totalCount == 1 ? 'quiz' : 'quizzes'}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textTertiary,
+                    ),
+                  ),
+                ),
 
               if (_isInitialLoading && _quizzes.isEmpty)
                 const Expanded(

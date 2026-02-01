@@ -81,8 +81,8 @@ class _ImportScreenState extends State<ImportScreen> {
       final decoded = json.decode(_jsonController.text);
       final formatted = const JsonEncoder.withIndent('  ').convert(decoded);
       _jsonController.text = formatted;
-    } catch (_) {
-      // Already showing error, do nothing
+    } on FormatException {
+      // Invalid JSON, do nothing - validation errors shown elsewhere
     }
   }
 

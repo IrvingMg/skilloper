@@ -79,10 +79,12 @@ class _ResultsScreenState extends State<ResultsScreen> {
         title: const Text('Quiz Results'),
         automaticallyImplyLeading: false,
         actions: [
-          TextButton(
-            onPressed: () =>
-                Navigator.popUntil(context, (route) => route.isFirst),
-            child: const Text('Home'),
+          IconButton(
+            icon: const Icon(Icons.home_outlined),
+            onPressed: () => Navigator.of(
+              context,
+            ).pushNamedAndRemoveUntil('/', (_) => false),
+            tooltip: 'Home',
           ),
         ],
       ),
@@ -300,10 +302,9 @@ class _ResultsScreenState extends State<ResultsScreen> {
                   children: [
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: () => Navigator.popUntil(
+                        onPressed: () => Navigator.of(
                           context,
-                          (route) => route.isFirst,
-                        ),
+                        ).pushNamedAndRemoveUntil('/', (_) => false),
                         icon: const Icon(Icons.home),
                         label: const Text('Back to Home'),
                         style: ElevatedButton.styleFrom(

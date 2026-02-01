@@ -9,6 +9,7 @@ import '../theme/app_icons.dart';
 import '../utils/date_formatter.dart';
 import '../utils/debouncer.dart';
 import '../utils/snackbar_helper.dart';
+import '../widgets/page_header.dart';
 import '../widgets/search_filter_bar.dart';
 import 'history_detail_screen.dart';
 
@@ -202,23 +203,10 @@ class HistoryScreenState extends State<HistoryScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Quiz History',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Review your past quiz attempts',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: AppColors.textTertiary,
-                  fontWeight: FontWeight.w400,
-                ),
+              const PageHeader(
+                title: 'Quiz History',
+                subtitle: 'Review your past quiz attempts',
+                icon: Icons.history,
               ),
               const SizedBox(height: 16),
 

@@ -56,7 +56,7 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Attempt Details')),
+      appBar: AppBar(title: const Text('Attempt Review')),
       body: _buildBody(),
     );
   }

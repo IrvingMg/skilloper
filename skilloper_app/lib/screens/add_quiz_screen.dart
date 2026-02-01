@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
+import '../widgets/page_header.dart';
 import 'create_quiz/create_quiz_screen.dart';
 import 'import_screen.dart';
 
@@ -16,23 +18,10 @@ class AddQuizScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'New Quiz',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Build from scratch or import from your study notes',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: AppColors.textTertiary,
-                  fontWeight: FontWeight.w400,
-                ),
+              const PageHeader(
+                title: 'New Quiz',
+                subtitle: 'Build from scratch or import from your study notes',
+                icon: Icons.add_circle_outline,
               ),
               const SizedBox(height: 24),
 
@@ -85,7 +74,7 @@ class AddQuizScreen extends StatelessWidget {
                               constraints: const BoxConstraints(minHeight: 180),
                               child: _OptionCard(
                                 icon: Icons.edit_note,
-                                title: 'Create',
+                                title: 'Build',
                                 description:
                                     'Build questions one at a time with the wizard',
                                 color: AppColors.primary,
