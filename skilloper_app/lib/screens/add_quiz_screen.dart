@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
-import '../widgets/page_header.dart';
+import '../widgets/floating_page_header.dart';
 import 'create_quiz/create_quiz_screen.dart';
 import 'import_screen.dart';
 
@@ -13,27 +13,31 @@ class AddQuizScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const PageHeader(
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverPersistentHeader(
+              floating: true,
+              delegate: FloatingPageHeaderDelegate(
                 title: 'New Quiz',
                 subtitle: 'Build from scratch or import from your study notes',
                 icon: Icons.add_circle_outline,
               ),
-              const SizedBox(height: 24),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.only(
+                left: AppSpacing.lg,
+                right: AppSpacing.lg,
+                top: AppSpacing.lg,
+              ),
+              sliver: SliverLayoutBuilder(
+                builder: (context, constraints) {
+                  final isWide = constraints.crossAxisExtent > 500;
 
-              // Options grid
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    // Use row layout for wider screens, column for narrow
-                    final isWide = constraints.maxWidth > 500;
-
-                    if (isWide) {
-                      return Column(
+                  if (isWide) {
+                    return SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Column(
                         children: [
                           Expanded(
                             child: Row(
@@ -48,7 +52,7 @@ class AddQuizScreen extends StatelessWidget {
                                     onTap: () => _navigateToCreate(context),
                                   ),
                                 ),
-                                const SizedBox(width: 16),
+                                const SizedBox(width: AppSpacing.lg),
                                 Expanded(
                                   child: _OptionCard(
                                     icon: Icons.upload_file,
@@ -62,48 +66,48 @@ class AddQuizScreen extends StatelessWidget {
                               ],
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: AppSpacing.lg),
                           const _TipBanner(),
+                          const SizedBox(height: AppSpacing.lg),
                         ],
-                      );
-                    } else {
-                      return SingleChildScrollView(
-                        child: Column(
-                          children: [
-                            ConstrainedBox(
-                              constraints: const BoxConstraints(minHeight: 180),
-                              child: _OptionCard(
-                                icon: Icons.edit_note,
-                                title: 'Build',
-                                description:
-                                    'Build questions one at a time with the wizard',
-                                color: AppColors.primary,
-                                onTap: () => _navigateToCreate(context),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            ConstrainedBox(
-                              constraints: const BoxConstraints(minHeight: 180),
-                              child: _OptionCard(
-                                icon: Icons.upload_file,
-                                title: 'Import',
-                                description:
-                                    'Paste JSON or upload a file from your notes',
-                                color: AppColors.info,
-                                onTap: () => _navigateToImport(context),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            const _TipBanner(),
-                          ],
+                      ),
+                    );
+                  } else {
+                    return SliverList(
+                      delegate: SliverChildListDelegate([
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(minHeight: 180),
+                          child: _OptionCard(
+                            icon: Icons.edit_note,
+                            title: 'Build',
+                            description:
+                                'Build questions one at a time with the wizard',
+                            color: AppColors.primary,
+                            onTap: () => _navigateToCreate(context),
+                          ),
                         ),
-                      );
-                    }
-                  },
-                ),
+                        const SizedBox(height: AppSpacing.lg),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(minHeight: 180),
+                          child: _OptionCard(
+                            icon: Icons.upload_file,
+                            title: 'Import',
+                            description:
+                                'Paste JSON or upload a file from your notes',
+                            color: AppColors.info,
+                            onTap: () => _navigateToImport(context),
+                          ),
+                        ),
+                        const SizedBox(height: AppSpacing.lg),
+                        const _TipBanner(),
+                        const SizedBox(height: AppSpacing.lg),
+                      ]),
+                    );
+                  }
+                },
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

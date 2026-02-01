@@ -3,6 +3,28 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
 
+/// Height constants for PageHeader layout calculations.
+/// Used by SliverPersistentHeaderDelegate implementations.
+///
+/// IMPORTANT: These values must stay synchronized with PageHeader's internal
+/// layout (padding, font sizes, spacing). Update if PageHeader layout changes.
+const kPageHeaderContainerPadding = 32.0;
+const kPageHeaderIconHeight = 44.0;
+const kPageHeaderTitleHeight = 36.0;
+const kPageHeaderSubtitleGap = 4.0;
+const kPageHeaderSubtitleHeight = 46.0;
+
+/// Calculates the total height of a PageHeader widget.
+double calculatePageHeaderHeight({required bool hasSubtitle}) {
+  final textColumnHeight =
+      kPageHeaderTitleHeight +
+      (hasSubtitle ? kPageHeaderSubtitleGap + kPageHeaderSubtitleHeight : 0);
+  final contentHeight = textColumnHeight > kPageHeaderIconHeight
+      ? textColumnHeight
+      : kPageHeaderIconHeight;
+  return kPageHeaderContainerPadding + contentHeight;
+}
+
 class PageHeader extends StatelessWidget {
   final String title;
   final String? subtitle;
@@ -81,6 +103,8 @@ class PageHeader extends StatelessWidget {
                       color: AppColors.textSecondary,
                       fontWeight: FontWeight.w400,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ],

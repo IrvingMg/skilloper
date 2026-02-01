@@ -130,11 +130,13 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
                 size: AppIconSizes.xxxl,
               ),
               const SizedBox(width: 12),
-              Text(
-                isEdit ? 'Quiz Updated!' : 'Quiz Created!',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
+              Flexible(
+                child: Text(
+                  isEdit ? 'Quiz Updated!' : 'Quiz Created!',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -308,106 +310,25 @@ class _CreateQuizScreenState extends State<CreateQuizScreen> {
       ),
       body: Column(
         children: [
-          _buildStepIndicator(),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: _buildStepContent(),
+            child: CustomScrollView(
+              slivers: [
+                SliverPersistentHeader(
+                  floating: true,
+                  delegate: _StepIndicatorDelegate(
+                    currentStep: _currentStep,
+                    onStepTap: _goToStep,
+                  ),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  sliver: SliverToBoxAdapter(child: _buildStepContent()),
+                ),
+              ],
             ),
           ),
           _buildNavigationBar(),
         ],
-      ),
-    );
-  }
-
-  Widget _buildStepIndicator() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceWhite,
-        border: Border(bottom: BorderSide(color: AppColors.outline)),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final showLabels = constraints.maxWidth > 280;
-          return Row(
-            children: [
-              _buildStepCircle(0, 'Details', showLabels),
-              _buildStepLine(0),
-              _buildStepCircle(1, 'Questions', showLabels),
-              _buildStepLine(1),
-              _buildStepCircle(2, 'Review', showLabels),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildStepCircle(int step, String label, bool showLabel) {
-    final isActive = _currentStep >= step;
-    final isCurrent = _currentStep == step;
-
-    return Expanded(
-      child: GestureDetector(
-        onTap: step <= _currentStep ? () => _goToStep(step) : null,
-        child: Column(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isActive ? AppColors.primary : AppColors.outline,
-                border: isCurrent
-                    ? Border.all(color: AppColors.primary, width: 3)
-                    : null,
-              ),
-              child: Center(
-                child: isActive && !isCurrent
-                    ? const Icon(
-                        Icons.check,
-                        color: AppColors.textOnPrimary,
-                        size: AppIconSizes.md,
-                      )
-                    : Text(
-                        '${step + 1}',
-                        style: TextStyle(
-                          color: isActive
-                              ? AppColors.textOnPrimary
-                              : AppColors.textDisabled,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-              ),
-            ),
-            if (showLabel) ...[
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isActive
-                      ? AppColors.textPrimary
-                      : AppColors.textTertiary,
-                  fontWeight: isCurrent ? FontWeight.w600 : FontWeight.normal,
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStepLine(int afterStep) {
-    final isActive = _currentStep > afterStep;
-    return Expanded(
-      child: Container(
-        height: 2,
-        margin: const EdgeInsets.only(bottom: 20),
-        color: isActive ? AppColors.primary : AppColors.outline,
       ),
     );
   }
@@ -1121,5 +1042,148 @@ class _QuestionCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _StepIndicatorDelegate extends SliverPersistentHeaderDelegate {
+  final int currentStep;
+  final void Function(int) onStepTap;
+
+  _StepIndicatorDelegate({required this.currentStep, required this.onStepTap});
+
+  double _calculateHeight() {
+    const verticalPadding = AppSpacing.lg * 2;
+    const circleHeight = 32.0;
+    const labelGap = AppSpacing.xs;
+    const labelHeight = 20.0;
+    const borderHeight = 1.0;
+    return verticalPadding +
+        circleHeight +
+        labelGap +
+        labelHeight +
+        borderHeight;
+  }
+
+  @override
+  double get minExtent => _calculateHeight();
+
+  @override
+  double get maxExtent => _calculateHeight();
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    final height = _calculateHeight();
+    return Container(
+      height: height,
+      padding: const EdgeInsets.symmetric(
+        vertical: AppSpacing.lg,
+        horizontal: AppSpacing.xl,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceWhite,
+        border: const Border(bottom: BorderSide(color: AppColors.outline)),
+        boxShadow: overlapsContent
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final showLabels = constraints.maxWidth > 280;
+          return Row(
+            children: [
+              _buildStepCircle(0, 'Details', showLabels),
+              _buildStepLine(0, showLabels),
+              _buildStepCircle(1, 'Questions', showLabels),
+              _buildStepLine(1, showLabels),
+              _buildStepCircle(2, 'Review', showLabels),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildStepCircle(int step, String label, bool showLabel) {
+    final isActive = currentStep >= step;
+    final isCurrent = currentStep == step;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: step <= currentStep ? () => onStepTap(step) : null,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isActive ? AppColors.primary : AppColors.outline,
+                border: isCurrent
+                    ? Border.all(color: AppColors.primary, width: 3)
+                    : null,
+              ),
+              child: Center(
+                child: isActive && !isCurrent
+                    ? const Icon(
+                        Icons.check,
+                        color: AppColors.textOnPrimary,
+                        size: AppIconSizes.md,
+                      )
+                    : Text(
+                        '${step + 1}',
+                        style: TextStyle(
+                          color: isActive
+                              ? AppColors.textOnPrimary
+                              : AppColors.textDisabled,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+              ),
+            ),
+            if (showLabel) ...[
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isActive
+                      ? AppColors.textPrimary
+                      : AppColors.textTertiary,
+                  fontWeight: isCurrent ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStepLine(int afterStep, bool showLabels) {
+    final isActive = currentStep > afterStep;
+    final bottomMargin = showLabels ? AppSpacing.xl : 0.0;
+    return Expanded(
+      child: Container(
+        height: 2,
+        margin: EdgeInsets.only(bottom: bottomMargin),
+        color: isActive ? AppColors.primary : AppColors.outline,
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(_StepIndicatorDelegate oldDelegate) {
+    return currentStep != oldDelegate.currentStep;
   }
 }

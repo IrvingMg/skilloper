@@ -12,8 +12,8 @@ import '../theme/app_colors.dart';
 import '../utils/debouncer.dart';
 import '../utils/snackbar_helper.dart';
 import '../widgets/breadcrumb_navigation.dart';
-import '../widgets/collapsible_home_toolbar.dart';
 import '../widgets/collection_dialog.dart';
+import '../widgets/floating_home_toolbar.dart';
 import '../widgets/move_to_collection_sheet.dart';
 import '../widgets/quiz_list_item.dart';
 import '../widgets/search_filter_bar.dart';
@@ -32,7 +32,7 @@ class HomeScreen extends StatefulWidget {
 class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
   static const double _collectionsScrollDelta = 200;
 
-  // Toolbar height components (kCollectionsRowHeight is from collapsible_home_toolbar.dart)
+  // Toolbar height components (kCollectionsRowHeight is from floating_home_toolbar.dart)
   static const double _breadcrumbHeight = 32.0;
   static const double _searchBarHeight = 48.0;
   static const double _selectionHeaderHeight = 48.0;
@@ -584,6 +584,8 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
             Text(
               summary.title,
               style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 16),
             const Text(
@@ -704,7 +706,11 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
           children: [
             const Icon(Icons.error_outline, color: AppColors.error),
             const SizedBox(width: 8),
-            Text(isPracticeMode ? 'Cannot Start Quiz' : 'Cannot Start Exam'),
+            Flexible(
+              child: Text(
+                isPracticeMode ? 'Cannot Start Quiz' : 'Cannot Start Exam',
+              ),
+            ),
           ],
         ),
         content: Text(error),
@@ -832,7 +838,7 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
     }
     final hasBreadcrumbs = breadcrumbs.isNotEmpty;
     // Base: top padding + page header + lg spacing + collections + md spacing +
-    // search bar + sm spacing + quiz count
+    // search bar + quiz count
     double height =
         AppSpacing.lg +
         kPageHeaderHeight +
@@ -840,7 +846,6 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
         kCollectionsRowHeight +
         AppSpacing.md +
         _searchBarHeight +
-        AppSpacing.sm +
         kQuizCountRowHeight;
     if (hasBreadcrumbs) {
       // Add breadcrumbs + sm spacing before collections
@@ -849,8 +854,8 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
     return height;
   }
 
-  CollapsibleHomeToolbar _buildToolbar() {
-    return CollapsibleHomeToolbar(
+  FloatingHomeToolbar _buildToolbar() {
+    return FloatingHomeToolbar(
       breadcrumbs: breadcrumbs,
       collections: _collections,
       selectedCollectionId: _selectedCollectionId,
@@ -904,7 +909,7 @@ class HomeScreenState extends State<HomeScreen> with CollectionNavigationMixin {
           slivers: [
             SliverPersistentHeader(
               floating: true,
-              delegate: CollapsibleHomeToolbarDelegate(
+              delegate: FloatingHomeToolbarDelegate(
                 toolbar: _buildToolbar(),
                 minHeight: toolbarHeight,
                 maxHeight: toolbarHeight,

@@ -421,7 +421,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               Icon(Icons.warning, color: AppColors.error),
               SizedBox(width: 8),
-              Text('Delete Account'),
+              Flexible(child: Text('Delete Account')),
             ],
           ),
           content: Form(

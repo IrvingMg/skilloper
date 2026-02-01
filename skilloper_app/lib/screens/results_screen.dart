@@ -6,6 +6,7 @@ import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
 import '../widgets/code_block.dart';
+import '../widgets/floating_score_header.dart';
 import '../widgets/summary_card.dart';
 
 class ResultsScreen extends StatefulWidget {
@@ -142,67 +143,25 @@ class _ResultsScreenState extends State<ResultsScreen> {
 
     final attempt = _completedAttempt;
 
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          Container(
-            width: double.infinity,
-            padding: AppSpacing.allXxxl,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.primary,
-                  AppColors.primary.withValues(alpha: 0.8),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  '${attempt.score}%',
-                  style: const TextStyle(
-                    fontSize: 48,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textOnPrimary,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        SliverPersistentHeader(
+          floating: true,
+          delegate: FloatingScoreHeaderDelegate(
+            header: FloatingScoreHeader(
+              score: attempt.score,
+              subtitle:
                   '${attempt.correctCount} out of ${attempt.totalCount} questions correct',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    color: AppColors.textOnPrimary,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.cloud_done,
-                      size: AppIconSizes.xs,
-                      color: AppColors.textOnPrimary,
-                    ),
-                    SizedBox(width: AppSpacing.sm),
-                    Text(
-                      'Result saved',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textOnPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+              showSavedIndicator: true,
             ),
           ),
-
-          Padding(
-            padding: AppSpacing.allLg,
+        ),
+        SliverPadding(
+          padding: AppSpacing.allLg,
+          sliver: SliverToBoxAdapter(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 LayoutBuilder(
                   builder: (context, constraints) {
@@ -262,42 +221,47 @@ class _ResultsScreenState extends State<ResultsScreen> {
                     );
                   },
                 ),
-
                 const SizedBox(height: AppSpacing.xxl),
-
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Question Review',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-                  ),
+                const Text(
+                  'Question Review',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
                 ),
-
                 const SizedBox(height: AppSpacing.lg),
+              ],
+            ),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final answer = attempt.answers[index];
+              final questionIndex = widget.quiz.questions.indexWhere(
+                (q) => q.id == answer.questionId,
+              );
+              final question = questionIndex >= 0
+                  ? widget.quiz.questions[questionIndex]
+                  : null;
 
-                ...List.generate(attempt.answers.length, (index) {
-                  final answer = attempt.answers[index];
-                  final questionIndex = widget.quiz.questions.indexWhere(
-                    (q) => q.id == answer.questionId,
-                  );
-                  final question = questionIndex >= 0
-                      ? widget.quiz.questions[questionIndex]
-                      : null;
-
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-                    child: _AnswerReviewCard(
-                      questionNumber: questionIndex >= 0
-                          ? questionIndex + 1
-                          : index + 1,
-                      answer: answer,
-                      question: question,
-                    ),
-                  );
-                }),
-
+              return Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+                child: _AnswerReviewCard(
+                  questionNumber: questionIndex >= 0
+                      ? questionIndex + 1
+                      : index + 1,
+                  answer: answer,
+                  question: question,
+                ),
+              );
+            }, childCount: attempt.answers.length),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              children: [
                 const SizedBox(height: AppSpacing.xxxl),
-
                 Row(
                   children: [
                     Expanded(
@@ -314,13 +278,12 @@ class _ResultsScreenState extends State<ResultsScreen> {
                     ),
                   ],
                 ),
-
                 const SizedBox(height: AppSpacing.lg),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

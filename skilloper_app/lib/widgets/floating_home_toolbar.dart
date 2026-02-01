@@ -8,11 +8,15 @@ import 'collection_chip.dart';
 import 'page_header.dart';
 import 'search_filter_bar.dart';
 
-const double kPageHeaderHeight = 94.0;
+const double kPageHeaderHeight =
+    kPageHeaderContainerPadding +
+    kPageHeaderTitleHeight +
+    kPageHeaderSubtitleGap +
+    kPageHeaderSubtitleHeight;
 const double kCollectionsRowHeight = 36.0;
 const double kQuizCountRowHeight = 20.0;
 
-class CollapsibleHomeToolbar extends StatelessWidget {
+class FloatingHomeToolbar extends StatelessWidget {
   final List<CollectionBreadcrumb> breadcrumbs;
   final List<Collection> collections;
   final int? selectedCollectionId;
@@ -50,7 +54,7 @@ class CollapsibleHomeToolbar extends StatelessWidget {
   final VoidCallback onEnterSelectionMode;
   final bool hasQuizzes;
 
-  const CollapsibleHomeToolbar({
+  const FloatingHomeToolbar({
     required this.breadcrumbs,
     required this.collections,
     required this.selectedCollectionId,
@@ -265,7 +269,7 @@ class CollapsibleHomeToolbar extends StatelessWidget {
     return SizedBox(
       height: kQuizCountRowHeight,
       child: Align(
-        alignment: Alignment.centerRight,
+        alignment: Alignment.bottomRight,
         child: Text(
           hasMore
               ? 'Showing $quizCount of $totalQuizCount quizzes'
@@ -308,7 +312,6 @@ class CollapsibleHomeToolbar extends StatelessWidget {
           _buildCollectionsRow(context),
           const SizedBox(height: AppSpacing.md),
           _buildSearchFilterRow(),
-          const SizedBox(height: AppSpacing.sm),
           _buildQuizCountRow(),
         ],
       ),
@@ -316,12 +319,12 @@ class CollapsibleHomeToolbar extends StatelessWidget {
   }
 }
 
-class CollapsibleHomeToolbarDelegate extends SliverPersistentHeaderDelegate {
-  final CollapsibleHomeToolbar toolbar;
+class FloatingHomeToolbarDelegate extends SliverPersistentHeaderDelegate {
+  final FloatingHomeToolbar toolbar;
   final double minHeight;
   final double maxHeight;
 
-  CollapsibleHomeToolbarDelegate({
+  FloatingHomeToolbarDelegate({
     required this.toolbar,
     required this.minHeight,
     required this.maxHeight,
@@ -353,7 +356,7 @@ class CollapsibleHomeToolbarDelegate extends SliverPersistentHeaderDelegate {
   }
 
   @override
-  bool shouldRebuild(CollapsibleHomeToolbarDelegate oldDelegate) {
+  bool shouldRebuild(FloatingHomeToolbarDelegate oldDelegate) {
     // Toolbar is recreated on each build, so always rebuild
     return true;
   }

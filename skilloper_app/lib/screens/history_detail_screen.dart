@@ -4,6 +4,7 @@ import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
 import '../utils/date_formatter.dart';
+import '../widgets/floating_score_header.dart';
 import '../widgets/summary_card.dart';
 
 class HistoryDetailScreen extends StatefulWidget {
@@ -107,79 +108,26 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
       return const Center(child: Text('No data available'));
     }
 
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          // Score header
-          Container(
-            width: double.infinity,
-            padding: AppSpacing.allXxxl,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.primary,
-                  AppColors.primary.withValues(alpha: 0.8),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: Column(
-              children: [
-                Text(
-                  '${_attempt!.score}%',
-                  style: const TextStyle(
-                    fontSize: 48,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textOnPrimary,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                Text(
-                  _attempt!.quizTitle,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    color: AppColors.textOnPrimary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.xs,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.textOnPrimary.withValues(alpha: 0.2),
-                    borderRadius: AppRadius.fullAll,
-                  ),
-                  child: Text(
-                    'Attempt #${_attempt!.attemptNumber}',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: AppColors.textOnPrimary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  formatFullDate(_attempt!.createdAt),
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textOnPrimary.withValues(alpha: 0.8),
-                  ),
-                ),
-              ],
+    return CustomScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        SliverPersistentHeader(
+          floating: true,
+          delegate: FloatingScoreHeaderDelegate(
+            header: FloatingScoreHeader(
+              score: _attempt!.score,
+              subtitle: _attempt!.quizTitle,
+              badgeText: 'Attempt #${_attempt!.attemptNumber}',
+              footnote: formatFullDate(_attempt!.createdAt),
             ),
           ),
-
-          Padding(
-            padding: AppSpacing.allLg,
+        ),
+        SliverPadding(
+          padding: AppSpacing.allLg,
+          sliver: SliverToBoxAdapter(
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Summary cards
                 LayoutBuilder(
                   builder: (context, constraints) {
                     final isNarrow = constraints.maxWidth < 400;
@@ -238,38 +186,32 @@ class _HistoryDetailScreenState extends State<HistoryDetailScreen> {
                     );
                   },
                 ),
-
                 const SizedBox(height: AppSpacing.xxl),
-
-                // Section title
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Question Review',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-                  ),
+                const Text(
+                  'Question Review',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
                 ),
-
-                const SizedBox(height: AppSpacing.lg),
-
-                // Question review
-                ...List.generate(
-                  _attempt!.answers.length,
-                  (index) => Padding(
-                    padding: const EdgeInsets.only(bottom: AppSpacing.lg),
-                    child: _AnswerReviewCard(
-                      questionNumber: index + 1,
-                      answer: _attempt!.answers[index],
-                    ),
-                  ),
-                ),
-
                 const SizedBox(height: AppSpacing.lg),
               ],
             ),
           ),
-        ],
-      ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.lg),
+                child: _AnswerReviewCard(
+                  questionNumber: index + 1,
+                  answer: _attempt!.answers[index],
+                ),
+              ),
+              childCount: _attempt!.answers.length,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

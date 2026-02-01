@@ -33,8 +33,8 @@ class _CollectionDialogState extends State<CollectionDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(_isEditing ? 'Rename Collection' : 'Create Collection'),
-      content: SizedBox(
-        width: 300,
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 300),
         child: Form(
           key: _formKey,
           child: TextFormField(

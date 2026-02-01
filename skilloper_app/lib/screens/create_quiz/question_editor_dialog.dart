@@ -237,7 +237,7 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
         width: MediaQuery.of(context).size.width * 0.9,
         constraints: BoxConstraints(
           maxWidth: 600,
-          maxHeight: screenHeight * 0.85,
+          maxHeight: screenHeight * 0.95,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -320,19 +320,20 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                       onChanged: (_) => _clearError(),
                     ),
                     const SizedBox(height: 20),
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         const Text(
                           'Question Type:',
                           style: TextStyle(fontWeight: FontWeight.w500),
                         ),
-                        const SizedBox(width: 16),
                         ChoiceChip(
                           label: const Text('Single Choice'),
                           selected: !_isMultipleChoice,
                           onSelected: (_) => _setMultipleChoice(false),
                         ),
-                        const SizedBox(width: 8),
                         ChoiceChip(
                           label: const Text('Multiple Choice'),
                           selected: _isMultipleChoice,
@@ -342,29 +343,30 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                     ),
                     const SizedBox(height: 20),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Options *',
-                              style: TextStyle(fontWeight: FontWeight.w500),
-                            ),
-                            Text(
-                              'Max: ${widget.maxOptions} options',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textTertiary,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Options *',
+                                style: TextStyle(fontWeight: FontWeight.w500),
                               ),
-                            ),
-                          ],
+                              Text(
+                                'Max: ${widget.maxOptions} options',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textTertiary,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                         if (canAddOption)
                           TextButton.icon(
                             onPressed: _addOption,
                             icon: const Icon(Icons.add, size: AppIconSizes.md),
-                            label: const Text('Add Option'),
+                            label: const Text('Add'),
                           ),
                       ],
                     ),
@@ -482,11 +484,14 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                               style: TextStyle(fontWeight: FontWeight.w500),
                             ),
                             const Spacer(),
-                            const Text(
-                              'Code, alternatives',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textTertiary,
+                            const Flexible(
+                              child: Text(
+                                'Code, alternatives',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textTertiary,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
@@ -537,11 +542,12 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                       ),
                       const SizedBox(height: 20),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'Alternative Questions',
-                            style: TextStyle(fontWeight: FontWeight.w500),
+                          const Expanded(
+                            child: Text(
+                              'Alternative Questions',
+                              style: TextStyle(fontWeight: FontWeight.w500),
+                            ),
                           ),
                           TextButton.icon(
                             onPressed: _addAltQuestion,
@@ -590,11 +596,12 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                       }),
                       const SizedBox(height: 16),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'Extra Options',
-                            style: TextStyle(fontWeight: FontWeight.w500),
+                          const Expanded(
+                            child: Text(
+                              'Extra Options',
+                              style: TextStyle(fontWeight: FontWeight.w500),
+                            ),
                           ),
                           TextButton.icon(
                             onPressed: _addExtraOption,
@@ -680,6 +687,7 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                                         fontSize: 13,
                                         fontWeight: FontWeight.w500,
                                       ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                   TextButton.icon(
@@ -689,7 +697,7 @@ class _QuestionEditorDialogState extends State<QuestionEditorDialog> {
                                       Icons.add,
                                       size: AppIconSizes.sm,
                                     ),
-                                    label: const Text('Add Variant'),
+                                    label: const Text('Add'),
                                   ),
                                 ],
                               ),

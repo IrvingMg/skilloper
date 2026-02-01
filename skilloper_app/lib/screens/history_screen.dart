@@ -9,7 +9,7 @@ import '../theme/app_icons.dart';
 import '../utils/date_formatter.dart';
 import '../utils/debouncer.dart';
 import '../utils/snackbar_helper.dart';
-import '../widgets/page_header.dart';
+import '../widgets/history_screen_toolbar.dart';
 import '../widgets/search_filter_bar.dart';
 import 'history_detail_screen.dart';
 
@@ -193,164 +193,164 @@ class HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
+  bool get _hasActiveFilters =>
+      _searchQuery.isNotEmpty || _typeFilter.isNotEmpty;
+
+  void _clearAllFilters() {
+    _searchController.clear();
+    setState(() {
+      _searchQuery = '';
+      _typeFilter = '';
+    });
+    _loadHistory(refresh: true);
+  }
+
+  HistoryScreenToolbar _buildToolbar() {
+    return HistoryScreenToolbar(
+      searchController: _searchController,
+      onSearchChanged: _onSearchChanged,
+      filterOptions: kQuizTypeFilterOptions,
+      selectedFilter: _typeFilter,
+      onFilterChanged: _onFilterChanged,
+      sortOptions: kAttemptSortOptions,
+      selectedSort: _sortBy,
+      onSortChanged: _onSortChanged,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: () => _loadHistory(refresh: true),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const PageHeader(
-                title: 'Quiz History',
-                subtitle: 'Review your past quiz attempts',
-                icon: Icons.history,
-              ),
-              const SizedBox(height: 16),
+        child: CustomScrollView(
+          controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverPersistentHeader(
+              floating: true,
+              delegate: HistoryScreenToolbarDelegate(toolbar: _buildToolbar()),
+            ),
 
-              SearchFilterBar(
-                searchHint: 'Search history...',
-                searchController: _searchController,
-                onSearchChanged: _onSearchChanged,
-                filterOptions: kQuizTypeFilterOptions,
-                selectedFilter: _typeFilter,
-                onFilterChanged: _onFilterChanged,
-                sortOptions: kAttemptSortOptions,
-                selectedSort: _sortBy,
-                onSortChanged: _onSortChanged,
-              ),
-
-              const SizedBox(height: 16),
-
-              if (_isInitialLoading && _attempts.isEmpty)
-                const Expanded(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text(
-                          'Loading history...',
-                          style: TextStyle(color: AppColors.textTertiary),
+            if (_isInitialLoading && _attempts.isEmpty)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: AppSpacing.lg),
+                      Text(
+                        'Loading history...',
+                        style: TextStyle(color: AppColors.textTertiary),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else if (_error != null && _attempts.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        size: 64,
+                        color: AppColors.textDisabled,
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      const Text(
+                        'Failed to load history',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      const Text(
+                        'Make sure the API is running on localhost:8080',
+                        style: TextStyle(color: AppColors.textTertiary),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      ElevatedButton(
+                        onPressed: () => _loadHistory(refresh: true),
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else if (_attempts.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _hasActiveFilters ? Icons.search_off : Icons.history,
+                        size: 64,
+                        color: AppColors.textDisabled,
+                      ),
+                      const SizedBox(height: AppSpacing.lg),
+                      Text(
+                        _hasActiveFilters
+                            ? 'No matches found'
+                            : 'No quiz attempts yet',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text(
+                        _hasActiveFilters
+                            ? 'Try a different search or filter'
+                            : 'Complete a quiz to see your results here',
+                        style: const TextStyle(color: AppColors.textTertiary),
+                        textAlign: TextAlign.center,
+                      ),
+                      if (_hasActiveFilters) ...[
+                        const SizedBox(height: AppSpacing.lg),
+                        TextButton(
+                          onPressed: _clearAllFilters,
+                          child: const Text('Clear filters'),
                         ),
                       ],
-                    ),
+                    ],
                   ),
-                )
-              else if (_error != null && _attempts.isEmpty)
-                Expanded(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.error_outline,
-                          size: 64,
-                          color: AppColors.textDisabled,
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Failed to load history',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Make sure the API is running on localhost:8080',
-                          style: TextStyle(color: AppColors.textTertiary),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () => _loadHistory(refresh: true),
-                          child: const Text('Retry'),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else if (_attempts.isEmpty)
-                Expanded(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          _searchQuery.isNotEmpty || _typeFilter.isNotEmpty
-                              ? Icons.search_off
-                              : Icons.history,
-                          size: 64,
-                          color: AppColors.textDisabled,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _searchQuery.isNotEmpty || _typeFilter.isNotEmpty
-                              ? 'No matches found'
-                              : 'No quiz attempts yet',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _searchQuery.isNotEmpty || _typeFilter.isNotEmpty
-                              ? 'Try a different search or filter'
-                              : 'Complete a quiz to see your results here',
-                          style: const TextStyle(color: AppColors.textTertiary),
-                          textAlign: TextAlign.center,
-                        ),
-                        if (_searchQuery.isNotEmpty ||
-                            _typeFilter.isNotEmpty) ...[
-                          const SizedBox(height: 16),
-                          TextButton(
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() {
-                                _searchQuery = '';
-                                _typeFilter = '';
-                              });
-                              _loadHistory(refresh: true);
-                            },
-                            child: const Text('Clear filters'),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                )
-              else
-                Expanded(
-                  child: ListView.separated(
-                    controller: _scrollController,
-                    itemCount: _attempts.length + (_isLoadingMore ? 1 : 0),
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      if (index == _attempts.length) {
-                        return const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          child: Center(child: CircularProgressIndicator()),
-                        );
-                      }
-                      final attempt = _attempts[index];
-                      return _AttemptListItem(
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    if (index == _attempts.length) {
+                      return const Padding(
+                        padding: AppSpacing.verticalLg,
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    final attempt = _attempts[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                      child: _AttemptListItem(
                         attempt: attempt,
                         formattedDate: formatRelativeDateWithTime(
                           attempt.createdAt,
                         ),
                         onTap: () => _viewAttemptDetails(attempt),
-                      );
-                    },
-                  ),
+                      ),
+                    );
+                  }, childCount: _attempts.length + (_isLoadingMore ? 1 : 0)),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );
@@ -437,10 +437,10 @@ class _AttemptListItem extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpacing.sm),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
+                            horizontal: AppSpacing.xs,
                             vertical: 3,
                           ),
                           decoration: const BoxDecoration(
@@ -456,10 +456,10 @@ class _AttemptListItem extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: AppSpacing.xs),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
+                            horizontal: AppSpacing.sm,
                             vertical: 3,
                           ),
                           decoration: const BoxDecoration(
@@ -487,27 +487,33 @@ class _AttemptListItem extends StatelessWidget {
                           size: AppIconSizes.xs,
                           color: AppColors.textDisabled,
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${attempt.correctCount}/${attempt.totalCount} correct',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textTertiary,
-                            fontWeight: FontWeight.w500,
+                        const SizedBox(width: AppSpacing.xs),
+                        Flexible(
+                          child: Text(
+                            '${attempt.correctCount}/${attempt.totalCount} correct',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textTertiary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: AppSpacing.md),
                         const Icon(
                           Icons.access_time,
                           size: AppIconSizes.xs,
                           color: AppColors.textDisabled,
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          formattedDate,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textTertiary,
+                        const SizedBox(width: AppSpacing.xs),
+                        Flexible(
+                          child: Text(
+                            formattedDate,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textTertiary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],

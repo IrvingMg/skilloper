@@ -587,9 +587,11 @@ class _ImportScreenState extends State<ImportScreen> {
                 size: AppIconSizes.xxxl,
               ),
               SizedBox(width: 12),
-              Text(
-                'Import Successful!',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+              Flexible(
+                child: Text(
+                  'Import Successful!',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                ),
               ),
             ],
           ),
