@@ -50,6 +50,7 @@ The user-friendly format with 1-based indexing and simplified `answer` field.
 | `description` | No | Quiz description |
 | `type` | No | `"practice"` (default) or `"exam"` |
 | `max_options` | No | 2-8, limits options per question |
+| `question_type` | No | `"single_choice"` or `"multiple_choice"`. If omitted, auto-detected from answer count |
 | `explanation` | No | Answer explanation |
 | `code` | No | Code snippet |
 | `language` | No | Syntax highlighting (e.g., "javascript") |

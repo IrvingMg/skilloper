@@ -16,35 +16,9 @@ Convert my study notes into a quiz using JSON format.
 
 Quiz type: practice
 Max options per question: 4
-Number of questions: 10-15
+Number of questions: 10-20
 
-My rules [edit or delete these]:
-- Make questions progressively harder
-- Avoid trivial or obvious questions
-
-## Quality Requirements
-
-Question quality:
-- Test understanding, not just memorization
-- Include an explanation for each answer (why it's correct)
-- Avoid questions with obvious or trivially wrong distractors
-- Create plausible but incorrect distractors (wrong answers that seem reasonable)
-
-Question type variety:
-- Mix single-choice and multiple-choice questions (aim for 30-50% multiple-choice)
-- For multiple-choice: vary the number of correct answers (2, 3, or 4 out of options)
-- Avoid "select all that apply" where all options are correct
-
-Text variants for replay variety:
-- Add alternative_questions: rephrase questions differently (not just word swaps)
-- Add option_variants: meaningful synonyms or alternative phrasing for options
-- Add extra_options: additional plausible distractors for shuffling variety
-
-For code/technical content:
-- Use "code" and "language" fields for syntax highlighting
-- Test code comprehension, not just syntax recognition
-
-## JSON format
+## JSON Format
 
 {
   "title": "Quiz Title",
@@ -52,30 +26,71 @@ For code/technical content:
   "max_options": 4,
   "questions": [
     {
-      "question": "Question text",
-      "alternative_questions": ["Rephrased question", "Another phrasing"],
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "extra_options": ["Extra wrong option", "Another distractor"],
+      "question": "What protocol operates at the transport layer?",
+      "alternative_questions": ["Which protocol works at OSI Layer 4?"],
+      "question_type": "single_choice",
+      "options": ["HTTP", "TCP", "IP", "Ethernet"],
+      "option_variants": [[], ["Transmission Control Protocol"], [], []],
       "answer": ["2"],
-      "option_variants": [[], ["Option B rephrased"], [], []],
-      "explanation": "Why this is correct"
+      "explanation": "TCP operates at Layer 4 (transport)."
+    },
+    {
+      "question": "Which are valid HTTP methods?",
+      "alternative_questions": ["Which HTTP verbs are part of the standard?"],
+      "question_type": "multiple_choice",
+      "options": ["GET", "POST", "FETCH", "DELETE"],
+      "option_variants": [["Retrieve data"], ["Submit data"], [], ["Remove resource"]],
+      "answer": ["1", "2", "4"],
+      "explanation": "GET, POST, DELETE are HTTP methods. FETCH is a browser API."
     }
   ]
 }
 
-Format notes:
-- "type": "practice" (immediate feedback) or "exam" (results at end)
-- "max_options": limits options shown per question (2-8, default 4)
-- "answer" is 1-based: ["1"] = first option, ["2"] = second
-- Multiple correct: ["1", "3"] means options 1 and 3 are correct
-- Code questions: add "code": "...", "language": "python"
-- "alternative_questions": different phrasings of the same question
-- "extra_options": additional wrong answers for shuffling variety
-- "option_variants": text variants per option (option_variants[i] = variants for options[i])
+### Required Fields
+- question_type: "single_choice" or "multiple_choice"
+- answer: 1-based indices (["2"] = second option, ["1","3"] = first and third)
+- explanation: Say WHY the answer is correct, don't just restate it
 
-## My notes [paste below]
+### Variant Fields (required)
+- alternative_questions: 1-2 rephrased versions per question
+- option_variants: ALWAYS expand acronyms (TCP, UDP, HTTP, TLS, gRPC); word reorder OK; no interpretive descriptions
+- extra_options: Additional wrong answers for shuffling
 
-[Paste your notes here]
+### Other Fields
+- code + language: For code-based questions
+
+## Information Integrity (Critical)
+
+- Every fact must come directly from the notes — do NOT add "common knowledge"
+- Use technical terms exactly as written — do NOT paraphrase
+- NEVER reference "the notes" in questions OR explanations — write standalone content
+- Base wrong options on logical inversions, not invented terms
+- If unsure whether something is correct, skip it
+
+## Question Quality
+
+- Test ONE clear concept per question
+- Keep all options similar in length and form
+- Start with foundational concepts, progress to harder questions
+
+## Multi-Choice Rules
+
+- Vary the correct count: some with 2, some with 3, some with all correct
+- Check EVERY option against the notes — include ALL correct answers
+- If you can't find multiple correct answers, use single-choice instead
+
+## Variant Rules (Required)
+
+For EVERY question:
+- alternative_questions: 1-2 rephrased versions
+- option_variants: MUST expand acronyms (TCP, UDP, HTTP, TLS, gRPC, API)
+
+Safe: "TCP" → "Transmission Control Protocol", "Host-based routing" → "Routing based on host"
+NOT safe: "Kubelet" → "Node agent", "Scheduler" → "Pod placer" (interpretations)
+
+## My Notes
+
+[paste below]
 ''';
 
   static const String _jsonExample = r'''
@@ -87,18 +102,24 @@ Format notes:
   "questions": [
     {
       "question": "Which keyword declares a constant in Go?",
+      "alternative_questions": ["How do you declare a constant in Go?"],
+      "question_type": "single_choice",
       "options": ["var", "let", "const", "define"],
+      "option_variants": [["variable"], [], ["constant"], []],
       "answer": ["3"],
       "explanation": "The 'const' keyword declares constants in Go."
     },
     {
       "question": "Which are valid ways to declare a variable?",
+      "alternative_questions": ["What are valid variable declaration syntaxes in Go?"],
+      "question_type": "multiple_choice",
       "options": ["var x int", "x := 10", "int x = 10", "let x = 10"],
       "answer": ["1", "2"],
       "explanation": "Go supports 'var x int' and short declaration 'x := 10'."
     },
     {
       "question": "What does this code print?",
+      "question_type": "single_choice",
       "code": "func main() {\n  x := []int{1, 2, 3}\n  fmt.Println(len(x))\n}",
       "language": "go",
       "options": ["1", "2", "3", "error"],
