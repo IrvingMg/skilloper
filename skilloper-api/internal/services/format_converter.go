@@ -115,24 +115,16 @@ func (p *JSONParser) convertQuestion(sq *models.SimplifiedQuestion) (*models.Que
 		return nil, err
 	}
 
-	question := &models.QuestionRequest{
+	return &models.QuestionRequest{
 		Question:             sq.Question,
 		AlternativeQuestions: sq.AlternativeQuestions,
 		Options:              sq.Options,
 		ExtraOptions:         sq.ExtraOptions,
 		QuestionType:         parsed.QuestionType,
+		CorrectAnswers:       parsed.CorrectAnswers,
 		OptionVariants:       sq.OptionVariants,
 		Explanation:          sq.Explanation,
 		Code:                 sq.Code,
 		Language:             sq.Language,
-	}
-
-	// Set answer based on question type (already 0-based from ParseAnswer)
-	if parsed.QuestionType == models.QuestionTypeSingleChoice {
-		question.CorrectAnswer = parsed.CorrectAnswer
-	} else {
-		question.CorrectAnswers = parsed.CorrectAnswers
-	}
-
-	return question, nil
+	}, nil
 }

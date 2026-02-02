@@ -3,6 +3,11 @@ package validation
 // ValidateMultipleChoice checks if user's selected answers match correct answers exactly.
 // Returns true only if all correct answers are selected and no incorrect answers are selected.
 func ValidateMultipleChoice(userAnswers, correctAnswers []int) bool {
+	// Defensive check: empty correct answers means misconfigured question
+	if len(correctAnswers) == 0 {
+		return false
+	}
+
 	if len(userAnswers) != len(correctAnswers) {
 		return false
 	}

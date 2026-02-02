@@ -15,7 +15,7 @@ func TestQuestion_ApplyOptionVariants(t *testing.T) {
 			name: "single option with variants",
 			question: Question{
 				QuestionType:   QuestionTypeSingleChoice,
-				CorrectAnswer:  1,
+				CorrectAnswers: `[1]`,
 				OptionVariants: `[[], ["Alt B1", "Alt B2"], []]`,
 			},
 			options:      []string{"Option A", "Option B", "Option C"},
@@ -35,7 +35,7 @@ func TestQuestion_ApplyOptionVariants(t *testing.T) {
 			name: "no variants - returns unchanged",
 			question: Question{
 				QuestionType:   QuestionTypeSingleChoice,
-				CorrectAnswer:  0,
+				CorrectAnswers: `[0]`,
 				OptionVariants: "",
 			},
 			options:      []string{"Option A", "Option B"},
@@ -45,7 +45,7 @@ func TestQuestion_ApplyOptionVariants(t *testing.T) {
 			name: "empty options - returns empty",
 			question: Question{
 				QuestionType:   QuestionTypeSingleChoice,
-				CorrectAnswer:  0,
+				CorrectAnswers: `[0]`,
 				OptionVariants: `[["Alt"]]`,
 			},
 			options:      []string{},
@@ -55,7 +55,7 @@ func TestQuestion_ApplyOptionVariants(t *testing.T) {
 			name: "invalid variants JSON - returns unchanged",
 			question: Question{
 				QuestionType:   QuestionTypeSingleChoice,
-				CorrectAnswer:  0,
+				CorrectAnswers: `[0]`,
 				OptionVariants: `invalid json`,
 			},
 			options:      []string{"Option A", "Option B"},
@@ -65,7 +65,7 @@ func TestQuestion_ApplyOptionVariants(t *testing.T) {
 			name: "empty variants array - returns unchanged",
 			question: Question{
 				QuestionType:   QuestionTypeSingleChoice,
-				CorrectAnswer:  0,
+				CorrectAnswers: `[0]`,
 				OptionVariants: `[]`,
 			},
 			options:      []string{"Option A", "Option B"},
@@ -75,7 +75,7 @@ func TestQuestion_ApplyOptionVariants(t *testing.T) {
 			name: "all empty variant arrays - returns unchanged",
 			question: Question{
 				QuestionType:   QuestionTypeSingleChoice,
-				CorrectAnswer:  0,
+				CorrectAnswers: `[0]`,
 				OptionVariants: `[[], []]`,
 			},
 			options:      []string{"Option A", "Option B"},
@@ -116,7 +116,7 @@ func TestQuestion_ApplyOptionVariants(t *testing.T) {
 func TestQuestion_ApplyOptionVariants_ValidVariantSelected(t *testing.T) {
 	question := Question{
 		QuestionType:   QuestionTypeSingleChoice,
-		CorrectAnswer:  1,
+		CorrectAnswers: `[1]`,
 		OptionVariants: `[[], ["Alt B1", "Alt B2"], []]`,
 	}
 	options := []string{"Option A", "Option B", "Option C"}

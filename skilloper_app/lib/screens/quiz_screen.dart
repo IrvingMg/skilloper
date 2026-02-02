@@ -302,18 +302,29 @@ class _QuizScreenState extends State<QuizScreen> {
       return;
     }
 
+    // Build answer list - return early if no answer selected
+    final List<int> userAnswersList;
+    if (_currentQuestion.isMultipleChoice) {
+      userAnswersList =
+          _userMultipleAnswers[_currentQuestion.id]?.toList() ?? <int>[];
+    } else {
+      final singleAnswer = _userAnswers[_currentQuestion.id];
+      if (singleAnswer == null) {
+        return; // No answer selected for single-choice
+      }
+      userAnswersList = [singleAnswer];
+    }
+
+    if (userAnswersList.isEmpty) {
+      return; // No answers selected (multiple-choice with nothing checked)
+    }
+
     setState(() {
       _isValidating = true;
     });
 
     try {
-      final request = _currentQuestion.isMultipleChoice
-          ? ValidateAnswerRequest(
-              userAnswers: _userMultipleAnswers[_currentQuestion.id]?.toList(),
-            )
-          : ValidateAnswerRequest(
-              userAnswer: _userAnswers[_currentQuestion.id],
-            );
+      final request = ValidateAnswerRequest(userAnswers: userAnswersList);
 
       final response = await _apiService.validateAnswer(
         _currentQuestion.id,
@@ -373,21 +384,20 @@ class _QuizScreenState extends State<QuizScreen> {
     final answers = <UserAnswerRequest>[];
 
     for (final question in widget.quiz.questions) {
+      final List<int> userAnswersList;
       if (question.isMultipleChoice) {
-        answers.add(
-          UserAnswerRequest(
-            questionId: question.id,
-            userAnswers: _userMultipleAnswers[question.id]?.toList(),
-          ),
-        );
+        userAnswersList =
+            _userMultipleAnswers[question.id]?.toList() ?? <int>[];
       } else {
-        answers.add(
-          UserAnswerRequest(
-            questionId: question.id,
-            userAnswer: _userAnswers[question.id],
-          ),
-        );
+        final singleAnswer = _userAnswers[question.id];
+        userAnswersList = singleAnswer != null ? [singleAnswer] : <int>[];
       }
+      answers.add(
+        UserAnswerRequest(
+          questionId: question.id,
+          userAnswers: userAnswersList,
+        ),
+      );
     }
 
     return answers;

@@ -121,13 +121,8 @@ class DraftQuestion {
       'question': question,
       'options': nonEmptyOptions,
       'question_type': questionType,
+      'correct_answers': remappedAnswers,
     };
-
-    if (questionType == QuestionTypes.multipleChoice) {
-      json['correct_answers'] = remappedAnswers;
-    } else {
-      json['correctAnswer'] = remappedAnswers.first;
-    }
 
     final nonEmptyAltQuestions = alternativeQuestions
         .where((q) => q.trim().isNotEmpty)
@@ -179,14 +174,8 @@ class DraftQuestion {
   }
 
   factory DraftQuestion.fromQuestion(Question q) {
-    List<int> answers;
-    if (q.isMultipleChoice && q.correctAnswers != null) {
-      answers = q.correctAnswers!.map((a) => a + 1).toList();
-    } else if (q.correctAnswer != null) {
-      answers = [q.correctAnswer! + 1];
-    } else {
-      answers = [];
-    }
+    // Convert 0-based API indices to 1-based draft indices
+    final answers = q.correctAnswers?.map((a) => a + 1).toList() ?? [];
 
     return DraftQuestion(
       question: q.question,

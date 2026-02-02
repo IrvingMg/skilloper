@@ -217,8 +217,8 @@ What is 3+3?,5,6,7,2,More math`
 	if q.Question != "What is 2+2?" {
 		t.Errorf("Question = %q, want %q", q.Question, "What is 2+2?")
 	}
-	if q.CorrectAnswer != 1 { // 0-indexed, so answer "2" becomes 1
-		t.Errorf("CorrectAnswer = %d, want 1", q.CorrectAnswer)
+	if len(q.CorrectAnswers) != 1 || q.CorrectAnswers[0] != 1 { // 0-indexed, so answer "2" becomes 1
+		t.Errorf("CorrectAnswers = %v, want [1]", q.CorrectAnswers)
 	}
 	if q.QuestionType != "single_choice" {
 		t.Errorf("QuestionType = %q, want %q", q.QuestionType, "single_choice")

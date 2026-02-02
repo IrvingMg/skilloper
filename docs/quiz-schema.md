@@ -126,8 +126,7 @@ The internal API format with 0-based indexing. Used by the UI wizard and API con
       "language": "string (optional)",
       "options": ["string", "string", "string"] (required),
       "extra_options": ["string", "string"] (optional),
-      "correctAnswer": "integer (required for single_choice, 0-based)",
-      "correct_answers": [0, 1, 2] (required for multiple_choice, 0-based),
+      "correct_answers": [0] (required, 0-based indices - single element for single_choice, multiple for multiple_choice),
       "option_variants": [["variant1"], [], ["variant1", "variant2"]] (optional),
       "explanation": "string (optional)"
     }
@@ -157,12 +156,9 @@ The internal API format with 0-based indexing. Used by the UI wizard and API con
 | `language` | string | No | Programming language for syntax highlighting (e.g., "javascript", "python", "go") |
 | `options` | array | Yes | Answer choices (must not exceed `max_options`) |
 | `extra_options` | array | No | Additional distractor options for shuffling variety |
-| `correctAnswer` | integer | Yes* | **Required for single_choice.** 0-based index of correct option (0 = first option, 1 = second option, etc.) |
-| `correct_answers` | array | Yes* | **Required for multiple_choice.** Array of 0-based indices of all correct options |
+| `correct_answers` | array | Yes | **Required.** Array of 0-based indices. Single element `[2]` for single_choice, multiple elements `[0, 1, 3]` for multiple_choice |
 | `option_variants` | 2D array | No | Text variants per option: `option_variants[i]` contains alternative texts for `options[i]` |
 | `explanation` | string | No | Explanation shown after answering, describing why the answer is correct |
-
-*Either `correctAnswer` or `correct_answers` is required depending on `question_type`
 
 ## Limits
 
@@ -218,7 +214,7 @@ See [api-endpoints.md](api-endpoints.md) for details on the secure answer valida
       "language": "javascript",
       "options": ["null", "undefined", "object", "boolean"],
       "extra_options": ["string", "number"],
-      "correctAnswer": 2,
+      "correct_answers": [2],
       "option_variants": [[], [], ["object type", "the object string"], []],
       "explanation": "typeof null returns \"object\" due to a JavaScript quirk"
     }
@@ -251,7 +247,7 @@ See [api-endpoints.md](api-endpoints.md) for details on the secure answer valida
     {
       "question": "Which HTTP status code indicates success?",
       "options": ["200", "404", "500"],
-      "correctAnswer": 0,
+      "correct_answers": [0],
       "explanation": "200 OK indicates successful request"
     }
   ]

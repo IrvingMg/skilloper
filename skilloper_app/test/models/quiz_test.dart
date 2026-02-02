@@ -9,7 +9,7 @@ void main() {
         'question_type': 'single_choice',
         'question': 'What is 2 + 2?',
         'options': ['3', '4', '5', '6'],
-        'correct_answer': 1,
+        'correct_answers': [1],
         'explanation': 'Basic math',
       };
 
@@ -19,8 +19,8 @@ void main() {
       expect(question.questionType, 'single_choice');
       expect(question.question, 'What is 2 + 2?');
       expect(question.options, ['3', '4', '5', '6']);
+      expect(question.correctAnswers, [1]);
       expect(question.correctAnswer, 1);
-      expect(question.correctAnswers, isNull);
       expect(question.explanation, 'Basic math');
       expect(question.isSingleChoice, isTrue);
       expect(question.isMultipleChoice, isFalse);
@@ -39,7 +39,7 @@ void main() {
 
       expect(question.id, 2);
       expect(question.questionType, 'multiple_choice');
-      expect(question.correctAnswer, isNull);
+      expect(question.correctAnswer, 0);
       expect(question.correctAnswers, [0, 1, 3]);
       expect(question.isMultipleChoice, isTrue);
       expect(question.isSingleChoice, isFalse);
@@ -53,13 +53,14 @@ void main() {
         'code': 'print("Hello")',
         'language': 'python',
         'options': ['Hello', 'World'],
-        'correctAnswer': 0,
+        'correct_answers': [0],
       };
 
       final question = Question.fromJson(json);
 
       expect(question.code, 'print("Hello")');
       expect(question.language, 'python');
+      expect(question.correctAnswers, [0]);
     });
 
     test('defaults question_type to single_choice when missing', () {
@@ -67,13 +68,14 @@ void main() {
         'id': 4,
         'question': 'Test question',
         'options': ['A', 'B'],
-        'correctAnswer': 0,
+        'correct_answers': [0],
       };
 
       final question = Question.fromJson(json);
 
       expect(question.questionType, 'single_choice');
       expect(question.isSingleChoice, isTrue);
+      expect(question.correctAnswers, [0]);
     });
 
     test('handles null options as empty list', () {
@@ -243,7 +245,7 @@ void main() {
             'question_type': 'single_choice',
             'question': 'Q1',
             'options': ['A', 'B'],
-            'correctAnswer': 0,
+            'correct_answers': [0],
           },
           {
             'id': 2,
@@ -262,7 +264,9 @@ void main() {
       expect(quiz.type, 'exam');
       expect(quiz.questions.length, 2);
       expect(quiz.questions[0].isSingleChoice, isTrue);
+      expect(quiz.questions[0].correctAnswers, [0]);
       expect(quiz.questions[1].isMultipleChoice, isTrue);
+      expect(quiz.questions[1].correctAnswers, [0, 2]);
     });
 
     test('defaults max_options to 4 when missing', () {

@@ -75,8 +75,8 @@ func TestJSONParser_Parse_SimpleFormat(t *testing.T) {
 	if q.QuestionType != "single_choice" {
 		t.Errorf("QuestionType = %q, want %q", q.QuestionType, "single_choice")
 	}
-	if q.CorrectAnswer != 1 { // 0-indexed from "2"
-		t.Errorf("CorrectAnswer = %d, want 1", q.CorrectAnswer)
+	if len(q.CorrectAnswers) != 1 || q.CorrectAnswers[0] != 1 { // 0-indexed from "2"
+		t.Errorf("CorrectAnswers = %v, want [1]", q.CorrectAnswers)
 	}
 }
 
@@ -296,7 +296,6 @@ func TestSimplifiedQuestion_ParseAnswer(t *testing.T) {
 		name        string
 		question    models.SimplifiedQuestion
 		wantType    string
-		wantAnswer  int
 		wantAnswers []int
 		wantErr     bool
 	}{
@@ -306,9 +305,9 @@ func TestSimplifiedQuestion_ParseAnswer(t *testing.T) {
 				Options: []string{"A", "B", "C"},
 				Answer:  []string{"2"},
 			},
-			wantType:   "single_choice",
-			wantAnswer: 1,
-			wantErr:    false,
+			wantType:    "single_choice",
+			wantAnswers: []int{1},
+			wantErr:     false,
 		},
 		{
 			name: "multiple answers",
@@ -327,9 +326,9 @@ func TestSimplifiedQuestion_ParseAnswer(t *testing.T) {
 				Options:      []string{"A", "B"},
 				Answer:       []string{"1"},
 			},
-			wantType:   "single_choice",
-			wantAnswer: 0,
-			wantErr:    false,
+			wantType:    "single_choice",
+			wantAnswers: []int{0},
+			wantErr:     false,
 		},
 		{
 			name: "explicit multiple choice",
@@ -408,19 +407,13 @@ func TestSimplifiedQuestion_ParseAnswer(t *testing.T) {
 				t.Errorf("QuestionType = %q, want %q", result.QuestionType, tt.wantType)
 			}
 
-			if tt.wantType == "single_choice" {
-				if result.CorrectAnswer != tt.wantAnswer {
-					t.Errorf("CorrectAnswer = %d, want %d", result.CorrectAnswer, tt.wantAnswer)
-				}
-			} else {
-				if len(result.CorrectAnswers) != len(tt.wantAnswers) {
-					t.Errorf("CorrectAnswers = %v, want %v", result.CorrectAnswers, tt.wantAnswers)
-					return
-				}
-				for i, v := range tt.wantAnswers {
-					if result.CorrectAnswers[i] != v {
-						t.Errorf("CorrectAnswers[%d] = %d, want %d", i, result.CorrectAnswers[i], v)
-					}
+			if len(result.CorrectAnswers) != len(tt.wantAnswers) {
+				t.Errorf("CorrectAnswers = %v, want %v", result.CorrectAnswers, tt.wantAnswers)
+				return
+			}
+			for i, v := range tt.wantAnswers {
+				if result.CorrectAnswers[i] != v {
+					t.Errorf("CorrectAnswers[%d] = %d, want %d", i, result.CorrectAnswers[i], v)
 				}
 			}
 		})

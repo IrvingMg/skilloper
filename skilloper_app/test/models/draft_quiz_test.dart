@@ -163,9 +163,8 @@ void main() {
         final json = q.toJson();
         expect(json['question'], 'What is 2+2?');
         expect(json['options'], ['3', '4', '5']);
-        expect(json['correctAnswer'], 1); // 0-based
+        expect(json['correct_answers'], [1]); // 0-based
         expect(json['question_type'], 'single_choice');
-        expect(json.containsKey('correct_answers'), isFalse);
       });
 
       test('converts multiple choice to correct JSON format', () {
@@ -178,7 +177,6 @@ void main() {
         final json = q.toJson();
         expect(json['correct_answers'], [0, 1, 3]); // 0-based
         expect(json['question_type'], 'multiple_choice');
-        expect(json.containsKey('correctAnswer'), isFalse);
       });
 
       test('filters out empty options and remaps answers', () {
@@ -251,7 +249,7 @@ void main() {
           questionType: 'single_choice',
           question: 'What is 2+2?',
           options: ['3', '4', '5'],
-          correctAnswer: 1, // 0-based
+          correctAnswers: [1], // 0-based
           explanation: 'Basic math',
         );
         final draft = DraftQuestion.fromQuestion(apiQuestion);
@@ -281,12 +279,13 @@ void main() {
           questionType: 'single_choice',
           question: 'Test?',
           options: ['A', 'B'],
-          correctAnswer: 0,
+          correctAnswers: [0], // 0-based
         );
         final draft = DraftQuestion.fromQuestion(apiQuestion);
         expect(draft.explanation, '');
         expect(draft.code, '');
         expect(draft.language, '');
+        expect(draft.correctAnswers, [1]); // 1-based
       });
     });
 

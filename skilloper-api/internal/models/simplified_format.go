@@ -44,8 +44,7 @@ type SimplifiedQuestion struct {
 // ParsedAnswer holds the normalized answer data after parsing
 type ParsedAnswer struct {
 	QuestionType   string // "single_choice" or "multiple_choice"
-	CorrectAnswer  int    // 0-based index for single choice
-	CorrectAnswers []int  // 0-based indices for multiple choice
+	CorrectAnswers []int  // 0-based indices
 }
 
 // ParseAnswer converts the Answer string array to normalized form
@@ -97,15 +96,8 @@ func (sq *SimplifiedQuestion) ParseAnswer() (*ParsedAnswer, error) {
 		return nil, fmt.Errorf("single_choice question has %d answers, expected 1", len(answers))
 	}
 
-	if questionType == QuestionTypeSingleChoice {
-		return &ParsedAnswer{
-			QuestionType:  QuestionTypeSingleChoice,
-			CorrectAnswer: answers[0],
-		}, nil
-	}
-
 	return &ParsedAnswer{
-		QuestionType:   QuestionTypeMultipleChoice,
+		QuestionType:   questionType,
 		CorrectAnswers: answers,
 	}, nil
 }

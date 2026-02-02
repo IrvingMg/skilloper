@@ -651,8 +651,7 @@ type validatedQuestion struct {
 	alternativeQuestionsJSON string
 	extraOptionsJSON         string
 	optionVariantsJSON       string
-	correctAnswersJSON       string
-	correctAnswer            int
+	correctAnswersJSON       string // JSON []int
 }
 
 func validateAndPrepareQuestion(qReq models.QuestionRequest, index int, maxOptions int) (*validatedQuestion, error) {
@@ -723,39 +722,39 @@ func validateAndPrepareQuestion(qReq models.QuestionRequest, index int, maxOptio
 		vq.optionVariantsJSON = string(b)
 	}
 
-	if questionType == models.QuestionTypeMultipleChoice {
-		if len(qReq.CorrectAnswers) == 0 {
-			return nil, apperrors.NewValidationError(apperrors.ErrMultipleChoiceAnswersRequired.Code,
-				fmt.Sprintf("Question %d (multiple_choice) is missing required correct_answers array", index+1))
-		}
-		validCorrectAnswers := []int{}
-		seenAnswers := make(map[int]bool)
-		for _, answer := range qReq.CorrectAnswers {
-			if seenAnswers[answer] {
-				return nil, apperrors.NewValidationError("DUPLICATE_ANSWER",
-					fmt.Sprintf("Question %d has duplicate correct answer index: %d", index+1, answer))
-			}
-			seenAnswers[answer] = true
-			if answer >= 0 && answer < len(qReq.Options) {
-				validCorrectAnswers = append(validCorrectAnswers, answer)
-			}
-		}
-		if len(validCorrectAnswers) == 0 {
-			return nil, apperrors.NewValidationError(apperrors.ErrInvalidCorrectAnswer.Code,
-				fmt.Sprintf("Question %d has invalid correct_answers indices. All indices must be between 0 and %d", index+1, len(qReq.Options)-1))
-		}
-		correctAnswersBytes, err := json.Marshal(validCorrectAnswers)
-		if err != nil {
-			return nil, apperrors.ErrInvalidOptionsFormat
-		}
-		vq.correctAnswersJSON = string(correctAnswersBytes)
-	} else {
-		if qReq.CorrectAnswer < 0 || qReq.CorrectAnswer >= len(qReq.Options) {
-			return nil, apperrors.NewValidationError(apperrors.ErrInvalidCorrectAnswer.Code,
-				fmt.Sprintf("Question %d has invalid correctAnswer index %d. Must be between 0 and %d", index+1, qReq.CorrectAnswer, len(qReq.Options)-1))
-		}
-		vq.correctAnswer = qReq.CorrectAnswer
+	// Validate correct_answers
+	if len(qReq.CorrectAnswers) == 0 {
+		return nil, apperrors.NewValidationError(apperrors.ErrInvalidCorrectAnswer.Code,
+			fmt.Sprintf("Question %d is missing required correct_answers", index+1))
 	}
+
+	// For single_choice, ensure exactly one answer
+	if questionType == models.QuestionTypeSingleChoice && len(qReq.CorrectAnswers) > 1 {
+		return nil, apperrors.NewValidationError(apperrors.ErrInvalidCorrectAnswer.Code,
+			fmt.Sprintf("Question %d (single_choice) must have exactly one correct answer, got %d", index+1, len(qReq.CorrectAnswers)))
+	}
+
+	validCorrectAnswers := []int{}
+	seenAnswers := make(map[int]bool)
+	for _, answer := range qReq.CorrectAnswers {
+		if seenAnswers[answer] {
+			return nil, apperrors.NewValidationError("DUPLICATE_ANSWER",
+				fmt.Sprintf("Question %d has duplicate correct answer index: %d", index+1, answer))
+		}
+		seenAnswers[answer] = true
+		if answer >= 0 && answer < len(qReq.Options) {
+			validCorrectAnswers = append(validCorrectAnswers, answer)
+		}
+	}
+	if len(validCorrectAnswers) == 0 {
+		return nil, apperrors.NewValidationError(apperrors.ErrInvalidCorrectAnswer.Code,
+			fmt.Sprintf("Question %d has invalid correct_answers indices. All indices must be between 0 and %d", index+1, len(qReq.Options)-1))
+	}
+	correctAnswersBytes, err := json.Marshal(validCorrectAnswers)
+	if err != nil {
+		return nil, apperrors.ErrInvalidOptionsFormat
+	}
+	vq.correctAnswersJSON = string(correctAnswersBytes)
 
 	return vq, nil
 }
@@ -770,7 +769,6 @@ func (vq *validatedQuestion) toQuestion(quizID uint) models.Question {
 		Language:             vq.language,
 		Options:              vq.optionsJSON,
 		ExtraOptions:         vq.extraOptionsJSON,
-		CorrectAnswer:        vq.correctAnswer,
 		CorrectAnswers:       vq.correctAnswersJSON,
 		OptionVariants:       vq.optionVariantsJSON,
 		Explanation:          vq.explanation,
@@ -811,11 +809,7 @@ func (s *QuizService) convertToResponseWithAnswers(q models.Quiz) models.QuizRes
 
 	for _, question := range q.Questions {
 		options := s.parseStringArrayJSON(question.Options)
-
-		correctAnswers := []int{}
-		if question.QuestionType == models.QuestionTypeMultipleChoice {
-			correctAnswers = s.parseCorrectAnswersJSON(question.CorrectAnswers)
-		}
+		correctAnswers := s.parseCorrectAnswersJSON(question.CorrectAnswers)
 
 		qr := models.QuestionResponseWithAnswers{}
 		qr.ID = question.ID
@@ -825,7 +819,6 @@ func (s *QuizService) convertToResponseWithAnswers(q models.Quiz) models.QuizRes
 		qr.Language = question.Language
 		qr.Options = options
 		qr.Explanation = question.Explanation
-		qr.CorrectAnswer = question.CorrectAnswer
 		qr.CorrectAnswers = correctAnswers
 		qr.AlternativeQuestions = s.parseStringArrayJSON(question.AlternativeQuestions)
 		qr.ExtraOptions = s.parseStringArrayJSON(question.ExtraOptions)

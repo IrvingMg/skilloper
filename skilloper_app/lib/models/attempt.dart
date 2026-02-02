@@ -102,9 +102,7 @@ class AttemptAnswer {
   final int questionId;
   final String questionText;
   final String questionType;
-  final int? userAnswer;
   final List<int>? userAnswers;
-  final int? correctAnswer;
   final List<int>? correctAnswers;
   final List<String> options;
   final bool isCorrect;
@@ -116,9 +114,7 @@ class AttemptAnswer {
     required this.questionType,
     required this.options,
     required this.isCorrect,
-    this.userAnswer,
     this.userAnswers,
-    this.correctAnswer,
     this.correctAnswers,
   });
 
@@ -142,11 +138,9 @@ class AttemptAnswer {
           : int.parse(questionId.toString()),
       questionText: (json['question_text'] ?? '').toString(),
       questionType: (json['question_type'] ?? 'single_choice').toString(),
-      userAnswer: json['user_answer'] as int?,
       userAnswers: json['user_answers'] != null
           ? List<int>.from(json['user_answers'] as List)
           : null,
-      correctAnswer: json['correct_answer'] as int?,
       correctAnswers: json['correct_answers'] != null
           ? List<int>.from(json['correct_answers'] as List)
           : null,
@@ -159,6 +153,14 @@ class AttemptAnswer {
 
   bool get isMultipleChoice => questionType == 'multiple_choice';
   bool get isSingleChoice => questionType == 'single_choice';
+
+  /// Helper getter for backwards compatibility - returns first element for single choice
+  int? get userAnswer =>
+      (userAnswers?.isNotEmpty ?? false) ? userAnswers!.first : null;
+
+  /// Helper getter for backwards compatibility - returns first element for single choice
+  int? get correctAnswer =>
+      (correctAnswers?.isNotEmpty ?? false) ? correctAnswers!.first : null;
 }
 
 class QuizAttempt {
@@ -341,56 +343,44 @@ class CompleteAttemptRequest {
 
 class UserAnswerRequest {
   final int questionId;
-  final int? userAnswer; // For single_choice
-  final List<int>? userAnswers; // For multiple_choice
-
+  final List<int> userAnswers;
   const UserAnswerRequest({
     required this.questionId,
-    this.userAnswer,
-    this.userAnswers,
+    required this.userAnswers,
   });
 
   Map<String, dynamic> toJson() {
-    return {
-      'question_id': questionId,
-      if (userAnswer != null) 'user_answer': userAnswer,
-      if (userAnswers != null) 'user_answers': userAnswers,
-    };
+    return {'question_id': questionId, 'user_answers': userAnswers};
   }
 }
 
 class ValidateAnswerRequest {
-  final int? userAnswer; // For single_choice
-  final List<int>? userAnswers; // For multiple_choice
-
-  const ValidateAnswerRequest({this.userAnswer, this.userAnswers});
+  final List<int> userAnswers;
+  const ValidateAnswerRequest({required this.userAnswers});
 
   Map<String, dynamic> toJson() {
-    return {
-      if (userAnswer != null) 'user_answer': userAnswer,
-      if (userAnswers != null) 'user_answers': userAnswers,
-    };
+    return {'user_answers': userAnswers};
   }
 }
 
 class ValidateAnswerResponse {
   final bool isCorrect;
-  final int? correctAnswer; // For single_choice
-  final List<int>? correctAnswers; // For multiple_choice
-
+  final List<int> correctAnswers;
   const ValidateAnswerResponse({
     required this.isCorrect,
-    this.correctAnswer,
-    this.correctAnswers,
+    required this.correctAnswers,
   });
 
   factory ValidateAnswerResponse.fromJson(Map<String, dynamic> json) {
     return ValidateAnswerResponse(
       isCorrect: json['is_correct'] as bool,
-      correctAnswer: json['correct_answer'] as int?,
       correctAnswers: json['correct_answers'] != null
           ? List<int>.from(json['correct_answers'] as List)
-          : null,
+          : [],
     );
   }
+
+  /// Helper getter for backwards compatibility - returns first element for single choice
+  int? get correctAnswer =>
+      correctAnswers.isNotEmpty ? correctAnswers.first : null;
 }

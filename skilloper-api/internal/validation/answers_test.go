@@ -52,10 +52,10 @@ func TestValidateMultipleChoice(t *testing.T) {
 			want:           false,
 		},
 		{
-			name:           "both empty is valid",
+			name:           "both empty is invalid (misconfigured question)",
 			userAnswers:    []int{},
 			correctAnswers: []int{},
-			want:           true,
+			want:           false,
 		},
 		{
 			name:           "single correct answer",

@@ -22,14 +22,27 @@ My rules [edit or delete these]:
 - Make questions progressively harder
 - Avoid trivial or obvious questions
 
-## Requirements
+## Quality Requirements
 
-- Include an explanation for each correct answer
-- Mix single-choice and multiple-choice questions
-- For multiple-choice: typically 20-75% of options should be correct (not all)
-- Include plausible but incorrect distractors (wrong answers that seem reasonable)
-- For code/technical content, use "code" and "language" fields
-- Add alternative texts for variety on repeat attempts
+Question quality:
+- Test understanding, not just memorization
+- Include an explanation for each answer (why it's correct)
+- Avoid questions with obvious or trivially wrong distractors
+- Create plausible but incorrect distractors (wrong answers that seem reasonable)
+
+Question type variety:
+- Mix single-choice and multiple-choice questions (aim for 30-50% multiple-choice)
+- For multiple-choice: vary the number of correct answers (2, 3, or 4 out of options)
+- Avoid "select all that apply" where all options are correct
+
+Text variants for replay variety:
+- Add alternative_questions: rephrase questions differently (not just word swaps)
+- Add option_variants: meaningful synonyms or alternative phrasing for options
+- Add extra_options: additional plausible distractors for shuffling variety
+
+For code/technical content:
+- Use "code" and "language" fields for syntax highlighting
+- Test code comprehension, not just syntax recognition
 
 ## JSON format
 
@@ -51,10 +64,10 @@ My rules [edit or delete these]:
 }
 
 Format notes:
-- "type": use "practice" (immediate feedback) or "exam" (results at end)
-- "max_options": limits options per question (2-8, default 4)
+- "type": "practice" (immediate feedback) or "exam" (results at end)
+- "max_options": limits options shown per question (2-8, default 4)
 - "answer" is 1-based: ["1"] = first option, ["2"] = second
-- Multiple correct: ["1", "3"] means options 1 and 3
+- Multiple correct: ["1", "3"] means options 1 and 3 are correct
 - Code questions: add "code": "...", "language": "python"
 - "alternative_questions": different phrasings of the same question
 - "extra_options": additional wrong answers for shuffling variety

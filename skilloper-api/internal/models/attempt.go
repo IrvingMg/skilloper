@@ -36,10 +36,8 @@ type AttemptAnswer struct {
 	QuestionID     uint   `json:"question_id" gorm:"not null"`
 	QuestionText   string `json:"question_text" gorm:"not null"`
 	QuestionType   string `json:"question_type" gorm:"not null;default:'single_choice'"`
-	UserAnswer     *int   `json:"user_answer"`
-	UserAnswers    string `json:"user_answers"`
-	CorrectAnswer  *int   `json:"correct_answer"`
-	CorrectAnswers string `json:"correct_answers"`
+	UserAnswers    string `json:"user_answers"`    // JSON []int
+	CorrectAnswers string `json:"correct_answers"` // JSON []int
 	Options        string `json:"options"`
 	IsCorrect      bool   `json:"is_correct" gorm:"not null"`
 }
@@ -55,8 +53,7 @@ type UpdateAttemptRequest struct {
 
 type UserAnswerRequest struct {
 	QuestionID  uint  `json:"question_id"`
-	UserAnswer  *int  `json:"user_answer,omitempty"`
-	UserAnswers []int `json:"user_answers,omitempty"`
+	UserAnswers []int `json:"user_answers"`
 }
 
 type AttemptSummaryResponse struct {
@@ -95,10 +92,8 @@ type AttemptAnswerResponse struct {
 	QuestionID     uint     `json:"question_id"`
 	QuestionText   string   `json:"question_text"`
 	QuestionType   string   `json:"question_type"`
-	UserAnswer     *int     `json:"user_answer,omitempty"`
-	UserAnswers    []int    `json:"user_answers,omitempty"`
-	CorrectAnswer  *int     `json:"correct_answer,omitempty"`
-	CorrectAnswers []int    `json:"correct_answers,omitempty"`
+	UserAnswers    []int    `json:"user_answers"`
+	CorrectAnswers []int    `json:"correct_answers"`
 	Options        []string `json:"options"`
 	IsCorrect      bool     `json:"is_correct"`
 }

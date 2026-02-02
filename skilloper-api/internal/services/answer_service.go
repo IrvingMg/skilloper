@@ -25,9 +25,9 @@ func NewAnswerService(db *gorm.DB, log *zap.Logger) *AnswerService {
 }
 
 func (s *AnswerService) ValidateAnswer(req models.CreateAnswerRequest) (*models.AnswerResponse, error) {
-	if req.UserAnswer == nil && len(req.UserAnswers) == 0 {
+	if len(req.UserAnswers) == 0 {
 		return nil, apperrors.NewValidationError(apperrors.ErrInvalidAnswerData.Code,
-			"either user_answer or user_answers must be provided")
+			"user_answers must be provided")
 	}
 
 	var question models.Question
@@ -38,30 +38,16 @@ func (s *AnswerService) ValidateAnswer(req models.CreateAnswerRequest) (*models.
 		return nil, apperrors.ErrFetchQuestionFailed
 	}
 
-	response := &models.AnswerResponse{}
-
-	if question.QuestionType == models.QuestionTypeMultipleChoice {
-		if len(req.UserAnswers) == 0 {
-			return nil, apperrors.ErrWrongAnswerFormat
-		}
-
-		var correctAnswers []int
-		if err := json.Unmarshal([]byte(question.CorrectAnswers), &correctAnswers); err != nil {
-			s.log.Debug("Failed to unmarshal correct answers",
-				zap.Uint("question_id", req.QuestionID),
-				zap.Error(err))
-			return nil, apperrors.ErrFetchQuestionFailed
-		}
-
-		response.IsCorrect = validation.ValidateMultipleChoice(req.UserAnswers, correctAnswers)
-		response.CorrectAnswers = correctAnswers
-	} else {
-		if req.UserAnswer == nil {
-			return nil, apperrors.ErrWrongAnswerFormat
-		}
-		response.IsCorrect = *req.UserAnswer == question.CorrectAnswer
-		response.CorrectAnswer = &question.CorrectAnswer
+	var correctAnswers []int
+	if err := json.Unmarshal([]byte(question.CorrectAnswers), &correctAnswers); err != nil {
+		s.log.Debug("Failed to unmarshal correct answers",
+			zap.Uint("question_id", req.QuestionID),
+			zap.Error(err))
+		return nil, apperrors.ErrFetchQuestionFailed
 	}
 
-	return response, nil
+	return &models.AnswerResponse{
+		IsCorrect:      validation.ValidateMultipleChoice(req.UserAnswers, correctAnswers),
+		CorrectAnswers: correctAnswers,
+	}, nil
 }

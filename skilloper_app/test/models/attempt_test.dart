@@ -142,8 +142,8 @@ void main() {
         'question_id': 10,
         'question_text': 'What is 2+2?',
         'question_type': 'single_choice',
-        'user_answer': 1,
-        'correct_answer': 1,
+        'user_answers': [1],
+        'correct_answers': [1],
         'options': ['3', '4', '5', '6'],
         'is_correct': true,
       };
@@ -154,10 +154,10 @@ void main() {
       expect(answer.questionId, 10);
       expect(answer.questionText, 'What is 2+2?');
       expect(answer.questionType, 'single_choice');
+      expect(answer.userAnswers, [1]);
       expect(answer.userAnswer, 1);
-      expect(answer.userAnswers, isNull);
+      expect(answer.correctAnswers, [1]);
       expect(answer.correctAnswer, 1);
-      expect(answer.correctAnswers, isNull);
       expect(answer.options, ['3', '4', '5', '6']);
       expect(answer.isCorrect, isTrue);
       expect(answer.isSingleChoice, isTrue);
@@ -178,10 +178,10 @@ void main() {
 
       final answer = AttemptAnswer.fromJson(json);
 
-      expect(answer.userAnswer, isNull);
       expect(answer.userAnswers, [0, 1, 3]);
-      expect(answer.correctAnswer, isNull);
+      expect(answer.userAnswer, 0);
       expect(answer.correctAnswers, [0, 1, 3]);
+      expect(answer.correctAnswer, 0);
       expect(answer.isMultipleChoice, isTrue);
       expect(answer.isSingleChoice, isFalse);
     });
@@ -191,8 +191,8 @@ void main() {
         'id': 3,
         'question_id': 12,
         'question_text': 'Test',
-        'user_answer': 0,
-        'correct_answer': 1,
+        'user_answers': [0],
+        'correct_answers': [1],
         'options': ['A', 'B'],
         'is_correct': false,
       };
@@ -239,8 +239,8 @@ void main() {
             'question_id': 10,
             'question_text': 'Q1',
             'question_type': 'single_choice',
-            'user_answer': 0,
-            'correct_answer': 0,
+            'user_answers': [0],
+            'correct_answers': [0],
             'options': ['A', 'B'],
             'is_correct': true,
           },
@@ -263,7 +263,9 @@ void main() {
       expect(attempt.status, AttemptStatus.completed);
       expect(attempt.answers.length, 2);
       expect(attempt.answers[0].isSingleChoice, isTrue);
+      expect(attempt.answers[0].userAnswers, [0]);
       expect(attempt.answers[1].isMultipleChoice, isTrue);
+      expect(attempt.answers[1].userAnswers, [0, 1]);
     });
 
     test('handles null answers as empty list', () {
@@ -302,7 +304,7 @@ void main() {
     test('toJson serializes answers list', () {
       const request = CompleteAttemptRequest(
         answers: [
-          UserAnswerRequest(questionId: 1, userAnswer: 2),
+          UserAnswerRequest(questionId: 1, userAnswers: [2]),
           UserAnswerRequest(questionId: 2, userAnswers: [0, 1]),
         ],
       );
@@ -310,64 +312,58 @@ void main() {
 
       expect(json['answers'], hasLength(2));
       expect(json['answers'][0]['question_id'], 1);
+      expect(json['answers'][0]['user_answers'], [2]);
       expect(json['answers'][1]['question_id'], 2);
+      expect(json['answers'][1]['user_answers'], [0, 1]);
     });
   });
 
   group('UserAnswerRequest', () {
-    test('toJson includes only userAnswer for single choice', () {
-      const request = UserAnswerRequest(questionId: 1, userAnswer: 2);
+    test('toJson includes userAnswers for single choice', () {
+      const request = UserAnswerRequest(questionId: 1, userAnswers: [2]);
       final json = request.toJson();
 
       expect(json['question_id'], 1);
-      expect(json['user_answer'], 2);
-      expect(json.containsKey('user_answers'), isFalse);
+      expect(json['user_answers'], [2]);
     });
 
-    test('toJson includes only userAnswers for multiple choice', () {
+    test('toJson includes userAnswers for multiple choice', () {
       const request = UserAnswerRequest(questionId: 2, userAnswers: [0, 1, 3]);
       final json = request.toJson();
 
       expect(json['question_id'], 2);
       expect(json['user_answers'], [0, 1, 3]);
-      expect(json.containsKey('user_answer'), isFalse);
     });
   });
 
   group('ValidateAnswerRequest', () {
-    test('toJson includes only userAnswer for single choice', () {
-      const request = ValidateAnswerRequest(userAnswer: 1);
+    test('toJson includes userAnswers for single choice', () {
+      const request = ValidateAnswerRequest(userAnswers: [1]);
       final json = request.toJson();
 
-      expect(json['user_answer'], 1);
-      expect(json.containsKey('user_answers'), isFalse);
+      expect(json['user_answers'], [1]);
     });
 
-    test('toJson includes only userAnswers for multiple choice', () {
+    test('toJson includes userAnswers for multiple choice', () {
       const request = ValidateAnswerRequest(userAnswers: [0, 2]);
       final json = request.toJson();
 
       expect(json['user_answers'], [0, 2]);
-      expect(json.containsKey('user_answer'), isFalse);
-    });
-
-    test('toJson is empty when neither set', () {
-      const request = ValidateAnswerRequest();
-      final json = request.toJson();
-
-      expect(json, isEmpty);
     });
   });
 
   group('ValidateAnswerResponse', () {
     test('fromJson parses single choice answer', () {
-      final json = {'is_correct': true, 'correct_answer': 2};
+      final json = {
+        'is_correct': true,
+        'correct_answers': [2],
+      };
 
       final response = ValidateAnswerResponse.fromJson(json);
 
       expect(response.isCorrect, isTrue);
+      expect(response.correctAnswers, [2]);
       expect(response.correctAnswer, 2);
-      expect(response.correctAnswers, isNull);
     });
 
     test('fromJson parses multiple choice answer', () {
@@ -379,8 +375,8 @@ void main() {
       final response = ValidateAnswerResponse.fromJson(json);
 
       expect(response.isCorrect, isFalse);
-      expect(response.correctAnswer, isNull);
       expect(response.correctAnswers, [0, 1, 3]);
+      expect(response.correctAnswer, 0);
     });
   });
 }

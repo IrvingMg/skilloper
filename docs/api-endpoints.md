@@ -578,7 +578,7 @@ curl -X PATCH http://localhost:8080/api/v1/attempts/1 \
     "answers": [
       {
         "question_id": 1,
-        "user_answer": 2
+        "user_answers": [2]
       },
       {
         "question_id": 2,
@@ -600,8 +600,7 @@ curl -X PATCH http://localhost:8080/api/v1/attempts/1 \
 **Request Fields:**
 - `status` - Must be "completed"
 - `answers[].question_id` - Question ID
-- `answers[].user_answer` - Selected option index (single choice)
-- `answers[].user_answers` - Selected option indices (multiple choice)
+- `answers[].user_answers` - Array of selected option indices (single element for single choice, multiple for multiple choice)
 
 **Note:** Duplicate `question_id` entries are ignored (only the first submission per question is counted).
 
@@ -680,7 +679,7 @@ Used in practice mode for immediate feedback after answering a question.
 curl -X POST http://localhost:8080/api/v1/answers \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
-  -d '{"question_id": 1, "user_answer": 2}'
+  -d '{"question_id": 1, "user_answers": [2]}'
 
 # Multiple choice
 curl -X POST http://localhost:8080/api/v1/answers \
@@ -693,7 +692,7 @@ Response:
 ```json
 {
   "is_correct": false,
-  "correct_answer": 1
+  "correct_answers": [1]
 }
 ```
 
@@ -709,7 +708,7 @@ Or for multiple choice:
 
 **Important:** Correct answers are never sent to the client during quizzes.
 
-- `GET /quizzes/{id}` returns questions **without** `correct_answer` or `correct_answers` fields
+- `GET /quizzes/{id}` returns questions **without** `correct_answers` fields
 - The client collects user answers only
 - `PATCH /attempts/{id}` receives user answers, the **server** validates and calculates the score
 - `POST /answers` is only used in practice mode for immediate feedback

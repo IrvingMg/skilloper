@@ -262,7 +262,7 @@ func (p *CSVParser) parseRow(record []string, cols *columnIndices) (*models.Ques
 			return nil, fmt.Errorf("invalid answer: %w", err)
 		}
 		question.QuestionType = models.QuestionTypeSingleChoice
-		question.CorrectAnswer = answer
+		question.CorrectAnswers = []int{answer}
 	}
 
 	if cols.explanation >= 0 && cols.explanation < len(record) {

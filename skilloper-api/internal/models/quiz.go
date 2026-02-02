@@ -37,8 +37,7 @@ type Question struct {
 	Language             string    `json:"language"`
 	Options              string    `json:"options"`
 	ExtraOptions         string    `json:"extra_options"`
-	CorrectAnswer        int       `json:"correct_answer"`
-	CorrectAnswers       string    `json:"correct_answers"`
+	CorrectAnswers       string    `json:"correct_answers"` // JSON []int
 	OptionVariants       string    `json:"option_variants"`
 	Explanation          string    `json:"explanation"`
 	CreatedAt            time.Time `json:"created_at"`
@@ -85,8 +84,7 @@ type QuestionRequest struct {
 	Language             string     `json:"language,omitempty"`
 	Options              []string   `json:"options,omitempty"`
 	ExtraOptions         []string   `json:"extra_options,omitempty"`
-	CorrectAnswer        int        `json:"correct_answer"`
-	CorrectAnswers       []int      `json:"correct_answers,omitempty"`
+	CorrectAnswers       []int      `json:"correct_answers"`
 	OptionVariants       [][]string `json:"option_variants,omitempty"`
 	Explanation          string     `json:"explanation,omitempty"`
 }
@@ -119,15 +117,13 @@ type questionResponseBase struct {
 // QuestionResponse is the response DTO for questions (answers hidden for quiz play)
 type QuestionResponse struct {
 	questionResponseBase
-	CorrectAnswer  int   `json:"-"` // Hidden from client - server validates answers
 	CorrectAnswers []int `json:"-"` // Hidden from client - server validates answers
 }
 
 // QuestionResponseWithAnswers includes correct answers (for edit mode)
 type QuestionResponseWithAnswers struct {
 	questionResponseBase
-	CorrectAnswer        int        `json:"correct_answer"`
-	CorrectAnswers       []int      `json:"correct_answers,omitempty"`
+	CorrectAnswers       []int      `json:"correct_answers"`
 	AlternativeQuestions []string   `json:"alternative_questions,omitempty"`
 	ExtraOptions         []string   `json:"extra_options,omitempty"`
 	OptionVariants       [][]string `json:"option_variants,omitempty"`

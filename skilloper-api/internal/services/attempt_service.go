@@ -262,52 +262,38 @@ func (s *AttemptService) complete(userID uint, attemptID uint, answers []models.
 				}
 			}
 
-			var isCorrect bool
-			var correctAnswer *int
-			correctAnswers := []int{}
-			var userAnswersJSON, correctAnswersJSON, optionsJSON string
-
-			if question.QuestionType == models.QuestionTypeMultipleChoice {
-				if err := json.Unmarshal([]byte(question.CorrectAnswers), &correctAnswers); err != nil {
-					s.log.Debug("Failed to unmarshal correct answers",
-						zap.Uint("question_id", question.ID),
-						zap.Error(err))
-					correctAnswers = []int{}
-				}
-
-				isCorrect = validation.ValidateMultipleChoice(answerReq.UserAnswers, correctAnswers)
-
-				if len(answerReq.UserAnswers) > 0 {
-					if userAnswersBytes, err := json.Marshal(answerReq.UserAnswers); err != nil {
-						s.log.Debug("Failed to marshal user answers",
-							zap.Uint("question_id", question.ID),
-							zap.Error(err))
-					} else {
-						userAnswersJSON = string(userAnswersBytes)
-					}
-				}
-				if len(correctAnswers) > 0 {
-					if correctAnswersBytes, err := json.Marshal(correctAnswers); err != nil {
-						s.log.Debug("Failed to marshal correct answers",
-							zap.Uint("question_id", question.ID),
-							zap.Error(err))
-					} else {
-						correctAnswersJSON = string(correctAnswersBytes)
-					}
-				}
-			} else {
-				ca := question.CorrectAnswer
-				correctAnswer = &ca
-
-				if answerReq.UserAnswer != nil {
-					isCorrect = *answerReq.UserAnswer == question.CorrectAnswer
-				}
+			var correctAnswers []int
+			if err := json.Unmarshal([]byte(question.CorrectAnswers), &correctAnswers); err != nil {
+				s.log.Debug("Failed to unmarshal correct answers",
+					zap.Uint("question_id", question.ID),
+					zap.Error(err))
+				correctAnswers = []int{}
 			}
 
+			isCorrect := validation.ValidateMultipleChoice(answerReq.UserAnswers, correctAnswers)
 			if isCorrect {
 				correctCount++
 			}
 
+			var userAnswersJSON, correctAnswersJSON, optionsJSON string
+			if len(answerReq.UserAnswers) > 0 {
+				if userAnswersBytes, err := json.Marshal(answerReq.UserAnswers); err != nil {
+					s.log.Debug("Failed to marshal user answers",
+						zap.Uint("question_id", question.ID),
+						zap.Error(err))
+				} else {
+					userAnswersJSON = string(userAnswersBytes)
+				}
+			}
+			if len(correctAnswers) > 0 {
+				if correctAnswersBytes, err := json.Marshal(correctAnswers); err != nil {
+					s.log.Debug("Failed to marshal correct answers",
+						zap.Uint("question_id", question.ID),
+						zap.Error(err))
+				} else {
+					correctAnswersJSON = string(correctAnswersBytes)
+				}
+			}
 			if len(options) > 0 {
 				if optionsBytes, err := json.Marshal(options); err != nil {
 					s.log.Debug("Failed to marshal options",
@@ -329,9 +315,7 @@ func (s *AttemptService) complete(userID uint, attemptID uint, answers []models.
 				QuestionID:     answerReq.QuestionID,
 				QuestionText:   questionText,
 				QuestionType:   question.QuestionType,
-				UserAnswer:     answerReq.UserAnswer,
 				UserAnswers:    userAnswersJSON,
-				CorrectAnswer:  correctAnswer,
 				CorrectAnswers: correctAnswersJSON,
 				Options:        optionsJSON,
 				IsCorrect:      isCorrect,
@@ -483,9 +467,7 @@ func (s *AttemptService) convertToResponse(attempt models.QuizAttempt) models.At
 			QuestionID:     answer.QuestionID,
 			QuestionText:   answer.QuestionText,
 			QuestionType:   answer.QuestionType,
-			UserAnswer:     answer.UserAnswer,
 			UserAnswers:    userAnswers,
-			CorrectAnswer:  answer.CorrectAnswer,
 			CorrectAnswers: correctAnswers,
 			Options:        options,
 			IsCorrect:      answer.IsCorrect,

@@ -7,7 +7,6 @@ class Question {
   final String? code;
   final String? language;
   final List<String> options;
-  final int? correctAnswer;
   final List<int>? correctAnswers;
   final String? explanation;
   final List<String>? alternativeQuestions;
@@ -21,7 +20,6 @@ class Question {
     required this.options,
     this.code,
     this.language,
-    this.correctAnswer,
     this.correctAnswers,
     this.explanation,
     this.alternativeQuestions,
@@ -49,7 +47,6 @@ class Question {
       options: json['options'] != null
           ? List<String>.from(json['options'] as List)
           : <String>[],
-      correctAnswer: json['correct_answer'] as int?,
       correctAnswers: json['correct_answers'] != null
           ? List<int>.from(json['correct_answers'] as List)
           : null,
@@ -70,6 +67,10 @@ class Question {
 
   bool get isMultipleChoice => questionType == 'multiple_choice';
   bool get isSingleChoice => questionType == 'single_choice';
+
+  /// Helper getter for backwards compatibility - returns first element for single choice
+  int? get correctAnswer =>
+      (correctAnswers?.isNotEmpty ?? false) ? correctAnswers!.first : null;
 }
 
 class QuizSummary {
