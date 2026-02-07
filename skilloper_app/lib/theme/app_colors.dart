@@ -121,7 +121,9 @@ class AppColors {
   ];
 
   static Color getCollectionColor(int collectionId) {
-    return collectionPalette[collectionId % collectionPalette.length];
+    final hash =
+        (collectionId * 2654435761) & 0xFFFFFFFF; // Knuth multiplicative hash
+    return collectionPalette[hash % collectionPalette.length];
   }
 }
 

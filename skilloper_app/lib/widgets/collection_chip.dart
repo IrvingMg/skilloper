@@ -23,6 +23,9 @@ class CollectionChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chipColor = color ?? AppColors.primary;
+    final textColor = chipColor.computeLuminance() > 0.5
+        ? HSLColor.fromColor(chipColor).withLightness(0.35).toColor()
+        : chipColor;
     final hasMenu = onRename != null || onDelete != null;
 
     return Material(
@@ -40,7 +43,7 @@ class CollectionChip extends StatelessWidget {
           decoration: BoxDecoration(
             color: isSelected
                 ? chipColor.withValues(alpha: 0.15)
-                : AppColors.surfaceVariant,
+                : chipColor.withValues(alpha: 0.08),
             border: isSelected
                 ? Border.all(color: chipColor, width: 1.5)
                 : null,
@@ -52,7 +55,7 @@ class CollectionChip extends StatelessWidget {
               Text(
                 label,
                 style: TextStyle(
-                  color: isSelected ? chipColor : AppColors.textSecondary,
+                  color: textColor,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   fontSize: 13,
                 ),
@@ -64,11 +67,7 @@ class CollectionChip extends StatelessWidget {
                   height: 24,
                   child: PopupMenuButton<String>(
                     padding: EdgeInsets.zero,
-                    icon: Icon(
-                      Icons.more_vert,
-                      size: 16,
-                      color: isSelected ? chipColor : AppColors.textTertiary,
-                    ),
+                    icon: Icon(Icons.more_vert, size: 16, color: textColor),
                     onSelected: (value) {
                       if (value == 'rename' && onRename != null) {
                         onRename!();
