@@ -349,7 +349,7 @@ Response:
 
 ### Import Quiz from File
 
-Supports JSON and CSV formats. Maximum file size: **10 MB**.
+Supports JSON format. Maximum file size: **10 MB**.
 
 Use `POST /quizzes` with `multipart/form-data` Content-Type:
 
@@ -358,11 +358,6 @@ Use `POST /quizzes` with `multipart/form-data` Content-Type:
 curl -X POST http://localhost:8080/api/v1/quizzes \
   -H "Authorization: Bearer <token>" \
   -F "file=@quiz.json"
-
-# CSV file with metadata via query params
-curl -X POST "http://localhost:8080/api/v1/quizzes?title=My%20Quiz&type=practice" \
-  -H "Authorization: Bearer <token>" \
-  -F "file=@questions.csv"
 ```
 
 See [quiz-schema.md](quiz-schema.md) for all supported formats and limits.

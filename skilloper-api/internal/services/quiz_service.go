@@ -536,7 +536,7 @@ func (s *QuizService) BulkDelete(quizIDs []uint, userID uint, isAdmin bool) erro
 	})
 }
 
-func (s *QuizService) ImportFromFile(file *multipart.FileHeader, csvMeta CSVMetadata, userID uint) (*models.QuizSummary, error) {
+func (s *QuizService) ImportFromFile(file *multipart.FileHeader, metadata ParserMetadata, userID uint) (*models.QuizSummary, error) {
 	if file.Size > models.MaxImportFileSize {
 		return nil, apperrors.NewValidationError("FILE_TOO_LARGE", "file exceeds 10MB limit")
 	}
@@ -554,30 +554,20 @@ func (s *QuizService) ImportFromFile(file *multipart.FileHeader, csvMeta CSVMeta
 		return nil, apperrors.ErrFileReadFailed
 	}
 
-	metadata := ParserMetadata{
-		Filename:    file.Filename,
-		Title:       csvMeta.Title,
-		Description: csvMeta.Description,
-		Type:        csvMeta.Type,
-		MaxOptions:  csvMeta.MaxOptions,
-	}
+	metadata.Filename = file.Filename
 
 	registry := NewParserRegistry()
 	req, formatType, err := registry.Parse(fileContent, metadata)
 	if err != nil {
-		switch formatType {
-		case models.FormatCSV:
-			return nil, apperrors.NewValidationError("INVALID_CSV_FORMAT", err.Error())
-		case models.FormatJSON:
+		if formatType == models.FormatJSON {
 			errMsg := err.Error()
 			if strings.HasPrefix(errMsg, "invalid JSON:") || strings.HasPrefix(errMsg, "invalid internal format JSON:") {
 				errorInfo := jsonutil.ParseJSONError(err, fileContent, file.Filename)
 				return nil, apperrors.NewValidationError("INVALID_JSON_FORMAT", errorInfo.Message)
 			}
 			return nil, apperrors.NewValidationError("INVALID_JSON_FORMAT", errMsg)
-		default:
-			return nil, apperrors.NewValidationError("INVALID_FILE_FORMAT", err.Error())
 		}
+		return nil, apperrors.NewValidationError("INVALID_FILE_FORMAT", err.Error())
 	}
 
 	quizResponse, err := s.Create(*req, userID)

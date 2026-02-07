@@ -102,4 +102,4 @@ Key optional variables:
 ## Documentation
 
 - `docs/api-endpoints.md` - Complete API reference with curl examples
-- `docs/quiz-schema.md` - Quiz import formats (Simple JSON, CSV, Internal JSON)
+- `docs/quiz-schema.md` - Quiz import formats (Simple JSON, Internal JSON)

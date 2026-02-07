@@ -27,7 +27,6 @@ type ParserRegistry struct {
 func NewParserRegistry() *ParserRegistry {
 	return &ParserRegistry{
 		parsers: []QuizParser{
-			NewCSVParserAdapter(),
 			NewJSONParser(),
 		},
 	}

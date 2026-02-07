@@ -21,8 +21,7 @@ const (
 
 func isAllowedImportMimeType(mimeType string) bool {
 	allowedTypes := []string{
-		"text/csv",
-		"text/plain", // Some systems send CSV as text/plain
+		"text/plain", // Some systems send JSON as text/plain
 		"application/json",
 		"application/octet-stream", // Fallback for unknown types
 	}
@@ -296,7 +295,7 @@ func (h *QuizHandler) handleImport(c *gin.Context, userID uint) {
 	mimeType := file.Header.Get("Content-Type")
 	if !isAllowedImportMimeType(mimeType) {
 		h.errH.Handle(c, apperrors.NewValidationError("INVALID_FILE_TYPE",
-			"only CSV and JSON files are allowed"), "validate_file_type")
+			"only JSON files are allowed"), "validate_file_type")
 		return
 	}
 
@@ -307,16 +306,16 @@ func (h *QuizHandler) handleImport(c *gin.Context, userID uint) {
 
 	if len(title) > models.MaxTitleLength {
 		h.errH.Handle(c, apperrors.NewValidationError("TITLE_TOO_LONG",
-			fmt.Sprintf("title exceeds %d character limit", models.MaxTitleLength)), "parse_csv_metadata")
+			fmt.Sprintf("title exceeds %d character limit", models.MaxTitleLength)), "parse_metadata")
 		return
 	}
 	if len(description) > models.MaxDescriptionLength {
 		h.errH.Handle(c, apperrors.NewValidationError("DESCRIPTION_TOO_LONG",
-			fmt.Sprintf("description exceeds %d character limit", models.MaxDescriptionLength)), "parse_csv_metadata")
+			fmt.Sprintf("description exceeds %d character limit", models.MaxDescriptionLength)), "parse_metadata")
 		return
 	}
 
-	csvMeta := services.CSVMetadata{
+	metadata := services.ParserMetadata{
 		Title:       title,
 		Description: description,
 		Type:        c.Query("type"),
@@ -326,13 +325,13 @@ func (h *QuizHandler) handleImport(c *gin.Context, userID uint) {
 		n, err := strconv.Atoi(maxOpts)
 		if err != nil || n < models.MinOptionsLimit || n > models.MaxOptionsLimit {
 			h.errH.Handle(c, apperrors.NewValidationError("INVALID_MAX_OPTIONS",
-				fmt.Sprintf("max_options must be a number between %d and %d", models.MinOptionsLimit, models.MaxOptionsLimit)), "parse_csv_metadata")
+				fmt.Sprintf("max_options must be a number between %d and %d", models.MinOptionsLimit, models.MaxOptionsLimit)), "parse_metadata")
 			return
 		}
-		csvMeta.MaxOptions = n
+		metadata.MaxOptions = n
 	}
 
-	quiz, err := h.service.ImportFromFile(file, csvMeta, userID)
+	quiz, err := h.service.ImportFromFile(file, metadata, userID)
 	if err != nil {
 		h.errH.Handle(c, err, "import_quiz")
 		return

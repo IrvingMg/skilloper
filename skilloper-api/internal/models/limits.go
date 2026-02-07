@@ -22,6 +22,5 @@ const (
 )
 
 const (
-	FormatCSV  = "csv"
 	FormatJSON = "json"
 )

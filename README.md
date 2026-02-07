@@ -7,7 +7,7 @@ A self-training platform for practicing with your own custom quizzes.
 - **Import your own content** - Create quizzes from your study notes using AI tools like ChatGPT or Claude, then import them
 - **Practice Mode** - Get immediate feedback after each question
 - **Exam Mode** - Simulate real test conditions with results at the end
-- **Flexible formats** - Support for JSON and CSV imports
+- **Flexible formats** - Support for JSON imports
 
 ## Quick Start
 

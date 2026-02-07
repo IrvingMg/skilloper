@@ -284,14 +284,7 @@ class ApiService {
     }
   }
 
-  Future<QuizSummary?> importQuiz(
-    List<int> fileBytes,
-    String fileName, {
-    String? title,
-    String? description,
-    String? type,
-    int? maxOptions,
-  }) async {
+  Future<QuizSummary?> importQuiz(List<int> fileBytes, String fileName) async {
     if (fileBytes.isEmpty) {
       throw const ApiException('File is empty - validation failed');
     }
@@ -301,15 +294,7 @@ class ApiService {
     }
 
     try {
-      final uri = Uri.parse('$baseUrl${ApiEndpoints.quizzes}').replace(
-        queryParameters: {
-          if (title != null && title.isNotEmpty) 'title': title,
-          if (description != null && description.isNotEmpty)
-            'description': description,
-          if (type != null && type.isNotEmpty) 'type': type,
-          if (maxOptions != null) 'max_options': maxOptions.toString(),
-        },
-      );
+      final uri = Uri.parse('$baseUrl${ApiEndpoints.quizzes}');
 
       // Helper to create and send the multipart request
       Future<http.StreamedResponse> sendRequest() async {

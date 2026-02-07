@@ -7,7 +7,6 @@ This document defines the supported formats for importing quizzes into Skilloper
 | Format | Extension | Indexing | Best For |
 |--------|-----------|----------|----------|
 | **Simple JSON** | `.json` | 1-based | Users, manual creation |
-| **CSV** | `.csv` | 1-based | Spreadsheets, bulk import |
 | **Internal JSON** | `.json` | 0-based | API consumers, programmatic use |
 
 ---
@@ -57,49 +56,6 @@ The user-friendly format with 1-based indexing and simplified `answer` field.
 | `alternative_questions` | No | Alternative phrasings |
 | `extra_options` | No | Additional distractor options |
 | `option_variants` | No | Text variants per option: `option_variants[i]` = variants for `options[i]` |
-
----
-
-## CSV Format
-
-Spreadsheet-friendly format with one question per row.
-
-```csv
-question,option1,option2,option3,option4,answer,explanation,code,language,alt_question1,alt_option1
-"What is 2+2?","1","2","3","4",4,"Basic math","console.log(2+2);","javascript","Calculate 2+2","5"
-"Select primes","2","3","4","5","1,2,4","2,3,5 are prime","","","","6"
-```
-
-### CSV Columns
-
-| Column | Required | Description |
-|--------|----------|-------------|
-| `question` | Yes | Question text |
-| `option1`-`option8` | 2+ required | Answer options |
-| `answer` | Yes | **1-based**: `4` single, `"1,2,4"` multiple |
-| `explanation` | No | Answer explanation |
-| `code` | No | Code snippet |
-| `language` | No | Syntax highlighting language |
-| `alt_question1`, `alt_question2`, ... | No | Alternative questions |
-| `alt_option1`, `alt_option2`, ... | No | Alternative options |
-
-### CSV Metadata
-
-**In the app:** When importing a CSV file, you'll be prompted to enter the quiz title, description, type, and max options.
-
-**Via API:** Quiz-level metadata is passed via query parameters:
-
-```bash
-curl -X POST "http://localhost:8080/api/v1/quizzes?title=My%20Quiz&type=practice&max_options=4" \
-  -F "file=@questions.csv"
-```
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `title` | Filename | Quiz title |
-| `description` | Empty | Quiz description |
-| `type` | `practice` | `"practice"` or `"exam"` |
-| `max_options` | 4 | Maximum options per question |
 
 ---
 
@@ -178,7 +134,7 @@ The internal API format with 0-based indexing. Used by the UI wizard and API con
 
 ## Key Behaviors
 
-- **Answer Indexing**: Simple JSON and CSV use 1-based indices (user-friendly). Internal JSON uses 0-based indices (programmatic). The server converts automatically on import
+- **Answer Indexing**: Simple JSON uses 1-based indices (user-friendly). Internal JSON uses 0-based indices (programmatic). The server converts automatically on import
 - **Hybrid Shuffling for Variety**:
   - **Backend**: Randomly selects from `alternative_questions` and `option_variants` for text variety
   - **Frontend**: Shuffles option display order while mapping selections back to original indices

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
 import '../theme/app_icons.dart';
 import '../widgets/code_block.dart';
 import '../widgets/numbered_step.dart';
@@ -129,11 +128,6 @@ NOT safe: "Kubelet" → "Node agent", "Scheduler" → "Pod placer" (interpretati
   ]
 }''';
 
-  static const String _csvExample =
-      'question,option1,option2,option3,option4,answer,explanation\n'
-      '"Which keyword declares a constant?","var","let","const","define",3,"const declares constants"\n'
-      '"Which are valid variable declarations?","var x int","x := 10","int x","let x","1,2","var and := are valid"';
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -180,8 +174,7 @@ NOT safe: "Kubelet" → "Node agent", "Scheduler" → "Pod placer" (interpretati
               number: '3',
               text: 'Import the quiz',
               description:
-                  'Copy the JSON and paste it directly, or save as a file and upload. '
-                  'CSV files are also supported.',
+                  'Copy the JSON and paste it directly, or save as a file and upload.',
             ),
             const SizedBox(height: 12),
             SizedBox(
@@ -206,103 +199,12 @@ NOT safe: "Kubelet" → "Node agent", "Scheduler" → "Pod placer" (interpretati
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Format Examples'),
+        title: const Text('JSON Format Example'),
         content: Container(
           width: MediaQuery.of(context).size.width * 0.9,
           constraints: const BoxConstraints(maxHeight: 550),
-          child: DefaultTabController(
-            length: 2,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const TabBar(
-                  labelColor: AppColors.primary,
-                  unselectedLabelColor: AppColors.textTertiary,
-                  indicatorColor: AppColors.primary,
-                  tabs: [
-                    Tab(text: 'JSON'),
-                    Tab(text: 'CSV'),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: TabBarView(
-                    children: [
-                      // JSON Tab
-                      const SingleChildScrollView(
-                        child: CodeBlock(code: _jsonExample, language: 'json'),
-                      ),
-                      // CSV Tab
-                      SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Required columns:',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: AppColors.surface,
-                                borderRadius: AppRadius.smAll,
-                                border: Border.all(color: AppColors.outline),
-                              ),
-                              child: const Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'question, option1, option2, ..., answer, explanation',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontFamily: 'monospace',
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                  SizedBox(height: 4),
-                                  Text(
-                                    'Supports 2-8 options (option1 through option8)',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: AppColors.textTertiary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'Example:',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            const CodeBlock(code: _csvExample, language: 'csv'),
-                            const SizedBox(height: 12),
-                            const Text(
-                              'Note: Quiz title and type are set during import.',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textTertiary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+          child: const SingleChildScrollView(
+            child: CodeBlock(code: _jsonExample, language: 'json'),
           ),
         ),
         actions: [
